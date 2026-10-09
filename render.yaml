@@ -1,0 +1,22 @@
+# Despliegue gratuito en Render (https://render.com): no pide tarjeta para el plan gratuito.
+# La clave de Anthropic NO va aquí: se pega en el panel de Render (variable ANTHROPIC_API_KEY).
+services:
+  - type: web
+    name: crea-reader-ai
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/index.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: STORE
+        value: memory
+      - key: ALLOWED_DOMAINS
+        value: creanicaragua.org
+      - key: MONTHLY_BUDGET_USD
+        value: "50"
+      - key: USER_DAILY_LIMIT
+        value: "300"
+      - key: ANTHROPIC_API_KEY
+        sync: false

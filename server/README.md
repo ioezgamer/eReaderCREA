@@ -30,6 +30,17 @@ npm run mock      # servidor de prueba en http://localhost:8787 con respuestas d
 Con la tablet conectada por USB: `adb reverse tcp:8787 tcp:8787` y compila la app con
 `./gradlew assembleDebug -PaiBaseUrl=http://localhost:8787`. Las respuestas de ejemplo empiezan con «(Ejemplo)»; la app nunca las comparte ni las muestra en versiones de lanzamiento.
 
+## Publicarlo gratis, sin tarjeta (Render)
+
+Google Cloud exige vincular una cuenta de facturación (tarjeta) aunque este servicio quepa en el nivel gratuito. Render, en su plan gratuito, no. Lo único que se paga es el uso de Claude, y eso sale de tus créditos de Anthropic.
+
+1. Crea una cuenta en <https://render.com> (puedes entrar con GitHub).
+2. **New → Blueprint**, elige el repositorio `eReaderCREA`; Render lee `render.yaml` de la raíz del repositorio.
+3. Cuando lo pida, pega la clave de Anthropic en `ANTHROPIC_API_KEY` (solo en el panel de Render).
+4. Al terminar te da una dirección `https://crea-reader-ai-xxxx.onrender.com`; compila la app con `-PaiBaseUrl=` esa dirección.
+
+Limitaciones del plan gratuito: el servicio «duerme» tras ~15 min sin uso (la primera petición tarda ~30–60 s y la app lo trata como no disponible un momento) y los contadores viven en memoria, así que se reinician al dormir. Por eso el **tope real** son los créditos de Anthropic: fija además un límite de gasto en el workspace de la consola de Anthropic.
+
 ## Publicarlo en Google Cloud (proyecto `crea-reader`)
 
 Necesitas `gcloud` instalado y una **clave de API de Anthropic** (consola de Anthropic → API keys; lo ideal es una clave de un *workspace* propio con límite de gasto).
