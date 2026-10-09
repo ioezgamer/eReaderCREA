@@ -11,7 +11,7 @@ struct CREAReaderApp: App {
     }
 }
 
-struct LocalBook: Identifiable, Codable {
+struct LocalBook: Identifiable, Codable, Hashable {
     let id: UUID
     let name: String
     let filename: String
