@@ -23,9 +23,15 @@ jobs:
           cd ios
           xcodegen generate
       - name: Build for physical iOS devices without signing
+        env:
+          GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+          GOOGLE_IOS_URL_SCHEME: ${{ vars.GOOGLE_IOS_URL_SCHEME }}
         run: |
           set -o pipefail
-          xcodebuild -project ios/CREAReader.xcodeproj -scheme CREAReader -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/crea-build" CODE_SIGNING_ALLOWED=NO build
+          GOOGLE_IOS_CLIENT_ID="${GOOGLE_IOS_CLIENT_ID:-REPLACE_WITH_IOS_OAUTH_CLIENT_ID}"
+          GOOGLE_IOS_URL_SCHEME="${GOOGLE_IOS_URL_SCHEME:-org.crea.reader.oauth.unconfigured}"
+          xcodebuild -resolvePackageDependencies -project ios/CREAReader.xcodeproj -scheme CREAReader
+          xcodebuild GOOGLE_IOS_CLIENT_ID="$GOOGLE_IOS_CLIENT_ID" GOOGLE_IOS_URL_SCHEME="$GOOGLE_IOS_URL_SCHEME" -project ios/CREAReader.xcodeproj -scheme CREAReader -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/crea-build" CODE_SIGNING_ALLOWED=NO build
       - name: Package IPA
         run: |
           set -e
