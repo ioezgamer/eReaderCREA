@@ -43,15 +43,30 @@ struct LocalBook: Identifiable, Codable, Hashable {
     private var documents: URL { FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0] }
     func url(for book: LocalBook) -> URL { documents.appendingPathComponent(book.filename) }
     func add(url source: URL) throws {
-        let scoped = source.startAccessingSecurityScopedResource()
-        defer { if scoped { source.stopAccessingSecurityScopedResource() } }
         let ext = source.pathExtension.lowercased()
-        guard ["pdf", "epub"].contains(ext) else { return }
-        let fingerprint = try Data(contentsOf: source).hashValue
-        if books.contains(where: { (try? Data(contentsOf: url(for: $0)).hashValue) == fingerprint }) { return }
-        let filename = UUID().uuidString + "." + ext
-        try FileManager.default.copyItem(at: source, to: documents.appendingPathComponent(filename))
-        books.insert(LocalBook(id: UUID(), name: source.deletingPathExtension().lastPathComponent, filename: filename, kind: ext.uppercased()), at: 0)
+        guard ["epub", "pdf"].contains(ext) else {
+            throw NSError(domain: "CREAReader", code: 1, userInfo: [NSLocalizedDescriptionKey: "Solo se admiten EPUB y PDF."])
+        }
+        let hasAccess = source.startAccessingSecurityScopedResource()
+        defer { if hasAccess { source.stopAccessingSecurityScopedResource() } }
+        let name = UUID().uuidString + "." + ext
+        let destination = documents.appendingPathComponent(name)
+        var coordinationError: NSError?
+        var copyError: Error?
+        NSFileCoordinator(filePresenter: nil).coordinate(readingItemAt: source, options: [], error: &coordinationError) { coordinatedURL in
+            do { try FileManager.default.copyItem(at: coordinatedURL, to: destination) }
+            catch { copyError = error }
+        }
+        if let issue = coordinationError ?? (copyError as NSError?) {
+            try? FileManager.default.removeItem(at: destination)
+            throw issue
+        }
+        guard FileManager.default.fileExists(atPath: destination.path),
+              ((try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 0 else {
+            throw NSError(domain: "CREAReader", code: 2, userInfo: [NSLocalizedDescriptionKey: "No se pudo copiar el libro. Descárgalo desde iCloud primero."])
+        }
+        books.insert(LocalBook(id: UUID(), name: source.deletingPathExtension().lastPathComponent,
+                               filename: name, kind: ext.uppercased()), at: 0)
         persist()
     }
     func update(_ book: LocalBook, mutate: (inout LocalBook) -> Void) {
@@ -134,8 +149,15 @@ struct ReaderHomeView: View {
         }
         .preferredColorScheme(theme == "Oscuro" ? .dark : theme == "Claro" ? .light : nil)
         .fileImporter(isPresented: $importing, allowedContentTypes: [.pdf, UTType(filenameExtension: "epub") ?? .data], allowsMultipleSelection: true) { result in
-            do { for item in try result.get() { try library.add(url: item) } }
-            catch { self.error = error.localizedDescription }
+            do {
+                let selected = try result.get()
+                var failures: [String] = []
+                for item in selected {
+                    do { try library.add(url: item) }
+                    catch { failures.append(item.lastPathComponent + ": " + error.localizedDescription) }
+                }
+                if !failures.isEmpty { self.error = failures.joined(separator: "\n") }
+            } catch { self.error = error.localizedDescription }
         }
         .alert("CREA Reader", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("Aceptar") { error = nil }
@@ -193,7 +215,7 @@ struct ReaderHomeView: View {
                             description: Text("Importa libros EPUB o PDF desde Archivos para construir tu biblioteca."))
                             .frame(maxWidth: .infinity)
                     } else if library.layoutGrid {
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 18) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 125, maximum: 180), spacing: 12)], spacing: 16) {
                             ForEach(visibleBooks) { book in bookCard(book) }
                         }
                     } else {
@@ -248,7 +270,7 @@ struct ReaderHomeView: View {
                     Text(book.kind).font(.caption2.bold()).foregroundStyle(.white)
                         .padding(7).background(.black.opacity(0.28), in: Capsule()).padding(9)
                 }
-                .frame(height: 170)
+                .aspectRatio(0.76, contentMode: .fit)
                 Text(book.name).font(.subheadline.bold()).foregroundStyle(.primary).lineLimit(2).frame(height: 38, alignment: .topLeading)
                 ProgressView(value: book.progress).tint(CREAStyle.green)
                 HStack {
