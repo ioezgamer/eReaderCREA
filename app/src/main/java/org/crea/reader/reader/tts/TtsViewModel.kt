@@ -192,7 +192,26 @@ class TtsViewModel private constructor(
             return
         }
 
+        chooseBestVoiceIfUnset(ttsNavigator)
         ttsNavigator.play()
+    }
+
+    /**
+     * Si la persona nunca eligió una voz para el idioma del libro, se usa la de mayor calidad que
+     * funcione sin Internet en lugar de la que traiga el sistema por defecto (suele ser la más básica).
+     */
+    private suspend fun chooseBestVoiceIfUnset(ttsNavigator: AndroidTtsNavigator) {
+        try {
+            val preferences = preferencesManager.preferences.value
+            val language = ttsNavigator.settings.value.language.removeRegion()
+            if (preferences.voices?.get(language) != null) return
+            val best = TtsPreferencesEditor.bestOfflineVoice(ttsNavigator.voices, language) ?: return
+            val updated = preferences.copy(voices = preferences.voices.orEmpty() + (language to best.id))
+            preferencesManager.setPreferences(updated)
+            ttsNavigator.submitPreferences(updated)
+        } catch (e: Exception) {
+            Timber.w(e, "No se pudo elegir la mejor voz")
+        }
     }
 
     fun stop() {

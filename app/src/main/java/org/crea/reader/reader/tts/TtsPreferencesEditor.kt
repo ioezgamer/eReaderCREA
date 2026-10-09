@@ -19,6 +19,9 @@ class TtsPreferencesEditor(
     private val availableVoices: Set<AndroidTtsEngine.Voice>,
 ) : PreferencesEditor<AndroidTtsPreferences> {
 
+    private val rankedVoices: List<AndroidTtsEngine.Voice> =
+        rankVoices(availableVoices.filter { it.language.removeRegion() == editor.language.effectiveValue?.removeRegion() })
+
     override val preferences: AndroidTtsPreferences
         get() = editor.preferences
 
@@ -52,12 +55,28 @@ class TtsPreferencesEditor(
                     ?.let { editor.voices.value.orEmpty().update(it, voice) }
                     ?: editor.voices.value.orEmpty()
             }
-        ).withSupportedValues(
-            availableVoices
-                .filter { it.language.removeRegion() == currentLanguage }
-                .map { it.id }
-        )
+        ).withSupportedValues(rankedVoices.map { it.id })
     }
+
+    /** Número de orden (1 = la mejor) y datos de cada voz, para mostrar nombres comprensibles en vez de códigos. */
+    val voiceInfo: Map<AndroidTtsEngine.Voice.Id, VoiceInfo> =
+        rankedVoices.mapIndexed { index, voice ->
+            voice.id to VoiceInfo(
+                number = index + 1,
+                quality = voice.quality,
+                requiresNetwork = voice.requiresNetwork,
+                language = voice.language.code.substringBefore('-'),
+                region = voice.language.code.substringAfter('-', ""),
+            )
+        }.toMap()
+
+    class VoiceInfo(
+        val number: Int,
+        val quality: AndroidTtsEngine.Voice.Quality,
+        val requiresNetwork: Boolean,
+        val language: String,
+        val region: String,
+    )
 
     private fun <K, V> Map<K, V>.update(key: K, value: V?): Map<K, V> =
         buildMap {
@@ -68,5 +87,23 @@ class TtsPreferencesEditor(
                 put(key, value)
             }
         }
-}
 
+    companion object {
+        /**
+         * Mejor calidad primero; a igual calidad, primero las que funcionan sin Internet y, entre ellas,
+         * el español de Latinoamérica antes que el de España (más cercano al de la comunidad lectora).
+         */
+        fun rankVoices(voices: Collection<AndroidTtsEngine.Voice>): List<AndroidTtsEngine.Voice> =
+            voices.sortedWith(
+                compareByDescending<AndroidTtsEngine.Voice> { it.quality.ordinal }
+                    .thenBy { it.requiresNetwork }
+                    .thenBy { it.language.code.equals("es-ES", ignoreCase = true) }
+                    .thenBy { it.id.value }
+            )
+
+        /** La voz que se usa si la persona no eligió ninguna: la de mayor calidad que no necesita Internet. */
+        fun bestOfflineVoice(voices: Collection<AndroidTtsEngine.Voice>, language: Language): AndroidTtsEngine.Voice? =
+            rankVoices(voices.filter { it.language.removeRegion() == language.removeRegion() && !it.requiresNetwork })
+                .firstOrNull()
+    }
+}

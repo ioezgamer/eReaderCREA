@@ -196,4 +196,14 @@
     <string name="ai_settings_title">AI assistant</string>
     <string name="ai_settings_detail">Explanations, summaries and book information generated with AI. The selected text is sent to a CREA server to answer; nothing is sent while this is off.</string>
     <string name="ai_settings_unavailable">Not available in this version.</string>
+    <string name="tts_voice_item">Voice %1$d (%2$s)</string>
+    <string name="tts_quality_highest">very high quality</string>
+    <string name="tts_quality_high">high quality</string>
+    <string name="tts_quality_normal">normal quality</string>
+    <string name="tts_quality_basic">basic quality</string>
+    <string name="tts_needs_internet">needs Internet</string>
+    <string name="tts_improve_voices">Improve or install voices</string>
+    <string name="tts_improve_voices_hint">Voice 1 is the best one available. For a more natural sound, open the device speech settings and download the high-quality voices for your language.</string>
+    <string name="tts_accent_spain">Spain</string>
+    <string name="tts_accent_latam">Latin America</string>
 </resources>

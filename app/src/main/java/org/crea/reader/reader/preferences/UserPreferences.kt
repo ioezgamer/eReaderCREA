@@ -8,6 +8,9 @@
 
 package org.crea.reader.reader.preferences
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.provider.Settings
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -16,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -145,6 +149,7 @@ private fun <P : Configurable.Preferences<P>, E : PreferencesEditor<P>> UserPref
                     commit = commit,
                     language = editor.language,
                     voice = editor.voice,
+                    voiceInfo = editor.voiceInfo,
                     speed = editor.speed,
                     pitch = editor.pitch
                 )
@@ -163,10 +168,37 @@ private fun MediaUserPreferences(
     commit: () -> Unit,
     language: Preference<Language?>? = null,
     voice: EnumPreference<AndroidTtsEngine.Voice.Id?>? = null,
+    voiceInfo: Map<AndroidTtsEngine.Voice.Id, TtsPreferencesEditor.VoiceInfo> = emptyMap(),
     speed: RangePreference<Double>? = null,
     pitch: RangePreference<Double>? = null,
 ) {
     val lblDefault = stringResource(R.string.pref_default)
+    val context = LocalContext.current
+    val lblQuality = mapOf(
+        AndroidTtsEngine.Voice.Quality.Highest to stringResource(R.string.tts_quality_highest),
+        AndroidTtsEngine.Voice.Quality.High to stringResource(R.string.tts_quality_high),
+        AndroidTtsEngine.Voice.Quality.Normal to stringResource(R.string.tts_quality_normal),
+    )
+    val lblBasic = stringResource(R.string.tts_quality_basic)
+    val lblInternet = stringResource(R.string.tts_needs_internet)
+    val lblSpain = stringResource(R.string.tts_accent_spain)
+    val lblLatam = stringResource(R.string.tts_accent_latam)
+    val lblVoiceItem = stringResource(R.string.tts_voice_item)
+    val voiceLabels = voiceInfo.mapValues { (_, info) ->
+        val detail = buildString {
+            append(lblQuality[info.quality] ?: lblBasic)
+            val region = info.region.uppercase()
+            val accent = when {
+                info.language != "es" -> region
+                region == "ES" -> lblSpain
+                region.isNotBlank() -> lblLatam
+                else -> ""
+            }
+            if (accent.isNotBlank()) append(" · ").append(accent)
+            if (info.requiresNetwork) append(" · ").append(lblInternet)
+        }
+        lblVoiceItem.format(info.number, detail)
+    }
     Column {
         if (speed != null) {
             StepperItem(
@@ -194,8 +226,27 @@ private fun MediaUserPreferences(
             MenuItem(
                 title = stringResource(R.string.tts_voice),
                 preference = voice,
-                formatValue = { it?.value ?: lblDefault },
+                formatValue = { id -> voiceLabels[id] ?: id?.value ?: lblDefault },
                 commit = commit
+            )
+            TextButton(
+                onClick = {
+                    val intent = Intent("com.android.settings.TTS_SETTINGS")
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    try {
+                        context.startActivity(intent)
+                    } catch (_: ActivityNotFoundException) {
+                        context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                },
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) {
+                Text(stringResource(R.string.tts_improve_voices))
+            }
+            Text(
+                text = stringResource(R.string.tts_improve_voices_hint),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
         }
     }

@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.9.2 - 2026-10-09
+
+- **Lector de voz más natural**: si no elegiste voz, ahora se usa automáticamente la de mayor calidad disponible que funciona sin Internet (antes la del sistema, normalmente la más básica). En Ajustes de voz las voces se ordenan de mejor a peor y se muestran con nombre comprensible ("Voz 1 (calidad alta · ES · necesita Internet)") en lugar de códigos técnicos, y hay un botón «Mejorar o instalar voces» que abre los ajustes de voz del dispositivo.
+
 ## 0.9.1 - 2026-10-09
 
 - Compilación con el asistente de IA conectado al servidor publicado en Render (plan gratuito, sin tarjeta). Al dormirse el servicio la primera consulta puede tardar hasta un minuto; la app lo trata como «IA no disponible» mientras tanto.

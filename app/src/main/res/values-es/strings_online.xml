@@ -196,4 +196,14 @@
     <string name="ai_settings_title">Asistente de IA</string>
     <string name="ai_settings_detail">Explicaciones, resúmenes y datos de los libros generados con IA. El texto que seleccionas se envía a un servidor de CREA para responder; mientras esté desactivado no se envía nada.</string>
     <string name="ai_settings_unavailable">No disponible en esta versión.</string>
+    <string name="tts_voice_item">Voz %1$d (%2$s)</string>
+    <string name="tts_quality_highest">calidad muy alta</string>
+    <string name="tts_quality_high">calidad alta</string>
+    <string name="tts_quality_normal">calidad normal</string>
+    <string name="tts_quality_basic">calidad básica</string>
+    <string name="tts_needs_internet">necesita Internet</string>
+    <string name="tts_improve_voices">Mejorar o instalar voces</string>
+    <string name="tts_improve_voices_hint">La voz 1 es la mejor disponible. Para un sonido más natural, abre los ajustes de voz del dispositivo y descarga las voces de alta calidad de tu idioma.</string>
+    <string name="tts_accent_spain">España</string>
+    <string name="tts_accent_latam">Latinoamérica</string>
 </resources>
