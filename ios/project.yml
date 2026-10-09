@@ -12,6 +12,15 @@ targets:
   CREAReader:
     type: application
     platform: iOS
+    info:
+      path: CREAReader/Info.plist
+      properties:
+        CFBundleDisplayName: CREA Reader
+        UILaunchStoryboardName: LaunchScreen
+        GIDClientID: $(GOOGLE_IOS_CLIENT_ID)
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - $(GOOGLE_IOS_URL_SCHEME)
     sources:
       - path: CREAReader
     dependencies:
