@@ -1,5 +1,13 @@
 # Historial de cambios
 
+## 0.9.0 - 2026-10-09
+
+- **Asistente de IA (extra, apagable)**, pensado para que la app siga funcionando igual si faltan los créditos: cuando el servidor de IA no está configurado, no hay créditos, se llegó al tope mensual o la persona lo desactiva en Ajustes, los botones de IA simplemente no aparecen.
+  - **Catálogo**: autor, resumen de 2 o 3 frases, categorías y nivel lector sugerido para cada libro, generados una sola vez por libro (con el texto inicial leído por solicitudes parciales, sin descargarlo) y compartidos con todos los dispositivos en el archivo `crea-ai-catalog.json` de la carpeta de Drive. El resumen aparece en la hoja de cada libro y el autor y la categoría se usan en tarjetas, búsqueda y filtros.
+  - **Lector**: «Explícamelo» al seleccionar un pasaje (explicar, simplificar, definir o traducir) y un botón de asistente con «Resumir este capítulo» y «Preguntas y actividades (docentes)». Cada respuesta se puede copiar o compartir.
+- **Servidor intermedio** (`server/`, Node + SDK oficial de Anthropic, Claude Haiku 5.5): guarda la clave fuera de la app, solo acepta cuentas de la organización, limita el uso por dispositivo y por día, tiene tope mensual en dólares y se apaga solo si Anthropic informa que no hay créditos. Incluye pruebas automáticas, modo de prueba sin gasto y guía de publicación en Google Cloud (`server/README.md`).
+- Base de datos: migración 4 → 5 (tabla `book_insights`).
+
 ## 0.8.3 - 2026-10-09
 
 - **La comunidad funciona por dispositivo**: cada instalación comparte con su propio apodo (por defecto, el nombre del dispositivo en Android) y su propio archivo, así que varias tablets con la misma cuenta de Google se ven entre sí como lectores distintos. Antes compartían un solo archivo por cuenta y se pisaban. Con otra cuenta funciona igual: el apodo siempre es del dispositivo.

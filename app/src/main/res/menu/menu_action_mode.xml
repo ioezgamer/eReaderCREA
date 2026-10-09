@@ -23,4 +23,11 @@
         app:showAsAction="ifRoom">
     </item>
 
+    <item
+        android:id="@+id/ai_explain"
+        android:title="@string/ai_menu_explain"
+        android:visible="false"
+        app:showAsAction="ifRoom">
+    </item>
+
 </menu>

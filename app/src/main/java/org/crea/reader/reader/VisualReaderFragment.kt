@@ -69,6 +69,8 @@ import org.readium.r2.navigator.util.BaseActionModeCallback
 import org.readium.r2.navigator.util.DirectionalNavigationAdapter
 import org.readium.r2.shared.ExperimentalReadiumApi
 import org.readium.r2.shared.publication.Locator
+import org.readium.r2.shared.publication.allAreHtml
+import org.readium.r2.shared.publication.allAreHtml
 import org.readium.r2.shared.publication.services.content.Content
 import org.readium.r2.shared.util.Language
 import org.crea.reader.R
@@ -403,6 +405,9 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                 menu.findItem(R.id.underline).isVisible = true
                 menu.findItem(R.id.note).isVisible = true
             }
+            menu.findItem(R.id.ai_explain).isVisible =
+                (requireContext().applicationContext as org.crea.reader.Application).aiService.availability.available.value &&
+                publication.readingOrder.allAreHtml
             return true
         }
 
@@ -411,11 +416,33 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                 R.id.highlight -> showHighlightPopupWithStyle(Highlight.Style.HIGHLIGHT)
                 R.id.underline -> showHighlightPopupWithStyle(Highlight.Style.UNDERLINE)
                 R.id.note -> showAnnotationPopup()
+                R.id.ai_explain -> explainSelectionWithAi()
                 else -> return false
             }
 
             mode.finish()
             return true
+        }
+    }
+
+    /** Sends the selected passage (with a little text around it for context) to the reading assistant. */
+    private fun explainSelectionWithAi() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val selection = (navigator as? SelectableNavigator)?.currentSelection()?.locator ?: return@launch
+            val text = selection.text
+            val selected = text.highlight?.trim().orEmpty()
+            if (selected.isEmpty()) return@launch
+            val surrounding = ((text.before?.takeLast(300).orEmpty()) + selected + (text.after?.take(300).orEmpty())).trim()
+            val app = requireContext().applicationContext as org.crea.reader.Application
+            org.crea.reader.ai.AiSheets.showSelection(
+                requireContext(),
+                layoutInflater,
+                viewLifecycleOwner.lifecycleScope,
+                app.aiService,
+                selected,
+                surrounding,
+                publication.metadata.title,
+            )
         }
     }
 

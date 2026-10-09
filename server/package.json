@@ -1,0 +1,21 @@
+{
+  "name": "crea-reader-ai",
+  "version": "1.0.0",
+  "description": "Pequeño servidor intermedio entre CREA Reader y la API de Claude: guarda la clave, limita el uso y apaga las funciones de IA si se acaban los créditos.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "mock": "MOCK_AI=1 AUTH_MODE=mock node src/index.js",
+    "test": "node --test test/service.test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "@google-cloud/firestore": "^9.3.1",
+    "zod": "^4.6.5"
+  }
+}

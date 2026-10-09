@@ -25,8 +25,10 @@ android {
         applicationId = "org.crea.reader"
         minSdk = 24
         targetSdk = 37
-        versionCode = 17
-        versionName = "0.8.3"
+        versionCode = 18
+        versionName = "0.9.0"
+        // Address of the AI server (see server/README.md). Empty = AI features do not exist in this build.
+        buildConfigField("String", "AI_BASE_URL", "\"${project.findProperty("aiBaseUrl") ?: ""}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk.abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
     }

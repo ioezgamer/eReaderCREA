@@ -23,6 +23,14 @@
         tools:ignore="AlwaysShowAction"/>
 
 
+
+    <item
+        android:id="@+id/ai"
+        android:icon="@drawable/ic_ai"
+        android:title="@string/ai_menu_title"
+        android:visible="false"
+        app:showAsAction="always"
+        tools:ignore="AlwaysShowAction"/>
     <item
         android:id="@+id/bookmark"
         android:icon="@drawable/ic_baseline_bookmark_24"

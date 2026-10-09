@@ -25,11 +25,15 @@ object CatalogBookSheet {
         val sheet = SheetCatalogBookBinding.inflate(inflater)
         val book = row.book
         sheet.catalogSheetTitle.text = book.title
+        sheet.catalogSheetSummary.isVisible = row.summary != null
+        sheet.catalogSheetSummaryNote.isVisible = row.summary != null
+        sheet.catalogSheetSummary.text = row.summary
+        sheet.catalogSheetSummaryNote.text = row.insight?.let { levelNote(context, it.level) }
         sheet.catalogSheetDetail.text = listOfNotNull(
-            book.author,
+            row.displayAuthor,
             book.format,
             book.size.takeIf { it > 0 }?.let { Formatter.formatShortFileSize(context, it) },
-            book.category,
+            row.displayCategory,
         ).joinToString(" · ")
 
         val busy = row.transfer?.active == true
@@ -73,4 +77,19 @@ object CatalogBookSheet {
         row.sheetActionDetail.text = detail
         row.root.setOnClickListener { onClick() }
     }
+}
+
+/** "Resumen generado automáticamente · Nivel sugerido: Secundaria". */
+private fun levelNote(context: Context, level: String): String {
+    val label = when (level) {
+        "inicial" -> R.string.level_inicial
+        "primaria_baja" -> R.string.level_primaria_baja
+        "primaria_alta" -> R.string.level_primaria_alta
+        "secundaria" -> R.string.level_secundaria
+        "bachillerato" -> R.string.level_bachillerato
+        "adultos" -> R.string.level_adultos
+        else -> null
+    }
+    return if (label == null) context.getString(R.string.insight_note)
+    else context.getString(R.string.insight_note_level, context.getString(label))
 }

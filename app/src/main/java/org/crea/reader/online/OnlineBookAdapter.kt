@@ -92,13 +92,13 @@ class OnlineBookAdapter(
         val path = row.local?.cover ?: row.book.coverPath?.takeIf { File(it).exists() }
         if (path != null) {
             CoverImages.request(path)
-                .placeholder(GeneratedCover(row.book.title, row.book.author))
-                .error(GeneratedCover(row.book.title, row.book.author))
+                .placeholder(GeneratedCover(row.book.title, row.displayAuthor))
+                .error(GeneratedCover(row.book.title, row.displayAuthor))
                 .into(view)
         } else {
             // No cover anywhere (yet): draw one from the title so the card never looks empty.
             Picasso.get().cancelRequest(view)
-            view.setImageDrawable(GeneratedCover(row.book.title, row.book.author))
+            view.setImageDrawable(GeneratedCover(row.book.title, row.displayAuthor))
         }
     }
 
@@ -181,8 +181,8 @@ class OnlineBookAdapter(
             val transfer = row.transfer
 
             binding.catalogTitle.text = book.title
-            binding.catalogAuthor.text = book.author.orEmpty()
-            binding.catalogAuthor.isVisible = !book.author.isNullOrBlank()
+            binding.catalogAuthor.text = row.displayAuthor.orEmpty()
+            binding.catalogAuthor.isVisible = !row.displayAuthor.isNullOrBlank()
             bindCover(row)
             binding.catalogFormat.text = book.format
             ViewCompat.setBackgroundTintList(
@@ -262,7 +262,7 @@ class OnlineBookAdapter(
             val progress = row.generalPercent
             binding.catalogMeta.text = listOfNotNull(
                 row.book.size.takeIf { it > 0 }?.let { Formatter.formatShortFileSize(context, it) },
-                row.book.category,
+                row.displayCategory,
                 when {
                     progress >= 100 -> context.getString(R.string.book_finished_label)
                     progress > 0 -> context.getString(R.string.book_progress_label, progress)

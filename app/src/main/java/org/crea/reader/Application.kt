@@ -42,7 +42,14 @@ import org.crea.reader.domain.Bookshelf
 import org.crea.reader.domain.CoverStorage
 import org.crea.reader.domain.PublicationRetriever
 import org.crea.reader.reader.ReaderRepository
+import org.crea.reader.ai.AiAvailability
+import org.crea.reader.ai.AiClient
+import org.crea.reader.ai.AiService
+import org.crea.reader.data.db.InsightsDao
+import org.crea.reader.data.model.BookInsight
 import org.crea.reader.sync.CommunityStore
+import org.crea.reader.sync.InsightsSyncState
+import kotlinx.coroutines.flow.map
 import org.crea.reader.sync.DeviceReadingsStore
 import org.crea.reader.sync.LibrarySyncEngine
 import org.crea.reader.sync.SyncScheduler
@@ -93,6 +100,16 @@ class Application : android.app.Application() {
         private set
 
     lateinit var communityStore: CommunityStore
+        private set
+
+    lateinit var aiService: AiService
+        private set
+
+    lateinit var insightsDao: InsightsDao
+        private set
+
+    /** AI information about catalog books by Drive id, kept in memory like the catalog itself. */
+    lateinit var insightsState: StateFlow<Map<String, BookInsight>>
         private set
 
     lateinit var syncEngine: LibrarySyncEngine
@@ -178,6 +195,11 @@ class Application : android.app.Application() {
             .stateIn(coroutineScope, SharingStarted.Eagerly, null)
 
         syncStateStore = SyncStateStore(this)
+        insightsDao = database.insightsDao()
+        val aiClient = AiClient(this, deviceId = { syncStateStore.deviceId })
+        aiService = AiService(aiClient, AiAvailability(this, aiClient) { syncStateStore.isEnabled })
+        insightsState = insightsDao.observeAll().map { list -> list.associateBy { it.driveFileId } }
+            .stateIn(coroutineScope, SharingStarted.Eagerly, emptyMap())
         deviceReadingsStore = DeviceReadingsStore(this)
         communityStore = CommunityStore(this)
         syncEngine = LibrarySyncEngine(
@@ -188,7 +210,10 @@ class Application : android.app.Application() {
             // The nickname the person gave this device, or the name Android knows it by.
             deviceName = { communityStore.nickname.ifBlank { systemDeviceName() } },
             readingsStore = deviceReadingsStore,
-            communityStore = communityStore
+            communityStore = communityStore,
+            insightsDao = insightsDao,
+            insightsState = InsightsSyncState(this),
+            ai = { aiService }
         )
         onlineBooks = OnlineBookManager(
             context = this,

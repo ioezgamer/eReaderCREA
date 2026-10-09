@@ -2,7 +2,9 @@ package org.crea.reader.online
 
 import java.text.Collator
 import java.text.Normalizer
+import org.crea.reader.BuildConfig
 import org.crea.reader.data.model.Book
+import org.crea.reader.data.model.BookInsight
 import org.crea.reader.data.model.DriveBook
 import org.crea.reader.sync.RemoteReading
 import org.crea.reader.utils.ReadingProgress
@@ -27,8 +29,18 @@ data class CatalogRow(
     val searchKey: String = "",
     /** What the account's other devices are reading in this book, most recent first. */
     val others: List<RemoteReading> = emptyList(),
+    /** What the AI worked out about this book, when it has been analysed. */
+    val insight: BookInsight? = null,
 ) {
     val downloaded: Boolean get() = local != null
+
+    /** The author from the file name or, when there is none, the one the AI found. */
+    val displayAuthor: String? get() = book.author?.takeIf { it.isNotBlank() } ?: insight?.author
+
+    /** The Drive sub-folder, or else the first category the AI suggested. */
+    val displayCategory: String? get() = book.category ?: insight?.categoryList?.firstOrNull()
+
+    val summary: String? get() = insight?.summary?.takeIf { it.isNotBlank() }
 
     /** Drive has a different version of the file than the copy on this device. */
     val updateAvailable: Boolean
@@ -52,7 +64,12 @@ object CatalogRows {
      * Pairs every catalog entry with the copy in "Mi biblioteca". Books are matched by Drive file
      * id, or by content checksum for copies that were uploaded by this app.
      */
-    fun build(catalog: List<DriveBook>, books: List<Book>, readings: List<RemoteReading> = emptyList()): List<CatalogRow> {
+    fun build(
+        catalog: List<DriveBook>,
+        books: List<Book>,
+        readings: List<RemoteReading> = emptyList(),
+        insights: Map<String, BookInsight> = emptyMap(),
+    ): List<CatalogRow> {
         val readingsByBook = readings.filter { it.percent > 0 }.groupBy { it.driveFileId }
         val byRemoteId = HashMap<String, Book>()
         val byHash = HashMap<String, Book>()
@@ -64,14 +81,18 @@ object CatalogRows {
             CatalogRow(
                 book = entry,
                 local = byRemoteId[entry.driveFileId] ?: entry.contentHash?.let { byHash[it] },
-                searchKey = fold("${entry.title} ${entry.author.orEmpty()} ${entry.category.orEmpty()}"),
+                searchKey = fold(
+                    "${entry.title} ${entry.author.orEmpty()} ${entry.category.orEmpty()} " +
+                        "${insights[entry.driveFileId]?.let { it.author.orEmpty() + " " + it.categories } ?: ""}"
+                ),
+                insight = insights[entry.driveFileId]?.takeIf { it.version == entry.version && (BuildConfig.DEBUG || !it.isPlaceholder) },
                 others = readingsByBook[entry.driveFileId].orEmpty().sortedByDescending { it.updatedAt },
             )
         }
     }
 
     fun categories(rows: List<CatalogRow>): List<String> =
-        rows.mapNotNull { it.book.category }.distinct().sortedWith(collator())
+        rows.mapNotNull { it.displayCategory }.distinct().sortedWith(collator())
 
     const val NEW_DAYS = 14
 
@@ -96,7 +117,7 @@ object CatalogRows {
                     CatalogFilter.EPUB -> row.book.format == "EPUB"
                     CatalogFilter.PDF -> row.book.format == "PDF"
                 }
-                matchesText && matchesFilter && (query.category == null || row.book.category == query.category)
+                matchesText && matchesFilter && (query.category == null || row.displayCategory == query.category)
             }
             .sortedWith(
                 when (query.sort) {

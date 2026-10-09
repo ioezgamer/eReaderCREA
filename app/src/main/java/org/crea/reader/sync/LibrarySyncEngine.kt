@@ -17,7 +17,14 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.crea.reader.data.BookRepository
+import org.crea.reader.BuildConfig
+import org.crea.reader.ai.AiOutcome
+import org.crea.reader.ai.AiResult
+import org.crea.reader.ai.AiService
+import org.crea.reader.ai.BookInfo
 import org.crea.reader.data.db.DriveCatalogDao
+import org.crea.reader.data.db.InsightsDao
+import org.crea.reader.data.model.BookInsight
 import org.crea.reader.data.model.Book
 import org.crea.reader.data.model.DriveBook
 import org.crea.reader.online.OnlineBookIds
@@ -43,6 +50,9 @@ class LibrarySyncEngine(
     private val deviceName: () -> String,
     private val readingsStore: DeviceReadingsStore,
     private val communityStore: CommunityStore,
+    private val insightsDao: InsightsDao,
+    private val insightsState: InsightsSyncState,
+    private val ai: () -> AiService?,
 ) {
     enum class Stage { CONNECTING, CHECKING, COVERS, UPLOADING, FINISHING }
 
@@ -168,6 +178,7 @@ class LibrarySyncEngine(
         refreshCatalog(listing, summary)
         recordMissingVersions(listing)
         fetchCovers(drive, listing)
+        syncInsights(drive, folderId, listing)
 
         for (remoteProgress in plan.applyRemoteProgress) {
             bookRepository.saveProgressionFromSync(
@@ -319,6 +330,99 @@ class LibrarySyncEngine(
             Timber.w(error, "Community sync skipped")
         }
     }
+
+    /**
+     * AI information about the catalog books (clean title, author, summary, categories, level).
+     * Whoever has AI available generates what is missing, a few books per sync, and shares it in one
+     * file of the Drive folder, so each book is analysed once for everybody. Entirely optional: with
+     * AI unavailable this only reads what other devices already shared, and any failure is ignored.
+     */
+    private suspend fun syncInsights(drive: GoogleDriveRestClient, folderId: String, listing: List<GoogleDriveRestClient.CatalogEntry>) {
+        val ai = ai() ?: return
+        try {
+            val live = listing.associateBy { it.file.id }
+            val sharedFile = drive.listByName(folderId, InsightsSyncState.FILE_NAME).firstOrNull()
+
+            // 1. What other devices already worked out.
+            if (sharedFile != null && sharedFile.modifiedTime != insightsState.lastIndexModified) {
+                val index = readIndex(drive, sharedFile)
+                val fresh = index.books.filter { it.driveFileId in live }.map { it.toEntity() }.filter { BuildConfig.DEBUG || !it.isPlaceholder }
+                if (fresh.isNotEmpty()) insightsDao.upsert(fresh)
+                insightsState.lastIndexModified = sharedFile.modifiedTime
+            }
+            val known = insightsDao.getAll().associateBy { it.driveFileId }.filterValues { BuildConfig.DEBUG || !it.isPlaceholder }
+            insightsDao.delete(known.keys.filter { it !in live })
+
+            // 2. Generate a few missing ones, if AI can pay for them right now.
+            ai.availability.refresh()
+            if (!ai.availability.available.value) return
+            val pending = listing.filter { entry ->
+                val version = versionOf(entry.file)
+                known[entry.file.id]?.version != version
+            }.take(InsightsSyncState.MAX_PER_SYNC)
+            val created = mutableListOf<SharedInsight>()
+            for (entry in pending) {
+                val file = entry.file
+                val excerpt = if (DriveNaming.formatOf(file.name, file.mimeType) == "EPUB") {
+                    runCatching { EpubExcerpt.find(drive.rangeSource(file.id, file.size?.toLongOrNull() ?: 0)) }.getOrNull()
+                } else {
+                    null
+                }
+                when (val outcome = ai.bookInfo(file.name, excerpt)) {
+                    is AiOutcome.Success -> created += outcome.value.toShared(file.id, versionOf(file))
+                    is AiOutcome.Failure -> if (outcome.result !is AiResult.Failed) break
+                }
+            }
+            if (created.isEmpty()) return
+
+            insightsDao.upsert(created.map { it.toEntity() })
+            // 3. Share them, merging with whatever others published in the meantime.
+            // Sample text from the test server is kept on this device only, never shared.
+            val shareable = created.filterNot { it.summary.startsWith(BookInsight.PLACEHOLDER) }
+            if (shareable.isEmpty()) return
+            val latest = drive.listByName(folderId, InsightsSyncState.FILE_NAME).firstOrNull()
+            val merged = (latest?.let { readIndex(drive, it).books }.orEmpty().associateBy { it.driveFileId } +
+                shareable.associateBy { it.driveFileId }).values.filter { it.driveFileId in live && !it.summary.startsWith(BookInsight.PLACEHOLDER) }
+            val uploaded = drive.uploadInsights(
+                folderId,
+                InsightsSyncState.FILE_NAME,
+                json.encodeToString(InsightIndex.serializer(), InsightIndex(books = merged.sortedBy { it.driveFileId })),
+                latest?.id,
+            )
+            insightsState.lastIndexModified = uploaded.modifiedTime
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "AI catalog information skipped")
+        }
+    }
+
+    private suspend fun readIndex(drive: GoogleDriveRestClient, file: GoogleDriveRestClient.DriveFile): InsightIndex =
+        runCatching { json.decodeFromString<InsightIndex>(drive.downloadText(file.id)) }.getOrDefault(InsightIndex())
+
+    private fun versionOf(file: GoogleDriveRestClient.DriveFile): String = file.md5Checksum ?: parseTime(file.modifiedTime).toString()
+
+    private fun BookInfo.toShared(driveFileId: String, version: String) = SharedInsight(
+        driveFileId = driveFileId,
+        version = version,
+        title = title.trim(),
+        author = author?.trim()?.takeIf { it.isNotEmpty() },
+        summary = summary.trim(),
+        categories = categories.map { it.trim() }.filter { it.isNotEmpty() }.take(3),
+        level = level,
+        confidence = confidence,
+    )
+
+    private fun SharedInsight.toEntity() = BookInsight(
+        driveFileId = driveFileId,
+        version = version,
+        title = title,
+        author = author,
+        summary = summary,
+        categories = categories.joinToString("|"),
+        level = level,
+        confidence = confidence,
+    )
 
     private suspend fun resolveFolder(drive: GoogleDriveRestClient): String {
         val saved = stateStore.folderId

@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import org.crea.reader.AppLanguage
@@ -38,6 +39,11 @@ class SettingsFragment : Fragment() {
         binding.settingsDriveRow.setOnClickListener {
             findNavController().navigate(R.id.sync)
         }
+        val ai = (requireContext().applicationContext as org.crea.reader.Application).aiService.availability
+        // Without a configured server this build has no AI features, so there is nothing to switch.
+        binding.settingsAiRow.isVisible = ai.configured
+        binding.settingsAiSwitch.isChecked = ai.userEnabled.value
+        binding.settingsAiSwitch.setOnCheckedChangeListener { _, checked -> ai.setUserEnabled(checked) }
         binding.settingsVersion.text = getString(R.string.settings_version, BuildConfig.VERSION_NAME)
     }
 

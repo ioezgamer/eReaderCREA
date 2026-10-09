@@ -153,4 +153,47 @@
     <string name="crash_copied">Informe copiado</string>
     <string name="crash_share">Compartir</string>
     <string name="crash_reopen">Reabrir</string>
+
+    <!-- IA -->
+    <string name="insight_note">Resumen generado automáticamente</string>
+    <string name="insight_note_level">Resumen generado automáticamente · Nivel sugerido: %1$s</string>
+    <string name="level_inicial">Inicial</string>
+    <string name="level_primaria_baja">Primaria (primeros grados)</string>
+    <string name="level_primaria_alta">Primaria (últimos grados)</string>
+    <string name="level_secundaria">Secundaria</string>
+    <string name="level_bachillerato">Bachillerato</string>
+    <string name="level_adultos">Adultos</string>
+
+    <!-- Asistente de IA en el lector -->
+    <string name="ai_menu_title">Asistente de lectura</string>
+    <string name="ai_menu_explain">Explícamelo</string>
+    <string name="ai_selection_title">Explicar este pasaje</string>
+    <string name="ai_chapter_summary_title">Resumen del capítulo</string>
+    <string name="ai_teacher_title">Guía para docentes</string>
+    <string name="ai_menu_chapter_summary">Resumir este capítulo</string>
+    <string name="ai_menu_teacher">Preguntas y actividades (docentes)</string>
+    <string name="ai_mode_explain">Explicar</string>
+    <string name="ai_mode_simplify">Simplificar</string>
+    <string name="ai_mode_define">Definir</string>
+    <string name="ai_mode_translate">Traducir</string>
+    <string name="ai_note">Generado con IA; puede contener errores.</string>
+    <string name="ai_retry">Reintentar</string>
+    <string name="ai_no_text">Esta parte del libro no tiene texto que el asistente pueda leer.</string>
+    <string name="ai_teacher_questions">PREGUNTAS DE COMPRENSIÓN</string>
+    <string name="ai_teacher_activities">ACTIVIDADES PARA EL AULA</string>
+    <string name="ai_teacher_vocabulary">VOCABULARIO</string>
+    <string name="ai_teacher_hint">Pista</string>
+    <string name="ai_type_literal">Literal</string>
+    <string name="ai_type_inferential">Inferencial</string>
+    <string name="ai_type_critical">Crítica</string>
+    <string name="ai_error_unavailable">El asistente de lectura no está disponible por ahora. Puedes seguir leyendo con normalidad.</string>
+    <string name="ai_error_limit">Alcanzaste el límite de hoy para esta herramienta. Inténtalo mañana.</string>
+    <string name="ai_error_no_connection">No hay conexión a Internet.</string>
+    <string name="ai_error_sign_in">Vuelve a conectar tu cuenta de Google Drive para usar el asistente.</string>
+    <string name="ai_error_busy">El servicio está ocupado. Inténtalo de nuevo en un momento.</string>
+    <string name="ai_error_refused">El asistente no pudo trabajar con este texto.</string>
+    <string name="ai_error_generic">Algo salió mal. Inténtalo de nuevo.</string>
+    <string name="ai_settings_title">Asistente de IA</string>
+    <string name="ai_settings_detail">Explicaciones, resúmenes y datos de los libros generados con IA. El texto que seleccionas se envía a un servidor de CREA para responder; mientras esté desactivado no se envía nada.</string>
+    <string name="ai_settings_unavailable">No disponible en esta versión.</string>
 </resources>

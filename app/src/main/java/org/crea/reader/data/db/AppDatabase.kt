@@ -25,9 +25,9 @@ import org.crea.reader.data.model.SyncTombstone
 @Database(
     entities = [
         Book::class, Bookmark::class, Highlight::class, Catalog::class, SyncTombstone::class, DriveBook::class,
-        HighlightStash::class, BookCollection::class, CollectionBook::class,
+        HighlightStash::class, BookCollection::class, CollectionBook::class, BookInsight::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @ColumnTypeConverters(
@@ -42,6 +42,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun driveCatalogDao(): DriveCatalogDao
 
     abstract fun collectionsDao(): CollectionsDao
+
+    abstract fun insightsDao(): InsightsDao
 
     companion object {
         @Volatile
@@ -102,6 +104,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** AI-generated book information for the online catalog. */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `book_insights` (`drive_file_id` TEXT NOT NULL, `version` TEXT NOT NULL, " +
+                        "`title` TEXT NOT NULL, `author` TEXT, `summary` TEXT NOT NULL, `categories` TEXT NOT NULL, " +
+                        "`level` TEXT NOT NULL, `confidence` TEXT NOT NULL, PRIMARY KEY(`drive_file_id`))"
+                )
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             val tempInstance = INSTANCE
             if (tempInstance != null) {
@@ -112,7 +125,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     "database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                 INSTANCE = instance
                 return instance

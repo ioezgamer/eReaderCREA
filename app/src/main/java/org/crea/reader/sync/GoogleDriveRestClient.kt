@@ -290,6 +290,25 @@ class GoogleDriveRestClient(
         ) { bytes.inputStream() }
     }
 
+    suspend fun listByName(folderId: String, name: String): List<DriveFile> =
+        list(
+            query = "'$folderId' in parents and trashed = false and name = '${name.replace("'", "\'")}'",
+            spaces = "drive",
+        )
+
+    /** The shared AI information file of the folder (see [InsightIndex]). */
+    suspend fun uploadInsights(folderId: String, name: String, value: String, existingFileId: String?): DriveFile {
+        val bytes = value.toByteArray(Charsets.UTF_8)
+        return upload(
+            name = name,
+            size = bytes.size.toLong(),
+            mimeType = "application/json",
+            parentId = folderId,
+            existingFileId = existingFileId,
+            appProperties = mapOf("kind" to "insights"),
+        ) { bytes.inputStream() }
+    }
+
     private suspend fun list(query: String?, spaces: String, fields: String = FILE_FIELDS): List<DriveFile> =
         withContext(Dispatchers.IO) {
             val fieldMask = encode("nextPageToken,files($fields)")

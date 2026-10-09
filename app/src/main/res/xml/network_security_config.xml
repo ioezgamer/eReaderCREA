@@ -9,6 +9,9 @@
         -->
         <domain includeSubdomains="false">crl.edrlab.telesec.de</domain>
 
+        <!-- Local test server for the AI features (adb reverse); nothing outside the device is reachable this way -->
+        <domain includeSubdomains="false">localhost</domain>
+
         <!-- Publications from Feedbooks' catalog are downloaded through HTTP -->
         <domain includeSubdomains="true">feedbooks.com</domain>
         <domain includeSubdomains="true">feedbooks.net</domain>

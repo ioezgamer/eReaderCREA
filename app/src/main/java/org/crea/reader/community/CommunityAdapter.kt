@@ -76,12 +76,12 @@ class CommunityAdapter(
             val path = row.local?.cover ?: row.book.coverPath?.takeIf { File(it).exists() }
             if (path != null) {
                 CoverImages.request(path)
-                    .placeholder(GeneratedCover(row.book.title, row.book.author))
-                    .error(GeneratedCover(row.book.title, row.book.author))
+                    .placeholder(GeneratedCover(row.book.title, row.displayAuthor))
+                    .error(GeneratedCover(row.book.title, row.displayAuthor))
                     .into(binding.communityCover)
             } else {
                 Picasso.get().cancelRequest(binding.communityCover)
-                binding.communityCover.setImageDrawable(GeneratedCover(row.book.title, row.book.author))
+                binding.communityCover.setImageDrawable(GeneratedCover(row.book.title, row.displayAuthor))
             }
             binding.root.setOnClickListener { onOpen(row) }
         }

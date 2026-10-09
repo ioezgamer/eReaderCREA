@@ -16,6 +16,15 @@ import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.launch
+import org.crea.reader.Application
+import org.crea.reader.ai.AiSheets
+import org.crea.reader.ai.ChapterText
+import org.readium.r2.shared.publication.allAreHtml
 import org.readium.r2.lcp.lcpLicense
 import org.readium.r2.navigator.Navigator
 import org.readium.r2.navigator.preferences.Configurable
@@ -61,6 +70,8 @@ abstract class BaseReaderFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        watchAiAvailability()
+
         val menuHost: MenuHost = requireActivity()
 
         menuHost.addMenuProvider(
@@ -70,6 +81,8 @@ abstract class BaseReaderFragment : Fragment() {
 
                     menu.findItem(R.id.settings).isVisible =
                         navigator is Configurable<*, *>
+
+                    menu.findItem(R.id.ai).isVisible = aiAvailableForThisBook()
 
                     menu.findItem(R.id.drm).isVisible =
                         model.publication.lcpLicense != null
@@ -89,6 +102,7 @@ abstract class BaseReaderFragment : Fragment() {
                         R.id.bookmark -> {
                             model.insertBookmark(navigator.currentLocator.value)
                         }
+                        R.id.ai -> showAiMenu()
                         R.id.settings -> {
                             MainPreferencesBottomSheetDialogFragment()
                                 .show(childFragmentManager, "Settings")
@@ -106,6 +120,49 @@ abstract class BaseReaderFragment : Fragment() {
             viewLifecycleOwner
         )
     }
+
+    // region AI assistant
+
+    private val app get() = requireContext().applicationContext as Application
+
+    /** The assistant works on text: books made of HTML (EPUB), not scanned or fixed-layout PDFs. */
+    private fun aiAvailableForThisBook() =
+        app.aiService.availability.available.value && publication.readingOrder.allAreHtml
+
+    private fun watchAiAvailability() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            app.aiService.availability.refresh()
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                app.aiService.availability.available.collect { requireActivity().invalidateOptionsMenu() }
+            }
+        }
+    }
+
+    private fun showAiMenu() {
+        val options = arrayOf(getString(R.string.ai_menu_chapter_summary), getString(R.string.ai_menu_teacher))
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.ai_menu_title)
+            .setItems(options) { _, which -> openChapterTool(teacher = which == 1) }
+            .show()
+    }
+
+    private fun openChapterTool(teacher: Boolean) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val chapter = ChapterText.read(publication, navigator.currentLocator.value)
+            if (chapter == null) {
+                Toast.makeText(requireContext(), R.string.ai_no_text, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            val title = publication.metadata.title
+            if (teacher) {
+                AiSheets.showTeacherGuide(requireContext(), layoutInflater, viewLifecycleOwner.lifecycleScope, app.aiService, chapter.text, title, chapter.title)
+            } else {
+                AiSheets.showChapterSummary(requireContext(), layoutInflater, viewLifecycleOwner.lifecycleScope, app.aiService, chapter.text, title, chapter.title)
+            }
+        }
+    }
+
+    // endregion
 
     override fun onHiddenChanged(hidden: Boolean) {
         super.onHiddenChanged(hidden)

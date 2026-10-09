@@ -9,6 +9,7 @@ La aplicación está inspirada en los flujos observables de la APK de referencia
 - Importación desde el selector de archivos de Android y desde **Abrir con/Compartir**.
 - Lectura real de EPUB y PDF, índice, búsqueda, marcadores, resaltados/notas y texto a voz según el formato.
 - **Catálogo en línea**: todos los libros de la carpeta «CREA Reader» de Drive (también los de subcarpetas, que actúan como categorías) con portada, título, autor, formato y tamaño, sin descargarlos. Búsqueda sin distinguir mayúsculas ni tildes, filtros (Todos, Sin descargar, Descargados, EPUB, PDF y categorías) y orden. Se guarda una copia local de los metadatos: sin conexión se sigue viendo, con un aviso de que puede estar desactualizada.
+- **Asistente de IA opcional** (servidor propio en `server/`): fichas del catálogo, «Explícamelo», resumen de capítulo y guía para docentes; se apaga solo sin créditos y la app sigue igual.
 - **Comunidad**: pestaña opcional «Qué leen los demás» con recomendaciones, lecturas recientes y lo más leído entre quienes eligen compartir (solo apodo y avance por libro).
 - **Descargas en segundo plano, selección múltiple, actualizaciones de libros y colecciones propias.**
 - **Vistas y filtros**: lista, cuadrícula o solo portadas en tres tamaños (biblioteca y catálogo), favoritos y filtros por estado, formato, marcadores, notas, Drive y novedades.

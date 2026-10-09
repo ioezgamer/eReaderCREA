@@ -34,8 +34,8 @@ class OnlineCatalogViewModel(application: Application) : AndroidViewModel(applic
     val query = MutableStateFlow(CatalogQuery())
 
     private val allRows: Flow<List<CatalogRow>?> =
-        combine(app.driveCatalogState, app.booksState, app.deviceReadingsStore.readings) { catalog, books, readings ->
-            if (catalog == null || books == null) null else CatalogRows.build(catalog, books, readings)
+        combine(app.driveCatalogState, app.booksState, app.deviceReadingsStore.readings, app.insightsState) { catalog, books, readings, insights ->
+            if (catalog == null || books == null) null else CatalogRows.build(catalog, books, readings, insights)
         }.flowOn(Dispatchers.Default)
 
     val categories: Flow<List<String>> = allRows

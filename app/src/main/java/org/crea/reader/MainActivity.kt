@@ -9,6 +9,8 @@ package org.crea.reader
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -57,6 +59,7 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
         val app = application as Application
         SyncScheduler.runIfStale(this, app.syncStateStore.snapshot())
+        lifecycleScope.launch { app.aiService.availability.refresh() }
     }
 
     override fun onSupportNavigateUp(): Boolean {
