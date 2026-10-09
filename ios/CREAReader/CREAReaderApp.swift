@@ -1,10 +1,11 @@
 import SwiftUI
 import PDFKit
 import UniformTypeIdentifiers
+import GoogleSignIn
 
 @main
 struct CREAReaderApp: App {
-    var body: some Scene { WindowGroup { ReaderHomeView() } }
+    var body: some Scene { WindowGroup { ReaderHomeView().onOpenURL { _ = GIDSignIn.sharedInstance.handle($0) } } }
 }
 
 private enum CREAStyle {
@@ -109,6 +110,7 @@ private enum ReaderTab: Int, CaseIterable {
 
 struct ReaderHomeView: View {
     @StateObject private var library = LocalLibrary()
+    @StateObject private var googleAuth = CREAAuthSession()
     @State private var tab: ReaderTab = .library
     @State private var importing = false
     @State private var selection: LocalBook?
@@ -398,7 +400,8 @@ struct ReaderHomeView: View {
                     LabeledContent("Formato PDF", value: "\(library.books.filter { $0.kind == "PDF" }.count)")
                 }
                 Section("Sincronización") {
-                    Label("Google Drive: no conectado", systemImage: "cloud.slash")
+                    CREAGoogleAccountView(auth: googleAuth)
+                    Label("Google Drive: sincronización pendiente", systemImage: "cloud.slash")
                     Text("La app iOS todavía no solicita permisos de Drive ni sube archivos.").font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("Información") {
