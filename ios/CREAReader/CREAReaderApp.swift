@@ -241,9 +241,13 @@ struct ReaderHomeView: View {
                 }
             }
             .navigationDestination(item: $selection) { book in
-                PDFReaderScreen(url: library.url(for: book), title: book.name, onProgress: { amount in
-                    library.update(book) { $0.progress = amount; $0.lastOpened = Date() }
-                })
+                if book.kind == "EPUB" {
+                    EPUBBookScreen(url: library.url(for: book), title: book.name)
+                } else {
+                    PDFReaderScreen(url: library.url(for: book), title: book.name, onProgress: { amount in
+                        library.update(book) { $0.progress = amount; $0.lastOpened = Date() }
+                    })
+                }
             }
         }
     }
@@ -324,10 +328,6 @@ struct ReaderHomeView: View {
     }
 
     private func open(_ book: LocalBook) {
-        guard book.kind == "PDF" else {
-            error = "El archivo EPUB está guardado en Mi biblioteca, pero el motor Readium Swift todavía debe integrarse. No se abrirá un contenido incompleto."
-            return
-        }
         library.update(book) { $0.lastOpened = Date() }
         selection = book
     }
