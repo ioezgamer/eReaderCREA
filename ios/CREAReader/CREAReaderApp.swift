@@ -135,7 +135,7 @@ struct ReaderHomeView: View {
         .preferredColorScheme(theme == "Oscuro" ? .dark : theme == "Claro" ? .light : nil)
         .fileImporter(isPresented: $importing, allowedContentTypes: [.pdf, UTType(filenameExtension: "epub") ?? .data], allowsMultipleSelection: true) { result in
             do { for item in try result.get() { try library.add(url: item) } }
-            catch { error = error.localizedDescription }
+            catch { self.error = error.localizedDescription }
         }
         .alert("CREA Reader", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("Aceptar") { error = nil }
