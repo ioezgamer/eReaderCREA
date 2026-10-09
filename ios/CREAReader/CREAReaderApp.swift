@@ -183,7 +183,7 @@ struct ReaderHomeView: View {
                                     .font(.subheadline.weight(.medium))
                                     .padding(.horizontal, 13).padding(.vertical, 9)
                                     .background(filter == value ? CREAStyle.blue : Color.primary.opacity(0.07), in: Capsule())
-                                    .foregroundStyle(filter == value ? .white : .primary)
+                                    .foregroundStyle(filter == value ? Color.white : Color.primary)
                             }
                         }
                     }
@@ -278,7 +278,7 @@ struct ReaderHomeView: View {
                 }
                 Spacer()
                 Image(systemName: book.favorite ? "heart.fill" : "chevron.right")
-                    .foregroundStyle(book.favorite ? CREAStyle.pink : .secondary)
+                    .foregroundStyle(book.favorite ? CREAStyle.pink : Color.secondary)
             }
             .padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         }
