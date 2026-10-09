@@ -2,12 +2,12 @@ name: CREAReader
 options:
   bundleIdPrefix: org.crea
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "17.0"
 settings:
   base:
     SWIFT_VERSION: "5.0"
     TARGETED_DEVICE_FAMILY: "1,2"
-    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
 targets:
   CREAReader:
     type: application
