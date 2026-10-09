@@ -1,24 +1,26 @@
-# CREA Reader para iOS (rama experimental)
+# CREA Reader iOS — port en desarrollo
 
-Este directorio contiene una **primera app iOS nativa**, no una conversión directa del APK. Android se mantiene sin cambios.
+Esta rama contiene una aplicación iOS nativa SwiftUI basada en las secciones y estilo del proyecto Android original. **No es aún una reproducción funcional completa de Android.**
 
-## Funciona actualmente
-- Interfaz SwiftUI adaptada a iPhone y iPad, con tema automático claro/oscuro.
-- Importación de archivos PDF y EPUB desde Archivos.
-- Biblioteca local persistente con eliminación de libros.
-- Lectura nativa de PDF usando PDFKit.
+## Implementado
+- Cinco pestañas: Mi biblioteca, Catálogo en línea, Explorar, Comunidad y Ajustes.
+- Biblioteca local en cuadrícula o lista; búsqueda, filtros por estado/formato/favoritos, ordenación por título/progreso/última lectura.
+- Importación manual EPUB y PDF mediante Archivos; eliminación local y favoritos.
+- Lectura PDF con PDFKit y seguimiento básico de avance por página.
+- Tema claro, oscuro y del sistema; tarjetas translúcidas y paleta CREA.
+- Acceso a textos.info y Proyecto Gutenberg para obtener archivos.
+- Compilación de IPA **sin firmar** usando GitHub Actions y un ejecutor macOS remoto, sin Mac propia.
 
-## Pendiente antes de equivalencia con Android
-- Lectura EPUB con Readium Swift (los EPUB pueden importarse pero no abrirse todavía).
-- Autenticación Google iOS OAuth, acceso limitado a carpeta, catálogo remoto y caché de metadatos.
-- Descargas bajo demanda, lectura online temporal, sincronización de progreso y marcadores.
-- Portadas, búsquedas, comunidad, accesibilidad y pruebas reales en iPhone/iPad.
+## No implementado todavía
+- Motor EPUB nativo (Readium Swift): EPUB se importa y aparece en biblioteca pero no se puede abrir.
+- Google OAuth iOS y Google Drive (catálogo, descarga selectiva, lectura temporal, sincronización).
+- Comunidad sincronizada y marcadores/resaltados que viajen entre dispositivos.
+- Portadas reales extraídas de EPUB/PDF, lector EPUB con TTS y notas.
+- Igualdad visual y funcional completa; requieren pruebas con Android e iPhone.
 
-## Generar IPA sin Mac propia
-La automatización `.github/workflows/ios-unsigned-ipa.yml` compila en un runner macOS de GitHub Actions. Abre **Actions** en GitHub y selecciona la rama `feature/ios-flarestore`; cada push a esta rama también intenta compilar. Descarga el artefacto `CREA-Reader-iOS-unsigned-IPA`. El archivo IPA se produce sin firma; **FlareStore necesita una firma válida compatible y puede requerir ajustes adicionales**. Un IPA no firmado no se instala directamente.
+La app iOS **no contiene credenciales**. No se pide acceso Google Drive hasta configurar el cliente OAuth iOS separado. La app Android permanece intacta.
 
-Si GitHub no permite ejecutar workflows de ramas nuevas desde el selector, revisa los intentos automáticos asociados al push de esta rama o crea un PR para que GitHub lo detecte. No se necesita equipo Mac local.
+## IPA para FlareStore
+Consultar [GitHub Actions](../../actions/workflows/ios-unsigned-ipa.yml) de la rama `feature/ios-flarestore` y descargar el artefacto `CREA-Reader-iOS-unsigned-IPA` de una ejecución correcta. El IPA sin firmar necesita un método de firma válido antes de instalarse.
 
-El bundle identifier provisional es `org.crea.reader.ios`. El cliente OAuth para iOS será distinto al de Android y deberá configurarse antes de sincronizar Drive.
-
-No se incluyen credenciales ni certificados en el repositorio.
+La compilación de estos cambios aún debe verificarse en Actions. Que compile no implica que todas las funciones de Android estén disponibles.
