@@ -1,0 +1,40 @@
+name: iOS unsigned IPA (FlareStore)
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/ios-flarestore
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios-unsigned-ipa.yml'
+jobs:
+  build:
+    runs-on: macos-15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: |
+          cd ios
+          xcodegen generate
+      - name: Build for physical iOS devices without signing
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/CREAReader.xcodeproj -scheme CREAReader -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/crea-build" CODE_SIGNING_ALLOWED=NO build
+      - name: Package IPA
+        run: |
+          set -e
+          mkdir -p "$RUNNER_TEMP/package/Payload"
+          cp -R "$RUNNER_TEMP/crea-build/Build/Products/Release-iphoneos/CREAReader.app" "$RUNNER_TEMP/package/Payload/"
+          cd "$RUNNER_TEMP/package"
+          zip -qr "$GITHUB_WORKSPACE/CREA-Reader-iOS-0.8.3-unsigned.ipa" Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CREA-Reader-iOS-unsigned-IPA
+          path: CREA-Reader-iOS-0.8.3-unsigned.ipa
+          if-no-files-found: error
