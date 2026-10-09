@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/online_catalog"
+    app:startDestination="@+id/navigation_online_catalog">
+
+    <fragment
+        android:id="@+id/navigation_online_catalog"
+        android:name="org.crea.reader.online.OnlineCatalogFragment"
+        android:label="@string/title_online_catalog"
+        tools:layout="@layout/fragment_online_catalog" />
+</navigation>

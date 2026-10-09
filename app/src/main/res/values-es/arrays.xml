@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="documentSelectorArray">
+        <item>Importar y proteger dentro de la app</item>
+        <item>Leer desde almacenamiento compartido</item>
+        <item>Agregar desde una dirección web</item>
+    </string-array>
+</resources>

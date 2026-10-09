@@ -1,0 +1,29 @@
+*.iml
+.gradle/
+.idea/
+local.properties
+build/
+**/build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.jks
+*.keystore
+apk-analysis/
+
+# Signing secrets
+keystore/
+keystore.properties
+*.jks
+*.keystore
+
+# Not part of the source
+.kotlin/
+.claude/
+dist/
+store/
+tools/
+apk-inventory.json
+APK_ANALYSIS.md
+*.apk
+*.aab

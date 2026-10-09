@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Biblioteca -->
+    <string name="library_continue_label">Continuar leyendo</string>
+    <string name="library_continue_action">Continuar</string>
+    <string name="library_sync_running">Sincronizando…</string>
+    <string name="library_sync_error_title">Sincronización pendiente</string>
+    <string name="library_sync_ok_detail">%1$s · %2$d libros en el catálogo</string>
+    <string name="library_no_results_title">Sin resultados</string>
+    <string name="library_no_results_detail">Prueba con otra búsqueda o quita los filtros.</string>
+    <string name="library_clear_filters">Quitar filtros</string>
+    <string name="library_connect_to_refresh">Conecta Drive para sincronizar tu biblioteca</string>
+    <string name="library_connect_action">Conectar</string>
+    <string name="library_sync_status_cd">Estado de sincronización. Toca para ver detalles</string>
+    <string name="filter_unread">Sin leer</string>
+    <string name="filter_finished">Terminados</string>
+    <string name="sort_title">Ordenar</string>
+    <string name="sort_recent">Última lectura</string>
+    <string name="sort_added">Fecha de descarga</string>
+    <string name="sort_title_az">Título (A-Z)</string>
+    <string name="sort_author_az">Autor (A-Z)</string>
+    <string name="book_new_label">Nuevo</string>
+    <string name="book_progress_label">%1$d%% leído</string>
+    <string name="book_finished_label">Terminado</string>
+    <string name="book_synced_cd">Disponible sin conexión</string>
+    <string name="book_action_delete">Eliminar libro</string>
+    <string name="book_action_delete_synced">Solo se elimina la copia de este dispositivo. El libro sigue en el Catálogo en línea y puedes descargarlo de nuevo cuando quieras; tus notas, resaltados y marcadores se recuperan al volver a descargarlo.</string>
+    <string name="book_action_delete_local">El libro se quitará de este dispositivo. Tus notas y resaltados se recuperan si vuelves a agregar el mismo archivo.</string>
+    <string name="book_deleted">Libro quitado de este dispositivo</string>
+
+    <!-- Agregar libros -->
+    <string name="add_sheet_title">Agregar libros</string>
+    <string name="add_from_device">Desde este dispositivo</string>
+    <string name="add_from_device_detail">Elige uno o varios archivos EPUB o PDF</string>
+    <string name="add_from_web">Desde una dirección web</string>
+    <string name="add_from_web_detail">Pega el enlace de un EPUB o PDF</string>
+    <string name="add_from_drive">Desde el Catálogo en línea</string>
+    <string name="add_from_drive_detail">Descarga libros de tu carpeta «CREA Reader» de Google Drive</string>
+
+    <!-- Pantalla de Drive -->
+    <string name="sync_account_label">Cuenta de Google</string>
+    <string name="sync_folder_title">Tu carpeta en Drive</string>
+    <string name="sync_folder_detail">Lo que subas a «CREA Reader» aparece en el Catálogo en línea, y los libros que agregues en la app también se suben a Drive.</string>
+    <string name="sync_open_folder">Abrir carpeta en Drive</string>
+    <string name="sync_connect_first">Conecta Drive para crear tu carpeta «CREA Reader».</string>
+    <string name="sync_how_2">El catálogo se actualiza solo, sin descargar ningún libro. Tú eliges cuáles guardar en Mi biblioteca.</string>
+    <string name="sync_how_3">Tu punto de lectura te sigue de un dispositivo a otro.</string>
+    <string name="sync_how_4">Eliminar un libro de Mi biblioteca solo borra la copia de este dispositivo; el archivo en Drive nunca se modifica ni se elimina.</string>
+    <string name="sync_summary_uptodate">Todo está al día</string>
+    <string name="sync_summary_changes">%1$d nuevos · %2$d modificados · %3$d quitados del catálogo</string>
+    <string name="sync_books_count">%1$d libros</string>
+    <string name="sync_never">Aún no se ha sincronizado</string>
+    <string name="sync_stage_connecting">Conectando con Drive…</string>
+    <string name="sync_stage_checking">Buscando cambios…</string>
+    <string name="sync_stage_uploading">Subiendo %1$d de %2$d</string>
+    <string name="sync_stage_finishing">Guardando tu progreso…</string>
+    <string name="sync_disconnected">Drive desconectado. Tus libros siguen en este dispositivo.</string>
+    <string name="sync_open_folder_failed">No se pudo abrir Google Drive.</string>
+</resources>

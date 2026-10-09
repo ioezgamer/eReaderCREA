@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Library -->
+    <string name="library_continue_label">Continue reading</string>
+    <string name="library_continue_action">Continue</string>
+    <string name="library_sync_running">Syncing…</string>
+    <string name="library_sync_error_title">Sync pending</string>
+    <string name="library_sync_ok_detail">%1$s · %2$d books in the catalog</string>
+    <string name="library_no_results_title">No results</string>
+    <string name="library_no_results_detail">Try another search or clear the filters.</string>
+    <string name="library_clear_filters">Clear filters</string>
+    <string name="library_connect_to_refresh">Connect Drive to sync your library</string>
+    <string name="library_connect_action">Connect</string>
+    <string name="library_sync_status_cd">Sync status. Tap for details</string>
+    <string name="filter_unread">Unread</string>
+    <string name="filter_finished">Finished</string>
+    <string name="sort_title">Sort</string>
+    <string name="sort_recent">Last read</string>
+    <string name="sort_added">Download date</string>
+    <string name="sort_title_az">Title (A-Z)</string>
+    <string name="sort_author_az">Author (A-Z)</string>
+    <string name="book_new_label">New</string>
+    <string name="book_progress_label">%1$d%% read</string>
+    <string name="book_finished_label">Finished</string>
+    <string name="book_synced_cd">Available offline</string>
+    <string name="book_action_delete">Delete book</string>
+    <string name="book_action_delete_synced">Only the copy on this device is deleted. The book stays in the Online catalog and you can download it again at any time; your notes, highlights and bookmarks come back when you do.</string>
+    <string name="book_action_delete_local">The book will be removed from this device. Your notes and highlights come back if you add the same file again.</string>
+    <string name="book_deleted">Book removed from this device</string>
+
+    <!-- Add books -->
+    <string name="add_sheet_title">Add books</string>
+    <string name="add_from_device">From this device</string>
+    <string name="add_from_device_detail">Choose one or more EPUB or PDF files</string>
+    <string name="add_from_web">From a web address</string>
+    <string name="add_from_web_detail">Paste the link to an EPUB or PDF</string>
+    <string name="add_from_drive">From the Online catalog</string>
+    <string name="add_from_drive_detail">Download books from your “CREA Reader” folder in Google Drive</string>
+
+    <!-- Drive screen -->
+    <string name="sync_account_label">Google account</string>
+    <string name="sync_folder_title">Your Drive folder</string>
+    <string name="sync_folder_detail">What you upload to “CREA Reader” shows up in the Online catalog, and books you add in the app are uploaded to Drive too.</string>
+    <string name="sync_open_folder">Open folder in Drive</string>
+    <string name="sync_connect_first">Connect Drive to create your “CREA Reader” folder.</string>
+    <string name="sync_how_2">The catalog updates by itself without downloading any book. You choose which ones to keep in My library.</string>
+    <string name="sync_how_3">Your reading position follows you from one device to another.</string>
+    <string name="sync_how_4">Deleting a book from My library only removes the copy on this device; the file in Drive is never changed or deleted.</string>
+    <string name="sync_summary_uptodate">Everything is up to date</string>
+    <string name="sync_summary_changes">%1$d new · %2$d changed · %3$d removed from the catalog</string>
+    <string name="sync_books_count">%1$d books</string>
+    <string name="sync_never">Not synced yet</string>
+    <string name="sync_stage_connecting">Connecting to Drive…</string>
+    <string name="sync_stage_checking">Looking for changes…</string>
+    <string name="sync_stage_uploading">Uploading %1$d of %2$d</string>
+    <string name="sync_stage_finishing">Saving your progress…</string>
+    <string name="sync_disconnected">Drive disconnected. Your books remain on this device.</string>
+    <string name="sync_open_folder_failed">Google Drive could not be opened.</string>
+</resources>

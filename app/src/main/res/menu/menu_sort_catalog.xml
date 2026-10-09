@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/catalog_sort_title"
+            android:title="@string/sort_title_az" />
+        <item
+            android:id="@+id/catalog_sort_author"
+            android:title="@string/sort_author_az" />
+        <item
+            android:id="@+id/catalog_sort_recent"
+            android:title="@string/catalog_sort_modified" />
+    </group>
+</menu>

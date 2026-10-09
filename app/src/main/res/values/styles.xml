@@ -1,0 +1,99 @@
+<!--
+  Copyright 2023 Readium Foundation. All rights reserved.
+  Use of this source code is governed by the BSD-style license
+  available in the top-level LICENSE file of the project.
+-->
+
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.Material3.DayNight">
+        <item name="colorPrimary">@color/crea_primary</item>
+        <item name="colorOnPrimary">@color/crea_on_primary</item>
+        <item name="colorPrimaryContainer">@color/crea_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/crea_on_primary_container</item>
+        <item name="colorOnSecondary">@color/crea_on_secondary</item>
+        <item name="colorSecondary">@color/crea_secondary</item>
+        <item name="colorSecondaryContainer">@color/crea_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/crea_on_secondary_container</item>
+        <item name="colorTertiary">@color/crea_tertiary</item>
+        <item name="colorOnTertiary">@color/crea_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/crea_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/crea_on_tertiary_container</item>
+        <item name="android:colorBackground">@color/crea_surface</item>
+        <item name="colorSurface">@color/crea_surface</item>
+        <item name="colorSurfaceVariant">@color/crea_surface_variant</item>
+        <item name="colorOnSurface">@color/crea_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/crea_on_surface_variant</item>
+        <item name="colorOutline">@color/crea_outline</item>
+        <item name="colorOutlineVariant">@color/crea_outline_variant</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+        <item name="android:navigationBarColor">@color/transparent</item>
+        <item name="android:enforceNavigationBarContrast" tools:targetApi="29">false</item>
+    </style>
+
+
+
+    <style name="Widget.Crea.Chip.Filter" parent="Widget.Material3.Chip.Filter">
+        <item name="chipBackgroundColor">@color/chip_background</item>
+        <item name="android:textColor">@color/chip_text</item>
+        <item name="checkedIconTint">?attr/colorOnPrimary</item>
+        <item name="chipStrokeColor">@color/glass_stroke</item>
+        <item name="chipCornerRadius">20dp</item>
+    </style>
+
+    <style name="ShapeAppearance.Crea.Cover" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">10dp</item>
+    </style>
+
+    <style name="TextAppearance.Crea.Badge" parent="TextAppearance.Material3.LabelSmall">
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Liquid-glass theme for the main screens: mesh background, see-through bars and sheets -->
+    <style name="AppTheme.Glass" parent="AppTheme">
+        <item name="android:windowBackground">@drawable/bg_mesh</item>
+        <item name="actionBarStyle">@style/Widget.Crea.ActionBar</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.Crea.BottomSheetDialog</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Crea.Dialog</item>
+    </style>
+
+    <style name="Widget.Crea.ActionBar" parent="Widget.Material3.ActionBar.Solid">
+        <item name="background">@color/transparent</item>
+        <item name="backgroundStacked">@color/transparent</item>
+        <item name="elevation">0dp</item>
+        <item name="titleTextStyle">@style/TextAppearance.Crea.ActionBarTitle</item>
+    </style>
+
+    <style name="TextAppearance.Crea.ActionBarTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="ThemeOverlay.Crea.BottomSheetDialog" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/Widget.Crea.BottomSheet</item>
+    </style>
+
+    <style name="Widget.Crea.BottomSheet" parent="Widget.Material3.BottomSheet">
+        <item name="backgroundTint">@color/glass_sheet</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.Crea.Sheet</item>
+    </style>
+
+    <style name="ShapeAppearance.Crea.Sheet" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">32dp</item>
+        <item name="cornerSizeTopRight">32dp</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+    </style>
+
+    <style name="ThemeOverlay.Crea.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="dialogCornerRadius">32dp</item>
+        <item name="colorSurfaceContainerHigh">@color/glass_sheet</item>
+    </style>
+
+
+</resources>

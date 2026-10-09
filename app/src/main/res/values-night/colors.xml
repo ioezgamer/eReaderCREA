@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="launcher_background">#F4F7FF</color>
+
+    <color name="crea_primary">#A9C7FF</color>
+    <color name="crea_on_primary">#002F6C</color>
+    <color name="crea_primary_container">#1C4FB0</color>
+    <color name="crea_on_primary_container">#DCE8FF</color>
+
+    <color name="crea_secondary">#FFB0CF</color>
+    <color name="crea_on_secondary">#5C0A2E</color>
+    <color name="crea_secondary_container">#7A1745</color>
+    <color name="crea_on_secondary_container">#FFD9E6</color>
+
+    <color name="crea_tertiary">#FFB866</color>
+    <color name="crea_on_tertiary">#4A2800</color>
+    <color name="crea_tertiary_container">#6B3D00</color>
+    <color name="crea_on_tertiary_container">#FFE3BF</color>
+
+    <color name="crea_surface">#0E1424</color>
+    <color name="crea_surface_variant">#232B42</color>
+    <color name="crea_on_surface">#E3E8F6</color>
+    <color name="crea_on_surface_variant">#B8C1DA</color>
+    <color name="crea_outline">#8791AB</color>
+    <color name="crea_outline_variant">#3A4460</color>
+
+    <color name="crea_green">#7DDB6E</color>
+    <color name="crea_badge_epub">#2F6FE8</color>
+    <color name="crea_badge_pdf">#E0283A</color>
+
+    <color name="glass_fill_top">#33FFFFFF</color>
+    <color name="glass_fill">#1AFFFFFF</color>
+    <color name="glass_stroke">#4DFFFFFF</color>
+    <color name="glass_sheet">#F51A2238</color>
+    <color name="glass_nav_top">#40FFFFFF</color>
+    <color name="glass_nav">#26FFFFFF</color>
+    <color name="hero_start">#2F6FE8</color>
+    <color name="hero_end">#1FA5E8</color>
+</resources>

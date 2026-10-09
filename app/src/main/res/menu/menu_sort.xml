@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/sort_recent"
+            android:title="@string/sort_recent" />
+        <item
+            android:id="@+id/sort_added"
+            android:title="@string/sort_added" />
+        <item
+            android:id="@+id/sort_title"
+            android:title="@string/sort_title_az" />
+        <item
+            android:id="@+id/sort_author"
+            android:title="@string/sort_author_az" />
+        <item
+            android:id="@+id/sort_progress"
+            android:title="@string/sort_progress" />
+        <item
+            android:id="@+id/sort_size"
+            android:title="@string/sort_size" />
+    </group>
+</menu>

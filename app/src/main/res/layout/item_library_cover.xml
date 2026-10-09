@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="5dp"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardBackgroundColor="@color/glass_fill_top"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/glass_stroke"
+    app:strokeWidth="1dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/cover_image"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="?attr/colorSurfaceVariant"
+            android:contentDescription="@string/cover_image"
+            android:scaleType="centerCrop"
+            app:layout_constraintDimensionRatio="2:3"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:src="@drawable/cover" />
+
+        <ImageView
+            android:id="@+id/cover_favorite"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_margin="4dp"
+            android:background="@drawable/bg_badge"
+            android:contentDescription="@string/favorite_cd"
+            android:padding="5dp"
+            android:src="@drawable/ic_favorite"
+            android:visibility="gone"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="#FFFFFF"
+            tools:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/cover_offline"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_margin="4dp"
+            android:background="@drawable/bg_badge"
+            android:contentDescription="@string/book_synced_cd"
+            android:padding="4dp"
+            android:src="@drawable/ic_download_done"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/cover_progress"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:visibility="gone"
+            app:indicatorColor="@color/crea_green"
+            app:layout_constraintBottom_toBottomOf="@id/cover_image"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:trackColor="#66FFFFFF"
+            app:trackThickness="5dp"
+            tools:progress="38"
+            tools:visibility="visible" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>

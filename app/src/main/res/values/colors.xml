@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Palette taken from the CREA Reader logo: blue, pink, orange, green and the navy of "Reader". -->
+<resources>
+    <color name="launcher_background">#F4F7FF</color>
+
+    <color name="crea_primary">#1558D6</color>
+    <color name="crea_on_primary">#FFFFFF</color>
+    <color name="crea_primary_container">#DCE8FF</color>
+    <color name="crea_on_primary_container">#0A2A66</color>
+
+    <color name="crea_secondary">#D6246E</color>
+    <color name="crea_on_secondary">#FFFFFF</color>
+    <color name="crea_secondary_container">#FFD9E6</color>
+    <color name="crea_on_secondary_container">#5C0A2E</color>
+
+    <color name="crea_tertiary">#B85F00</color>
+    <color name="crea_on_tertiary">#FFFFFF</color>
+    <color name="crea_tertiary_container">#FFE3BF</color>
+    <color name="crea_on_tertiary_container">#4A2800</color>
+
+    <color name="crea_surface">#F8FAFF</color>
+    <color name="crea_surface_variant">#E6ECF8</color>
+    <color name="crea_on_surface">#0E1B3D</color>
+    <color name="crea_on_surface_variant">#44506B</color>
+    <color name="crea_outline">#76809A</color>
+    <color name="crea_outline_variant">#C8D0E2</color>
+
+    <color name="crea_green">#2E9E22</color>
+    <color name="crea_badge_epub">#1558D6</color>
+    <color name="crea_badge_pdf">#E0283A</color>
+
+    <!-- Liquid-glass surfaces: translucent layers over the mesh background -->
+    <color name="glass_fill_top">#CCFFFFFF</color>
+    <color name="glass_fill">#99FFFFFF</color>
+    <color name="glass_stroke">#E6FFFFFF</color>
+    <color name="glass_sheet">#F5F8FAFF</color>
+    <color name="glass_nav_top">#D9FFFFFF</color>
+    <color name="glass_nav">#B3FFFFFF</color>
+    <color name="hero_start">#1558D6</color>
+    <color name="hero_end">#17A2EC</color>
+    <color name="transparent">#00000000</color>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="explore_header_title">Free books in Spanish</string>
+    <string name="explore_header_detail">Public-domain EPUB books, ready to download to your library.</string>
+    <string name="catalog_custom_subtitle">Custom catalog</string>
+    <string name="catalog_sub_textos">textos.info · Open virtual library</string>
+    <string name="catalog_sub_gutenberg">Project Gutenberg · In Spanish</string>
+</resources>

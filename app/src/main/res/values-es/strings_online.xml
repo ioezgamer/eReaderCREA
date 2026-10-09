@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Catálogo en línea -->
+    <string name="title_online_catalog">Catálogo en línea</string>
+    <string name="tab_online_catalog">Catálogo</string>
+    <string name="catalog_filter_remote">Sin descargar</string>
+    <string name="catalog_filter_downloaded">Descargados</string>
+    <string name="catalog_sort_modified">Cambios recientes</string>
+    <string name="catalog_status_title_ok">Catálogo al día</string>
+    <string name="catalog_status_title_offline">Sin conexión</string>
+    <string name="catalog_status_updated">Actualizado %1$s · %2$d libros</string>
+    <string name="catalog_status_syncing">Actualizando el catálogo…</string>
+    <string name="catalog_status_offline">Sin conexión · se muestra el catálogo guardado %1$s. Puede estar desactualizado.</string>
+    <string name="catalog_status_offline_never">Sin conexión · el catálogo aún no se ha descargado.</string>
+    <string name="catalog_status_error">No se pudo actualizar el catálogo</string>
+    <string name="catalog_status_off">Conecta Google Drive para ver el catálogo</string>
+    <string name="catalog_empty_title">El catálogo está vacío</string>
+    <string name="catalog_empty_detail">Aún no hay libros EPUB o PDF en la carpeta «CREA Reader» de Google Drive.</string>
+    <string name="catalog_off_title">Conecta Google Drive</string>
+    <string name="catalog_off_detail">El Catálogo en línea muestra los libros de tu carpeta «CREA Reader» sin descargarlos.</string>
+    <string name="catalog_status_cd">Estado del catálogo. Toca para ver detalles</string>
+
+    <!-- Tarjetas y acciones -->
+    <string name="catalog_read_online">Leer en línea</string>
+    <string name="catalog_download">Descargar</string>
+    <string name="catalog_downloaded">Descargado</string>
+    <string name="catalog_open">Abrir</string>
+    <string name="catalog_this_device">Este dispositivo</string>
+    <string name="catalog_device_progress">%1$s %2$d%%</string>
+    <string name="catalog_downloading_percent">Descargando… %1$d%%</string>
+    <string name="catalog_preparing_percent">Preparando lectura… %1$d%%</string>
+    <string name="catalog_available_online">Disponible en línea</string>
+    <string name="catalog_available_offline">Disponible sin conexión</string>
+    <string name="catalog_sheet_read_detail">Ábrelo ahora sin agregarlo a Mi biblioteca. Requiere conexión a Internet.</string>
+    <string name="catalog_sheet_download_title">Descargar a Mi biblioteca</string>
+    <string name="catalog_sheet_download_detail">Guárdalo en este dispositivo para leerlo sin Internet (%1$s).</string>
+    <string name="catalog_sheet_open_title">Abrir desde Mi biblioteca</string>
+    <string name="catalog_sheet_open_detail">Ya está descargado y se abre sin Internet.</string>
+    <string name="catalog_sheet_cancel_title">Cancelar</string>
+    <string name="catalog_sheet_cancel_detail">Detener esta transferencia.</string>
+    <string name="catalog_downloaded_message">«%1$s» se agregó a Mi biblioteca</string>
+    <string name="catalog_downloaded_action">Ver</string>
+
+    <!-- Errores de transferencia -->
+    <string name="opening_publication_not_found">Este libro ya no está disponible.</string>
+    <string name="transfer_error_no_connection">No hay conexión a Internet. Revisa tu red e inténtalo de nuevo.</string>
+    <string name="transfer_error_no_space">No hay espacio libre suficiente en este dispositivo para este libro.</string>
+    <string name="transfer_error_sign_in">Vuelve a conectar tu cuenta de Google Drive para continuar.</string>
+    <string name="transfer_error_unavailable">Este libro ya no está disponible en Google Drive o no tienes permiso para abrirlo.</string>
+    <string name="transfer_error_corrupt">El archivo llegó incompleto o no se puede abrir. Inténtalo de nuevo.</string>
+    <string name="transfer_error_unknown">No se pudo completar la transferencia. Inténtalo de nuevo.</string>
+
+    <!-- Mi biblioteca -->
+    <string name="library_storage_used">%1$d libros · %2$s en este dispositivo</string>
+    <string name="library_open_catalog">Ir al Catálogo en línea</string>
+    <string name="reader_online_notes_unavailable">Descarga el libro a Mi biblioteca para crear resaltados y notas.</string>
+
+    <!-- Progreso de sincronización -->
+    <string name="sync_stage_covers">Actualizando portadas %1$d de %2$d</string>
+    <string name="sync_summary_uploaded">%1$d libros subidos a Drive</string>
+
+    <!-- Vistas, filtros y favoritos -->
+    <string name="view_options_title">Vista</string>
+    <string name="view_mode_label">Diseño</string>
+    <string name="view_mode_list">Lista</string>
+    <string name="view_mode_grid">Cuadrícula</string>
+    <string name="view_mode_covers">Solo portadas</string>
+    <string name="view_size_label">Tamaño de portada</string>
+    <string name="view_size_small">Pequeño</string>
+    <string name="view_size_medium">Mediano</string>
+    <string name="view_size_large">Grande</string>
+    <string name="filter_favorites">Favoritos</string>
+    <string name="filter_recent">Nuevos</string>
+    <string name="filter_bookmarks">Con marcadores</string>
+    <string name="filter_notes">Con notas</string>
+    <string name="filter_drive">En Drive</string>
+    <string name="filter_here">Solo en este dispositivo</string>
+    <string name="sort_progress">Avance de lectura</string>
+    <string name="sort_size">Tamaño</string>
+    <string name="favorite_add">Agregar a favoritos</string>
+    <string name="favorite_remove">Quitar de favoritos</string>
+    <string name="favorite_cd">Favorito</string>
+
+    <!-- Transferencias en segundo plano -->
+    <string name="transfer_channel_name">Descargas de libros</string>
+    <string name="transfer_notification_progress">%1$d%% completado</string>
+    <plurals name="transfer_notification_title">
+        <item quantity="one">Descargando %1$d libro</item>
+        <item quantity="other">Descargando %1$d libros</item>
+    </plurals>
+
+    <!-- Actualizaciones y selección -->
+    <string name="catalog_update_available">Actualización disponible</string>
+    <string name="catalog_update">Actualizar</string>
+    <string name="catalog_updating_percent">Actualizando… %1$d%%</string>
+    <string name="catalog_sheet_update_title">Actualizar la copia descargada</string>
+    <string name="catalog_sheet_update_detail">Drive tiene una versión más nueva. Se conservan tu posición de lectura, tus marcadores y el favorito.</string>
+    <string name="catalog_updated_message">«%1$s» se actualizó</string>
+    <string name="selection_count">%1$d seleccionados · %2$s</string>
+    <string name="selection_download">Descargar</string>
+    <string name="selection_all">Seleccionar todo</string>
+    <string name="selection_cancel_cd">Cancelar selección</string>
+    <string name="selection_no_space">No hay espacio suficiente: necesitas %1$s y hay %2$s libres.</string>
+
+    <!-- Colecciones -->
+    <string name="collection_new_chip">+ Nueva colección</string>
+    <string name="collection_new_title">Nueva colección</string>
+    <string name="collection_name_hint">Nombre (por ejemplo, Para clase)</string>
+    <string name="collection_rename">Cambiar nombre</string>
+    <string name="collection_delete">Eliminar colección</string>
+    <string name="collection_delete_title">¿Eliminar «%1$s»?</string>
+    <string name="collection_delete_message">Los libros no se borran, solo salen de esta colección.</string>
+    <string name="collection_add_to">Agregar a una colección</string>
+
+    <!-- Comunidad -->
+    <string name="title_community">Comunidad</string>
+    <string name="title_community_screen">Qué leen los demás</string>
+    <string name="community_nickname_hint">Apodo de este dispositivo</string>
+    <string name="community_off_title">Comparte lo que lees</string>
+    <string name="community_off_detail">Ponle un apodo a este dispositivo (por ejemplo, «Tablet 3») y, si quieres, comparte qué libros lee y cuánto avanza con los demás dispositivos de tu carpeta de Drive. Cada dispositivo comparte por separado, así que puedes usar la misma cuenta en muchas tablets. A cambio verás qué leen los demás y recibirás recomendaciones. Nunca se comparte tu nombre ni tu correo, y puedes dejar de compartir cuando quieras.</string>
+    <string name="community_on_title">Este dispositivo comparte como «%1$s»</string>
+    <string name="community_on_detail">Los demás dispositivos que comparten ven este apodo y cuánto avanzas aquí en cada libro. No se comparte tu correo ni tu nombre. Cambia el apodo abajo.</string>
+    <string name="community_start">Compartir mi lectura</string>
+    <string name="community_save_nickname">Guardar apodo</string>
+    <string name="community_stop">Dejar de compartir</string>
+    <string name="community_stop_title">¿Dejar de compartir?</string>
+    <string name="community_stop_message">Tu apodo y tu lectura dejarán de verse para los demás en la próxima sincronización, y tú dejarás de ver la suya.</string>
+    <string name="community_needs_drive">Conecta Google Drive para compartir tu lectura.</string>
+    <string name="community_recommended">Recomendados para ti</string>
+    <string name="community_recommended_detail">Lo que leen y terminan personas con lecturas parecidas a las tuyas</string>
+    <string name="community_reading_now">Leyendo ahora</string>
+    <string name="community_reading_now_detail">Lo que otras personas han leído en el último mes</string>
+    <string name="community_popular">Lo más leído</string>
+    <string name="community_popular_detail">Los libros con más lectores</string>
+    <string name="community_reader_line">%1$s · %2$s</string>
+    <string name="community_similar">Lectores como tú</string>
+    <plurals name="community_readers">
+        <item quantity="one">%1$d lector</item>
+        <item quantity="other">%1$d lectores</item>
+    </plurals>
+    <plurals name="community_finished">
+        <item quantity="one">%1$d lo terminó</item>
+        <item quantity="other">%1$d lo terminaron</item>
+    </plurals>
+    <string name="community_empty_off">Activa «Compartir mi lectura» para ver qué leen los demás y recibir recomendaciones.</string>
+    <string name="community_empty_nobody">Todavía nadie más comparte su lectura. Invita a tus compañeros a activar esta opción.</string>
+    <string name="community_empty_catalog">Conecta Drive y espera a que el catálogo se cargue.</string>
+
+    <!-- Pantalla de error -->
+    <string name="crash_title">CREA Reader se cerró inesperadamente</string>
+    <string name="crash_detail">¡Lo sentimos! Copia o comparte este informe para poder corregir el problema.</string>
+    <string name="crash_copy">Copiar</string>
+    <string name="crash_copied">Informe copiado</string>
+    <string name="crash_share">Compartir</string>
+    <string name="crash_reopen">Reabrir</string>
+</resources>

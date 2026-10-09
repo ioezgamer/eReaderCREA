@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Online catalog -->
+    <string name="title_online_catalog">Online catalog</string>
+    <string name="tab_online_catalog">Catalog</string>
+    <string name="catalog_filter_remote">Not downloaded</string>
+    <string name="catalog_filter_downloaded">Downloaded</string>
+    <string name="catalog_sort_modified">Recently changed</string>
+    <string name="catalog_status_title_ok">Catalog up to date</string>
+    <string name="catalog_status_title_offline">Offline</string>
+    <string name="catalog_status_updated">Updated %1$s · %2$d books</string>
+    <string name="catalog_status_syncing">Updating the catalog…</string>
+    <string name="catalog_status_offline">Offline · showing the catalog saved %1$s. It may be out of date.</string>
+    <string name="catalog_status_offline_never">Offline · the catalog has not been downloaded yet.</string>
+    <string name="catalog_status_error">The catalog could not be updated</string>
+    <string name="catalog_status_off">Connect Google Drive to see the catalog</string>
+    <string name="catalog_empty_title">The catalog is empty</string>
+    <string name="catalog_empty_detail">There are no EPUB or PDF books in the “CREA Reader” folder in Google Drive yet.</string>
+    <string name="catalog_off_title">Connect Google Drive</string>
+    <string name="catalog_off_detail">The Online catalog shows the books in your “CREA Reader” folder without downloading them.</string>
+    <string name="catalog_status_cd">Catalog status. Tap for details</string>
+
+    <!-- Book cards and actions -->
+    <string name="catalog_read_online">Read online</string>
+    <string name="catalog_download">Download</string>
+    <string name="catalog_downloaded">Downloaded</string>
+    <string name="catalog_open">Open</string>
+    <string name="catalog_this_device">This device</string>
+    <string name="catalog_device_progress">%1$s %2$d%%</string>
+    <string name="catalog_downloading_percent">Downloading… %1$d%%</string>
+    <string name="catalog_preparing_percent">Preparing to read… %1$d%%</string>
+    <string name="catalog_available_online">Available online</string>
+    <string name="catalog_available_offline">Available offline</string>
+    <string name="catalog_sheet_read_detail">Open it now without adding it to My library. Needs an Internet connection.</string>
+    <string name="catalog_sheet_download_title">Download to My library</string>
+    <string name="catalog_sheet_download_detail">Keep it on this device to read without Internet (%1$s).</string>
+    <string name="catalog_sheet_open_title">Open from My library</string>
+    <string name="catalog_sheet_open_detail">It is already downloaded and opens without Internet.</string>
+    <string name="catalog_sheet_cancel_title">Cancel</string>
+    <string name="catalog_sheet_cancel_detail">Stop this transfer.</string>
+    <string name="catalog_downloaded_message">“%1$s” was added to My library</string>
+    <string name="catalog_downloaded_action">View</string>
+
+    <!-- Transfer errors -->
+    <string name="opening_publication_not_found">This book is no longer available.</string>
+    <string name="transfer_error_no_connection">There is no Internet connection. Check your network and try again.</string>
+    <string name="transfer_error_no_space">There is not enough free space on this device for this book.</string>
+    <string name="transfer_error_sign_in">Connect your Google Drive account again to continue.</string>
+    <string name="transfer_error_unavailable">This book is no longer available in Google Drive, or you do not have permission to open it.</string>
+    <string name="transfer_error_corrupt">The file arrived incomplete or cannot be opened. Try again.</string>
+    <string name="transfer_error_unknown">The transfer could not be completed. Try again.</string>
+
+    <!-- My library -->
+    <string name="library_storage_used">%1$d books · %2$s on this device</string>
+    <string name="library_open_catalog">Go to the Online catalog</string>
+    <string name="reader_online_notes_unavailable">Download the book to My library to create highlights and notes.</string>
+
+    <!-- Sync progress -->
+    <string name="sync_stage_covers">Updating covers %1$d of %2$d</string>
+    <string name="sync_summary_uploaded">%1$d books uploaded to Drive</string>
+
+    <!-- Views, filters and favourites -->
+    <string name="view_options_title">View</string>
+    <string name="view_mode_label">Layout</string>
+    <string name="view_mode_list">List</string>
+    <string name="view_mode_grid">Grid</string>
+    <string name="view_mode_covers">Covers only</string>
+    <string name="view_size_label">Cover size</string>
+    <string name="view_size_small">Small</string>
+    <string name="view_size_medium">Medium</string>
+    <string name="view_size_large">Large</string>
+    <string name="filter_favorites">Favorites</string>
+    <string name="filter_recent">New</string>
+    <string name="filter_bookmarks">With bookmarks</string>
+    <string name="filter_notes">With notes</string>
+    <string name="filter_drive">In Drive</string>
+    <string name="filter_here">Only on this device</string>
+    <string name="sort_progress">Reading progress</string>
+    <string name="sort_size">Size</string>
+    <string name="favorite_add">Add to favorites</string>
+    <string name="favorite_remove">Remove from favorites</string>
+    <string name="favorite_cd">Favorite</string>
+
+    <!-- Background transfers -->
+    <string name="transfer_channel_name">Book downloads</string>
+    <string name="transfer_notification_progress">%1$d%% completed</string>
+    <plurals name="transfer_notification_title">
+        <item quantity="one">Downloading %1$d book</item>
+        <item quantity="other">Downloading %1$d books</item>
+    </plurals>
+
+    <!-- Updates and selection -->
+    <string name="catalog_update_available">Update available</string>
+    <string name="catalog_update">Update</string>
+    <string name="catalog_updating_percent">Updating… %1$d%%</string>
+    <string name="catalog_sheet_update_title">Update the downloaded copy</string>
+    <string name="catalog_sheet_update_detail">Drive has a newer version. Your reading position, bookmarks and favorite are kept.</string>
+    <string name="catalog_updated_message">“%1$s” was updated</string>
+    <string name="selection_count">%1$d selected · %2$s</string>
+    <string name="selection_download">Download</string>
+    <string name="selection_all">Select all</string>
+    <string name="selection_cancel_cd">Cancel selection</string>
+    <string name="selection_no_space">Not enough free space: you need %1$s and have %2$s.</string>
+
+    <!-- Collections -->
+    <string name="collection_new_chip">+ New collection</string>
+    <string name="collection_new_title">New collection</string>
+    <string name="collection_name_hint">Name (for example, For class)</string>
+    <string name="collection_rename">Rename</string>
+    <string name="collection_delete">Delete collection</string>
+    <string name="collection_delete_title">Delete “%1$s”?</string>
+    <string name="collection_delete_message">The books are not deleted, they just leave this collection.</string>
+    <string name="collection_add_to">Add to a collection</string>
+
+    <!-- Community -->
+    <string name="title_community">Community</string>
+    <string name="title_community_screen">What others are reading</string>
+    <string name="community_nickname_hint">Nickname for this device</string>
+    <string name="community_off_title">Share what you read</string>
+    <string name="community_off_detail">Give this device a nickname (for example, “Tablet 3”) and, if you want, share which books it reads and how far it is with the other devices of your Drive folder. Each device shares on its own, so you can use the same account on many tablets. In return you see what the others read and get recommendations. Your name and e-mail are never shared, and you can stop at any time.</string>
+    <string name="community_on_title">This device shares as “%1$s”</string>
+    <string name="community_on_detail">The other devices that share can see this nickname and how far you are in each book here. Your e-mail and name are not shared. Change the nickname below.</string>
+    <string name="community_start">Share my reading</string>
+    <string name="community_save_nickname">Save nickname</string>
+    <string name="community_stop">Stop sharing</string>
+    <string name="community_stop_title">Stop sharing?</string>
+    <string name="community_stop_message">Your nickname and reading disappear for the others at the next sync, and you stop seeing theirs.</string>
+    <string name="community_needs_drive">Connect Google Drive to share your reading.</string>
+    <string name="community_recommended">Recommended for you</string>
+    <string name="community_recommended_detail">What people with reading like yours read and finish</string>
+    <string name="community_reading_now">Reading now</string>
+    <string name="community_reading_now_detail">What others have read in the last month</string>
+    <string name="community_popular">Most read</string>
+    <string name="community_popular_detail">The books with the most readers</string>
+    <string name="community_reader_line">%1$s · %2$s</string>
+    <string name="community_similar">Readers like you</string>
+    <plurals name="community_readers">
+        <item quantity="one">%1$d reader</item>
+        <item quantity="other">%1$d readers</item>
+    </plurals>
+    <plurals name="community_finished">
+        <item quantity="one">%1$d finished it</item>
+        <item quantity="other">%1$d finished it</item>
+    </plurals>
+    <string name="community_empty_off">Turn on “Share my reading” to see what others are reading and get recommendations.</string>
+    <string name="community_empty_nobody">Nobody else shares their reading yet. Invite your colleagues to turn this on.</string>
+    <string name="community_empty_catalog">Connect Drive and wait for the catalog to load.</string>
+
+    <!-- Crash screen -->
+    <string name="crash_title">CREA Reader closed unexpectedly</string>
+    <string name="crash_detail">Sorry! Copy or share this report so the problem can be fixed.</string>
+    <string name="crash_copy">Copy</string>
+    <string name="crash_copied">Report copied</string>
+    <string name="crash_share">Share</string>
+    <string name="crash_reopen">Reopen</string>
+</resources>
