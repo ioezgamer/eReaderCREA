@@ -31,7 +31,14 @@ jobs:
           GOOGLE_IOS_CLIENT_ID="${GOOGLE_IOS_CLIENT_ID:-REPLACE_WITH_IOS_OAUTH_CLIENT_ID}"
           GOOGLE_IOS_URL_SCHEME="${GOOGLE_IOS_URL_SCHEME:-org.crea.reader.oauth.unconfigured}"
           xcodebuild -resolvePackageDependencies -project ios/CREAReader.xcodeproj -scheme CREAReader
-          xcodebuild GOOGLE_IOS_CLIENT_ID="$GOOGLE_IOS_CLIENT_ID" GOOGLE_IOS_URL_SCHEME="$GOOGLE_IOS_URL_SCHEME" -project ios/CREAReader.xcodeproj -scheme CREAReader -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/crea-build" CODE_SIGNING_ALLOWED=NO build
+          xcodebuild GOOGLE_IOS_CLIENT_ID="$GOOGLE_IOS_CLIENT_ID" GOOGLE_IOS_URL_SCHEME="$GOOGLE_IOS_URL_SCHEME" -project ios/CREAReader.xcodeproj -scheme CREAReader -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/crea-build" CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$GITHUB_WORKSPACE/ios-build.log"
+      - name: Upload compiler diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-errors
+          path: ios-build.log
+          if-no-files-found: ignore
       - name: Package IPA
         run: |
           set -e
