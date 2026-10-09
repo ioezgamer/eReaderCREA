@@ -112,7 +112,7 @@ struct ReaderHomeView: View {
     @State private var tab: ReaderTab = .library
     @State private var importing = false
     @State private var selection: LocalBook?
-    @State private var error: String?
+    @State private var error: String?\n    @State private var notice: String?
     @State private var search = ""
     @State private var filter = "Todos"
     @State private var sort = "Últimos"
@@ -148,17 +148,22 @@ struct ReaderHomeView: View {
             .tint(CREAStyle.blue)
         }
         .preferredColorScheme(theme == "Oscuro" ? .dark : theme == "Claro" ? .light : nil)
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.pdf, UTType(filenameExtension: "epub") ?? .data], allowsMultipleSelection: true) { result in
-            do {
-                let selected = try result.get()
+        .sheet(isPresented: $importing) {
+            BookFilePicker { picked in
+                importing = false
                 var failures: [String] = []
-                for item in selected {
-                    do { try library.add(url: item) }
+                var imported = 0
+                for item in picked {
+                    do { try library.add(url: item); imported += 1 }
                     catch { failures.append(item.lastPathComponent + ": " + error.localizedDescription) }
                 }
                 if !failures.isEmpty { self.error = failures.joined(separator: "\n") }
-            } catch { self.error = error.localizedDescription }
+                else if imported > 0 { self.notice = imported == 1 ? "Libro importado a Mi biblioteca" : "\(imported) libros importados" }
+            }
         }
+        .alert("Importación completada", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) {
+            Button("Aceptar") { notice = nil }
+        } message: { Text(notice ?? "") }
         .alert("CREA Reader", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("Aceptar") { error = nil }
         } message: { Text(error ?? "") }
@@ -442,5 +447,25 @@ struct PDFReaderView: UIViewRepresentable {
             }
         }
         deinit { if let observer { NotificationCenter.default.removeObserver(observer) } }
+    }
+}
+
+struct BookFilePicker: UIViewControllerRepresentable {
+    let onPick: ([URL]) -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let epub = UTType(filenameExtension: "epub") ?? UTType(importedAs: "org.idpf.epub-container")
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.pdf, epub], asCopy: true)
+        picker.allowsMultipleSelection = true
+        picker.delegate = context.coordinator
+        return picker
+    }
+    func updateUIViewController(_ controller: UIDocumentPickerViewController, context: Context) {}
+    final class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let onPick: ([URL]) -> Void
+        init(onPick: @escaping ([URL]) -> Void) { self.onPick = onPick }
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            onPick(urls)
+        }
     }
 }
