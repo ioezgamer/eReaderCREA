@@ -61,5 +61,5 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "CREA Reader iOS - prueba ${GITHUB_RUN_NUMBER}" \
-            --notes "IPA experimental sin firmar para FlareStore. EPUB y Google Drive aún no están implementados completamente. Requiere una firma compatible antes de instalar." \
+            --notes "IPA experimental sin firmar para FlareStore. EPUB usa Readium Swift; inicio de sesión Google requiere configurar OAuth iOS. Sincronización Drive aún pendiente. Se necesita firma compatible." \
             --prerelease
