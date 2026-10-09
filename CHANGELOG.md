@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 0.9.1 - 2026-10-09
+
+- Compilación con el asistente de IA conectado al servidor publicado en Render (plan gratuito, sin tarjeta). Al dormirse el servicio la primera consulta puede tardar hasta un minuto; la app lo trata como «IA no disponible» mientras tanto.
+- Guía y `render.yaml` para publicar el servidor sin cuenta de facturación.
+
 ## 0.9.0 - 2026-10-09
 
 - **Asistente de IA (extra, apagable)**, pensado para que la app siga funcionando igual si faltan los créditos: cuando el servidor de IA no está configurado, no hay créditos, se llegó al tope mensual o la persona lo desactiva en Ajustes, los botones de IA simplemente no aparecen.

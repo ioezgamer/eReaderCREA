@@ -39,7 +39,9 @@ const dayKey = (now) => now.toISOString().slice(0, 10);
 const monthKey = (now) => now.toISOString().slice(0, 7);
 
 export function createService({ config, store, claude, now = () => new Date() }) {
-  const client = claude ?? (config.mock ? null : new Anthropic());
+  // Una clave sin workspace propio exige indicar en qué workspace se factura cada petición.
+  const workspaceId = process.env.ANTHROPIC_WORKSPACE_ID;
+  const client = claude ?? (config.mock ? null : new Anthropic(workspaceId ? { defaultHeaders: { "anthropic-workspace-id": workspaceId } } : {}));
 
   /** Si el servicio está apagado, sin créditos o sin presupuesto, dice por qué; si no, null. */
   async function unavailableReason() {

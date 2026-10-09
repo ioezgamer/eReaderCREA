@@ -39,6 +39,8 @@ Google Cloud exige vincular una cuenta de facturación (tarjeta) aunque este ser
 3. Cuando lo pida, pega la clave de Anthropic en `ANTHROPIC_API_KEY` (solo en el panel de Render).
 4. Al terminar te da una dirección `https://crea-reader-ai-xxxx.onrender.com`; compila la app con `-PaiBaseUrl=` esa dirección.
 
+Si Anthropic responde «This API key is not scoped to a workspace», añade en Render la variable `ANTHROPIC_WORKSPACE_ID` con el ID del workspace (consola de Anthropic → Workspaces), o crea la clave dentro de un workspace.
+
 Limitaciones del plan gratuito: el servicio «duerme» tras ~15 min sin uso (la primera petición tarda ~30–60 s y la app lo trata como no disponible un momento) y los contadores viven en memoria, así que se reinician al dormir. Por eso el **tope real** son los créditos de Anthropic: fija además un límite de gasto en el workspace de la consola de Anthropic.
 
 ## Publicarlo en Google Cloud (proyecto `crea-reader`)
