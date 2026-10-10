@@ -295,7 +295,13 @@ final class CREADriveCatalog: ObservableObject {
         do {
             let access = try await token()
             var candidate: Data?
-            if let link = book.thumbnailLink, let url = URL(string: link) {
+            if let link = book.thumbnailLink,
+               let url = URL(string: link),
+               url.scheme == "https",
+               let host = url.host?.lowercased(),
+               host == "googleapis.com" || host.hasSuffix(".googleapis.com") ||
+               host == "googleusercontent.com" || host.hasSuffix(".googleusercontent.com") ||
+               host == "google.com" || host.hasSuffix(".google.com") {
                 let bytes = try? await request(url, token: access)
                 if let bytes, bytes.count < 4_000_000, UIImage(data: bytes) != nil { candidate = bytes }
             }
