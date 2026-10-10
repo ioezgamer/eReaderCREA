@@ -90,6 +90,11 @@ struct LocalBook: Identifiable, Codable, Hashable {
     }
 }
 
+private struct CREAPopularBook: Identifiable {
+    let id: String
+    let count: Int
+}
+
 private enum ReaderTab: Int, CaseIterable {
     case library, catalog, explore, community, settings
     var title: String {
@@ -601,14 +606,14 @@ struct ReaderHomeView: View {
                         let counts = Dictionary(
                             grouping: driveCatalog.community.flatMap { $0.readings },
                             by: { $0.driveFileId })
-                        let top = counts.map { (id: $0.key, count: $0.value.count) }
+                        let top = counts.map { CREAPopularBook(id: $0.key, count: $0.value.count) }
                             .sorted {
                                 $0.count == $1.count ? $0.id < $1.id : $0.count > $1.count
                             }.prefix(4)
                         if !top.isEmpty {
                             VStack(alignment: .leading, spacing: 10) {
                                 Label("Los más leídos", systemImage: "chart.bar.fill").font(.headline)
-                                ForEach(Array(top), id: \.id) { item in
+                                ForEach(Array(top)) { item in
                                     HStack {
                                         Text(driveCatalog.books.first(where: { $0.id == item.id })?.displayName
                                              ?? "Libro compartido")
