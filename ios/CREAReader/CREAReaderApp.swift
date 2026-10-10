@@ -415,11 +415,43 @@ struct ReaderHomeView: View {
 
     private var communityScreen: some View {
         NavigationStack {
-            ContentUnavailableView("Comunidad CREA", systemImage: "person.2.fill",
-                description: Text("Las recomendaciones y lecturas compartidas se habilitarán después de integrar la sincronización y el consentimiento de privacidad."))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(CREAStyle.gradient)
-                .navigationTitle("Comunidad")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Qué leen los demás").font(.title2.bold())
+                    Text("Solo aparecen personas que eligieron compartir sus lecturas en CREA Reader.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    Button("Actualizar lecturas compartidas") {
+                        Task { await driveCatalog.loadCommunity() }
+                    }.buttonStyle(.borderedProminent)
+                    if driveCatalog.community.isEmpty {
+                        ContentUnavailableView("Sin lecturas compartidas", systemImage: "person.2",
+                            description: Text("Todavía no hay perfiles compartidos o no se ha actualizado la comunidad."))
+                    }
+                    ForEach(driveCatalog.community) { member in
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label(member.nickname, systemImage: "person.crop.circle")
+                                .font(.headline)
+                            ForEach(member.readings, id: \.driveFileId) { reading in
+                                let title = driveCatalog.books.first(where: { $0.id == reading.driveFileId })?.displayName ?? "Libro compartido"
+                                HStack {
+                                    Text(title).font(.subheadline).lineLimit(2)
+                                    Spacer()
+                                    Text("\(reading.percent)%").font(.subheadline.monospacedDigit())
+                                }
+                                ProgressView(value: Double(max(0, min(reading.percent, 100))) / 100)
+                                    .tint(CREAStyle.green)
+                            }
+                        }
+                        .padding()
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
+                    }
+                }.padding()
+            }
+            .background(CREAStyle.gradient)
+            .navigationTitle("Comunidad")
+            .task(id: googleAuth.accountEmail) {
+                if googleAuth.accountEmail != nil { await driveCatalog.loadCommunity() }
+            }
         }
     }
 
