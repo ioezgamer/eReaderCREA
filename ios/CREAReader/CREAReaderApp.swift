@@ -277,11 +277,8 @@ struct ReaderHomeView: View {
         Button { open(book) } label: {
             VStack(alignment: .leading, spacing: 8) {
                 ZStack(alignment: .bottomLeading) {
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(LinearGradient(colors: [CREAStyle.blue.opacity(0.78), CREAStyle.pink.opacity(0.77)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    Image(systemName: book.kind == "PDF" ? "doc.richtext" : "book.closed.fill")
-                        .font(.system(size: 46)).foregroundStyle(.white.opacity(0.85))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    CREALocalCoverView(url: library.url(for: book), kind: book.kind)
+                        .clipShape(RoundedRectangle(cornerRadius: 15))
                     Text(book.kind).font(.caption2.bold()).foregroundStyle(.white)
                         .padding(7).background(.black.opacity(0.28), in: Capsule()).padding(9)
                 }
@@ -304,10 +301,9 @@ struct ReaderHomeView: View {
     private func bookRow(_ book: LocalBook) -> some View {
         Button { open(book) } label: {
             HStack(spacing: 14) {
-                Image(systemName: book.kind == "PDF" ? "doc.richtext.fill" : "book.closed.fill")
-                    .font(.title2).foregroundStyle(.white)
-                    .frame(width: 60, height: 74)
-                    .background(LinearGradient(colors: [CREAStyle.blue, CREAStyle.pink], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 10))
+                CREALocalCoverView(url: library.url(for: book), kind: book.kind)
+                    .frame(width: 60, height: 84)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
                 VStack(alignment: .leading, spacing: 8) {
                     Text(book.name).font(.headline).foregroundStyle(.primary).lineLimit(2)
                     Text(book.kind).font(.caption).foregroundStyle(.secondary)
