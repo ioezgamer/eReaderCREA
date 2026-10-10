@@ -42,3 +42,9 @@ Se agregó `CREADriveCatalog.swift`, que utiliza el token obtenido mediante Goog
 - Catálogo iOS solicita `thumbnailLink` de Drive y muestra la imagen cuando Google ofrece una miniatura; EPUB sin miniatura aún mostrarán icono provisional. No se ha implementado todavía extracción local de la portada EPUB.
 - Biblioteca local muestra porcentaje numérico del progreso registrado. PDF actualiza el avance básico por página, pero EPUB todavía necesita conectar localizadores de Readium al seguimiento del progreso y al manifiesto entre dispositivos.
 - Comunidad iOS ahora lee perfiles `crea-lector-*.json` publicados voluntariamente por Android en la carpeta compartida: apodo, título asociado al identificador y porcentaje. No publica datos de iOS ni habilita compartir automáticamente. Se debe validar la compilación y la lectura con una cuenta de pruebas.
+
+## Portadas locales y progreso EPUB (nueva implementación)
+- `CREALocalCoverView` utiliza Readium `publication.cover()` para EPUB y primera página de PDFKit para PDF. Se presenta en cuadrícula y lista, con icono de respaldo si no existe portada.
+- `CREALocationObserver` recibe `NavigatorDelegate.locationDidChange`; registra `totalProgression` en la biblioteca y guarda el JSON del locator para retomar el EPUB donde quedó.
+- Progreso actual es local al iPhone. Aún falta escribir/leer progreso con el manifiesto compartido Android usando Google Drive appData, correlacionar IDs remotos, y probar en dispositivo.
+- Compilación GitHub Actions pendiente de confirmar antes de considerar esta versión entregable.
