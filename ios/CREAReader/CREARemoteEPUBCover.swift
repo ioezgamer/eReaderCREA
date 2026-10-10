@@ -74,7 +74,7 @@ enum CREARemoteEPUBCover {
               let directorySize = number(tail, index + 12, length: 4),
               let directoryOffset = number(tail, index + 16, length: 4),
               directorySize > 0, directorySize <= maxDirectory,
-              directoryOffset >= 0, directoryOffset + directorySize <= size else { return nil }
+              directoryOffset >= 0, Int64(directoryOffset) + Int64(directorySize) <= size else { return nil }
         let central: Data
         if Int64(directoryOffset) >= tailStart {
             let relative = Int64(directoryOffset) - tailStart
