@@ -7,6 +7,9 @@ on:
     paths:
       - 'ios/**'
       - '.github/workflows/ios-unsigned-ipa.yml'
+concurrency:
+  group: ios-preview-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: macos-15
@@ -22,6 +25,8 @@ jobs:
         run: |
           cd ios
           xcodegen generate
+      - name: Swift syntax check
+        run: xcrun swiftc -frontend -parse ios/CREAReader/*.swift
       - name: Build for physical iOS devices without signing
         env:
           GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
