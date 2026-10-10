@@ -17,10 +17,10 @@ targets:
       properties:
         CFBundleDisplayName: CREA Reader
         UILaunchStoryboardName: LaunchScreen
-        GIDClientID: $(GOOGLE_IOS_CLIENT_ID)
+        GIDClientID: 101673121950-e6jb7e03imhbts9dc98em5gof37ebkn8.apps.googleusercontent.com
         CFBundleURLTypes:
           - CFBundleURLSchemes:
-              - $(GOOGLE_IOS_URL_SCHEME)
+              - com.googleusercontent.apps.101673121950-e6jb7e03imhbts9dc98em5gof37ebkn8
     sources:
       - path: CREAReader
     dependencies:
