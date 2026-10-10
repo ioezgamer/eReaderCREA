@@ -19,7 +19,7 @@ final class CREAAuthSession: ObservableObject {
         GIDSignIn.sharedInstance.restorePreviousSignIn { [weak self] user, _ in
             Task { @MainActor in
                 self?.accountEmail = user?.profile?.email
-                self?.progressAuthorized = user?.grantedScopes.contains("https://www.googleapis.com/auth/drive.appdata") ?? false
+                self?.progressAuthorized = user?.grantedScopes?.contains("https://www.googleapis.com/auth/drive.appdata") ?? false
             }
         }
     }
@@ -40,7 +40,7 @@ final class CREAAuthSession: ObservableObject {
                 if let error { self?.message = error.localizedDescription }
                 else {
                     self?.accountEmail = result?.user.profile?.email
-                    self?.progressAuthorized = result?.user.grantedScopes.contains("https://www.googleapis.com/auth/drive.appdata") ?? false
+                    self?.progressAuthorized = result?.user.grantedScopes?.contains("https://www.googleapis.com/auth/drive.appdata") ?? false
                 }
             }
         }
@@ -50,7 +50,7 @@ final class CREAAuthSession: ObservableObject {
             message = "Inicia sesión con Google primero."
             return
         }
-        if user.grantedScopes.contains(privateScope) {
+        if user.grantedScopes?.contains(privateScope) == true {
             progressAuthorized = true
             return
         }
@@ -65,7 +65,7 @@ final class CREAAuthSession: ObservableObject {
             Task { @MainActor in
                 if let error { self?.message = error.localizedDescription }
                 else {
-                    self?.progressAuthorized = result?.user.grantedScopes.contains("https://www.googleapis.com/auth/drive.appdata") ?? false
+                    self?.progressAuthorized = result?.user.grantedScopes?.contains("https://www.googleapis.com/auth/drive.appdata") ?? false
                     self?.message = self?.progressAuthorized == true ? nil : "Google no autorizó el acceso privado al progreso."
                 }
             }
