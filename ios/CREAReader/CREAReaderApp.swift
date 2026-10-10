@@ -114,7 +114,8 @@ struct ReaderHomeView: View {
     @State private var tab: ReaderTab = .library
     @State private var importing = false
     @State private var selection: LocalBook?
-    @State private var error: String?\n    @State private var notice: String?
+    @State private var error: String?
+    @State private var notice: String?
     @State private var search = ""
     @State private var filter = "Todos"
     @State private var sort = "Últimos"
