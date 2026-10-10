@@ -166,6 +166,35 @@ final class CREADriveCatalog: ObservableObject {
         } catch { return nil }
     }
 
+    /// Read the existing Android manifest from the app-private Drive folder.
+    /// A missing manifest is not interpreted as an empty library.
+    func loadPrivateProgressManifest() async throws -> (document: [String: Any], fileID: String)? {
+        guard let user = GIDSignIn.sharedInstance.currentUser,
+              user.grantedScopes.contains("https://www.googleapis.com/auth/drive.appdata") else {
+            throw failure("Activa el permiso para sincronizar el progreso desde Ajustes.")
+        }
+        let access = try await token()
+        var listing = URLComponents(string: api)!
+        listing.queryItems = [
+            URLQueryItem(name: "spaces", value: "appDataFolder"),
+            URLQueryItem(name: "q", value: "name = 'crea-reader-library-v2.json' and trashed = false"),
+            URLQueryItem(name: "fields", value: "nextPageToken,files(id,name)"),
+            URLQueryItem(name: "pageSize", value: "100")
+        ]
+        let response = try await request(listing.url!, token: access)
+        guard let json = try JSONSerialization.jsonObject(with: response) as? [String: Any],
+              let files = json["files"] as? [[String: Any]],
+              let fileID = files.first?["id"] as? String else { return nil }
+        var media = URLComponents(string: api + "/" + fileID)!
+        media.queryItems = [URLQueryItem(name: "alt", value: "media")]
+        let bytes = try await request(media.url!, token: access)
+        guard let document = try JSONSerialization.jsonObject(with: bytes) as? [String: Any],
+              document["books"] is [[String: Any]] else {
+            throw failure("El manifiesto privado de Android no contiene una lista válida de libros.")
+        }
+        return (document, fileID)
+    }
+
     func download(_ book: CREARemoteBook, into library: LocalLibrary) async {
         guard !downloading.contains(book.id) else { return }
         downloading.insert(book.id)
@@ -180,7 +209,7 @@ final class CREADriveCatalog: ObservableObject {
             let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "." + ext)
             defer { try? FileManager.default.removeItem(at: temp) }
             try data.write(to: temp, options: .atomic)
-            try library.add(url: temp, displayName: book.displayName)
+            try library.add(url: temp, displayName: book.displayName, driveFileID: book.id)
             errorMessage = nil
         } catch { errorMessage = error.localizedDescription }
     }
