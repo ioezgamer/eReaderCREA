@@ -118,6 +118,14 @@ final class CREADriveCatalog: ObservableObject {
         }
     }
 
+    func cover(for book: CREARemoteBook) async -> Data? {
+        guard let link = book.thumbnailLink, let url = URL(string: link) else { return nil }
+        do {
+            let access = try await token()
+            return try await request(url, token: access)
+        } catch { return nil }
+    }
+
     func download(_ book: CREARemoteBook, into library: LocalLibrary) async {
         guard !downloading.contains(book.id) else { return }
         downloading.insert(book.id)
