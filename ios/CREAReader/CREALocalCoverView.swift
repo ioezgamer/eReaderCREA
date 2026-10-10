@@ -35,7 +35,7 @@ struct CREALocalCoverView: View {
             guard let absolute = url.anyURL.absoluteURL else { return }
             if case let .success(asset) = await retriever.retrieve(url: absolute),
                case let .success(publication) = await opener.open(asset: asset, allowUserInteraction: false) {
-                cover = await publication.cover()
+                if case let .success(image) = await publication.cover(), let image { cover = image }
             }
         }
     }
