@@ -176,7 +176,7 @@ final class CREADriveCatalog: ObservableObject {
     /// A missing manifest is not interpreted as an empty library.
     func loadPrivateProgressManifest() async throws -> (document: [String: Any], fileID: String)? {
         guard let user = GIDSignIn.sharedInstance.currentUser,
-              user.grantedScopes.contains("https://www.googleapis.com/auth/drive.appdata") else {
+              user.grantedScopes?.contains("https://www.googleapis.com/auth/drive.appdata") == true else {
             throw failure("Activa el permiso para sincronizar el progreso desde Ajustes.")
         }
         let access = try await token()
@@ -205,7 +205,7 @@ final class CREADriveCatalog: ObservableObject {
     /// replacement which could hide books when Android has not synchronized yet.
     func savePrivateProgressManifest(_ document: [String: Any], fileID: String) async throws {
         guard let user = GIDSignIn.sharedInstance.currentUser,
-              user.grantedScopes.contains("https://www.googleapis.com/auth/drive.appdata") else {
+              user.grantedScopes?.contains("https://www.googleapis.com/auth/drive.appdata") == true else {
             throw failure("Falta el permiso privado de Drive. Habilítalo desde Ajustes.")
         }
         guard JSONSerialization.isValidJSONObject(document) else {
