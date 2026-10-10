@@ -9,6 +9,7 @@ struct CREARemoteBook: Codable, Identifiable, Hashable {
     let modifiedTime: String?
     let md5Checksum: String?
     let thumbnailLink: String?
+    var category: String?
     var isEPUB: Bool { name.lowercased().hasSuffix(".epub") }
     var displayName: String { (name as NSString).deletingPathExtension }
 }
@@ -110,17 +111,22 @@ final class CREADriveCatalog: ObservableObject {
                 throw failure("No existe la carpeta CREA Reader en esta cuenta de Google.")
             }
             folderID = folder.id
-            var pending = [folder.id]
+            var pending: [(id: String, category: String?)] = [(folder.id, nil)]
             var visited = Set<String>()
             var found: [CREARemoteBook] = []
             while !pending.isEmpty {
                 let parent = pending.removeFirst()
-                guard visited.insert(parent).inserted else { continue }
-                let children = try await list(query: "'\(parent)' in parents and trashed = false",
+                guard visited.insert(parent.id).inserted else { continue }
+                let children = try await list(query: "'\(parent.id)' in parents and trashed = false",
                                               fields: "id,name,mimeType,size,modifiedTime,md5Checksum,thumbnailLink", token: access)
                 for file in children {
-                    if file.mimeType == "application/vnd.google-apps.folder" { pending.append(file.id) }
-                    else if file.name.lowercased().hasSuffix(".epub") || file.name.lowercased().hasSuffix(".pdf") { found.append(file) }
+                    if file.mimeType == "application/vnd.google-apps.folder" {
+                        pending.append((file.id, parent.category ?? file.name))
+                    } else if file.name.lowercased().hasSuffix(".epub") || file.name.lowercased().hasSuffix(".pdf") {
+                        var book = file
+                        book.category = parent.category
+                        found.append(book)
+                    }
                 }
             }
             books = found.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
