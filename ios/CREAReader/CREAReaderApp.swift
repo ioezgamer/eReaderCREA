@@ -622,12 +622,26 @@ struct ReaderHomeView: View {
         }
     }
 
+    private var communityPopularBooks: [CREAPopularBook] {
+        var counts: [String: Int] = [:]
+        for member in driveCatalog.community {
+            for reading in member.readings {
+                counts[reading.driveFileId, default: 0] += 1
+            }
+        }
+        var popular: [CREAPopularBook] = []
+        for (id, count) in counts {
+            popular.append(CREAPopularBook(id: id, count: count))
+        }
+        popular.sort { first, second in
+            if first.count == second.count { return first.id < second.id }
+            return first.count > second.count
+        }
+        return Array(popular.prefix(4))
+    }
+
     private var communityLeaderboard: some View {
-        let grouped = Dictionary(grouping: driveCatalog.community.flatMap { $0.readings },
-                                 by: { $0.driveFileId })
-        let popular = Array(grouped.map { CREAPopularBook(id: $0.key, count: $0.value.count) }
-            .sorted { $0.count == $1.count ? $0.id < $1.id : $0.count > $1.count }
-            .prefix(4))
+        let popular = communityPopularBooks
         return Group {
             if !popular.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
