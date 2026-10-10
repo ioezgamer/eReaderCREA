@@ -1,4 +1,6 @@
 import Foundation
+import UIKit
+import CryptoKit
 import GoogleSignIn
 
 struct CREARemoteBook: Codable, Identifiable, Hashable {
@@ -164,11 +166,54 @@ final class CREADriveCatalog: ObservableObject {
         } catch { errorMessage = error.localizedDescription }
     }
 
+    private func coverCacheURL(for book: CREARemoteBook) -> URL {
+        let cacheRoot = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("CREAReaderCovers", isDirectory: true)
+        let key = book.id + ":" + (book.modifiedTime ?? "") + ":" + (book.md5Checksum ?? "")
+        let hex = SHA256.hash(data: Data(key.utf8))
+            .map { String(format: "%02x", $0) }.joined()
+        return cacheRoot.appendingPathComponent(hex + ".img")
+    }
+
+    private func range(book: CREARemoteBook, start: Int64, end: Int64, token access: String) async -> Data? {
+        guard start >= 0, end >= start, end - start < 4_300_000 else { return nil }
+        var components = URLComponents(string: api + "/" + book.id)!
+        components.queryItems = [URLQueryItem(name: "alt", value: "media")]
+        var call = URLRequest(url: components.url!)
+        call.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
+        call.setValue("bytes=\(start)-\(end)", forHTTPHeaderField: "Range")
+        call.timeoutInterval = 15
+        guard let (data, response) = try? await URLSession.shared.data(for: call),
+              let http = response as? HTTPURLResponse,
+              http.statusCode == 206,
+              data.count == Int(end - start + 1) else { return nil }
+        return data
+    }
+
+    /// Use Drive's thumbnail when available, otherwise read only EPUB ZIP ranges
+    /// (container, package metadata and cover entry), never download for offline use.
     func cover(for book: CREARemoteBook) async -> Data? {
-        guard let link = book.thumbnailLink, let url = URL(string: link) else { return nil }
+        let cache = coverCacheURL(for: book)
+        if let saved = try? Data(contentsOf: cache), UIImage(data: saved) != nil { return saved }
         do {
             let access = try await token()
-            return try await request(url, token: access)
+            var candidate: Data?
+            if let link = book.thumbnailLink, let url = URL(string: link) {
+                let bytes = try? await request(url, token: access)
+                if let bytes, bytes.count < 4_000_000, UIImage(data: bytes) != nil { candidate = bytes }
+            }
+            if candidate == nil,
+               book.isEPUB, let bytes = book.size.flatMap(Int64.init),
+               bytes > 50, bytes <= 300_000_000 {
+                candidate = await CREARemoteEPUBCover.extract(size: bytes) { start, end in
+                    await self.range(book: book, start: start, end: end, token: access)
+                }
+            }
+            guard let candidate, UIImage(data: candidate) != nil else { return nil }
+            try? FileManager.default.createDirectory(at: cache.deletingLastPathComponent(),
+                                                     withIntermediateDirectories: true)
+            try? candidate.write(to: cache, options: .atomic)
+            return candidate
         } catch { return nil }
     }
 
