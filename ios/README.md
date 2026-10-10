@@ -1,50 +1,60 @@
-# CREA Reader iOS — port en desarrollo
+# CREA Reader iOS 0.9.0 beta
 
-Esta rama contiene una aplicación iOS nativa SwiftUI basada en las secciones y estilo del proyecto Android original. **No es aún una reproducción funcional completa de Android.**
+Aplicación nativa para iPhone y iPad (iOS 17 o superior). Código Android intacto. La aplicación iOS se compila mediante GitHub Actions en macOS y se distribuye como **IPA sin firmar** para instalar después con un firmador compatible como FlareStore.
 
-## Implementado
-- Cinco pestañas: Mi biblioteca, Catálogo en línea, Explorar, Comunidad y Ajustes.
-- Biblioteca local en cuadrícula o lista; búsqueda, filtros por estado/formato/favoritos, ordenación por título/progreso/última lectura.
-- Importación manual EPUB y PDF mediante Archivos; eliminación local y favoritos.
-- Lectura PDF con PDFKit y seguimiento básico de avance por página.
-- Tema claro, oscuro y del sistema; tarjetas translúcidas y paleta CREA.
-- Acceso a textos.info y Proyecto Gutenberg para obtener archivos.
-- Compilación de IPA **sin firmar** usando GitHub Actions y un ejecutor macOS remoto, sin Mac propia.
+## Funciones implementadas en código
 
-## No implementado todavía
-- Motor EPUB nativo (Readium Swift): EPUB se importa y aparece en biblioteca pero no se puede abrir.
-- Google OAuth iOS y Google Drive (catálogo, descarga selectiva, lectura temporal, sincronización).
-- Comunidad sincronizada y marcadores/resaltados que viajen entre dispositivos.
-- Portadas reales extraídas de EPUB/PDF, lector EPUB con TTS y notas.
-- Igualdad visual y funcional completa; requieren pruebas con Android e iPhone.
+- SwiftUI: Biblioteca, Catálogo en línea, Explorar, Comunidad y Ajustes.
+- Archivos: importación local EPUB/PDF desde Archivos e iCloud Drive, eliminación y favoritos.
+- Lectores: EPUB con Readium Swift 3.8; PDF con PDFKit; lectura local sin conexión.
+- Portadas: extracción del EPUB, miniatura primera página del PDF, miniatura Google Drive cuando esté disponible.
+- EPUB: porcentaje real, locator Readium guardado/restaurado, controles de tamaño de fuente, modo oscuro y desplazamiento vertical.
+- Biblioteca: cuadrícula/lista, filtros, búsqueda, progreso y continuar leyendo.
+- Google: inicio/cierre de sesión con OAuth iOS; catálogo Drive por subcarpetas/categorías, búsqueda, caché de metadatos y descarga individual. **No descarga automáticamente todos los libros.**
+- Comunidad: lectura de perfiles voluntariamente publicados por Android (`crea-lector-*.json`). No publica lecturas de iOS por defecto.
+- Progreso Android/iOS: lectura del manifiesto privado `crea-reader-library-v2.json` mediante `drive.appdata`; vincula libros por Drive file ID o SHA-256 idéntico, aplica el timestamp más reciente y recupera el locator EPUB. Al cerrar un EPUB envía posiciones más recientes a ese mismo manifiesto, conservando los demás registros JSON y la lista de dispositivos.
+- Catálogo muestra si un libro está descargado, su avance conocido y permite abrirlo sin descargar duplicados cuando se vincula con Drive.
 
-La app iOS **no contiene credenciales**. No se pide acceso Google Drive hasta configurar el cliente OAuth iOS separado. La app Android permanece intacta.
+**Estado de calidad:** implementación en desarrollo; los cambios recientes aún necesitan superar una compilación completa de Actions y pruebas en un iPhone y una tablet Android. Que el proyecto compile no demuestra la sincronización completa.
 
-## IPA para FlareStore
-Consultar [GitHub Actions](../../actions/workflows/ios-unsigned-ipa.yml) de la rama `feature/ios-flarestore` y descargar el artefacto `CREA-Reader-iOS-unsigned-IPA` de una ejecución correcta. El IPA sin firmar necesita un método de firma válido antes de instalarse.
+## Configuración de Google
 
-La compilación de estos cambios aún debe verificarse en Actions. Que compile no implica que todas las funciones de Android estén disponibles.
+El cliente OAuth para iOS y su esquema URL ya están registrados en `project.yml`, con bundle ID `org.crea.reader.ios`. Son identificadores públicos, no secretos de autenticación. La app obtiene tokens mediante Google Sign-In y no los coloca en el repositorio.
 
-## Integración Readium y Google (2026-10-09)
-- El lector EPUB usa Readium Swift 3.8.0 mediante Swift Package Manager, con pantalla EPUB y navegación nativa. Todavía faltan pruebas de compilación/dispositivo, localizadores persistentes, marcadores y TTS.
-- Se incluyó GoogleSignIn iOS para iniciar/cerrar sesión y restaurar sesión. **No se ha integrado todavía el catálogo Drive**. No hay claves privadas insertadas.
-- En Google Cloud, proyecto CREA Reader, crear ID de cliente OAuth tipo **iOS**, con identificador de paquete `org.crea.reader.ios`. Copiar el Client ID y URL Scheme invertido.
-- En GitHub > Settings > Secrets and variables > Actions > Variables, crear `GOOGLE_IOS_CLIENT_ID` con el Client ID y `GOOGLE_IOS_URL_SCHEME` con su esquema invertido (por ejemplo `com.googleusercontent.apps.XXXXXXXX`). No son claves secretas pero es preferible configurar en Variables.
-- Ejecutar de nuevo el workflow tras configurarlas. Sin esas variables el botón de login aparece deshabilitado, pero la app debe poder compilar para probar lectura local.
-- Para sincronizar Drive se requerirá pedir el scope `https://www.googleapis.com/auth/drive` y `drive.appdata` con consentimiento y reutilizar las reglas de catálogo/sync del Android, sin descargar todos los EPUB.
+Permisos solicitados:
+- `drive.readonly`: listar catálogo y descargar archivos seleccionados.
+- `drive.appdata`: leer/escribir el progreso privado de esta aplicación.
 
-## Catálogo de Google Drive, fase 1
-Se agregó `CREADriveCatalog.swift`, que utiliza el token obtenido mediante Google Sign-In, localiza la carpeta `CREA Reader`, recorre sus subcarpetas y presenta únicamente los metadatos de libros EPUB/PDF. Guarda en caché la lista para consultarla sin conexión y permite descargar manualmente un libro a la biblioteca local. Usa el alcance OAuth `drive.readonly`, que permite leer libros subidos manualmente. No descarga todo el catálogo.
+Las sesiones antiguas podrían tener solo `drive.readonly`. Desde **Ajustes > Autorizar sincronización de progreso**, conceder el nuevo permiso. Google puede requerir consentimiento adicional por política de Workspace.
 
-**Aún no implementado:** sincronización de progreso entre iOS/Android mediante `appDataFolder`, subida de archivos importados, portadas reales y lectura en línea con caché temporal. El alcance actual es de solo lectura. La sincronización debe probarse en una cuenta de Workspace autorizada y la compilación verificarse con GitHub Actions. Si el usuario había iniciado sesión antes de este cambio, podría necesitar cerrar sesión y entrar otra vez para aceptar el nuevo permiso.
+**Advertencia:** Google solo permite leer `appDataFolder` de la misma aplicación OAuth. El cliente iOS debe pertenecer al proyecto de Google Cloud de la app Android que creó ese manifiesto. Si son aplicaciones/proyectos diferentes, el manifiesto no será visible aunque el catálogo sí funcione.
 
-## Actualización de portadas y comunidad
-- Catálogo iOS solicita `thumbnailLink` de Drive y muestra la imagen cuando Google ofrece una miniatura; EPUB sin miniatura aún mostrarán icono provisional. No se ha implementado todavía extracción local de la portada EPUB.
-- Biblioteca local muestra porcentaje numérico del progreso registrado. PDF actualiza el avance básico por página, pero EPUB todavía necesita conectar localizadores de Readium al seguimiento del progreso y al manifiesto entre dispositivos.
-- Comunidad iOS ahora lee perfiles `crea-lector-*.json` publicados voluntariamente por Android en la carpeta compartida: apodo, título asociado al identificador y porcentaje. No publica datos de iOS ni habilita compartir automáticamente. Se debe validar la compilación y la lectura con una cuenta de pruebas.
+## Comprobar sincronización de progreso
 
-## Portadas locales y progreso EPUB (nueva implementación)
-- `CREALocalCoverView` utiliza Readium `publication.cover()` para EPUB y primera página de PDFKit para PDF. Se presenta en cuadrícula y lista, con icono de respaldo si no existe portada.
-- `CREALocationObserver` recibe `NavigatorDelegate.locationDidChange`; registra `totalProgression` en la biblioteca y guarda el JSON del locator para retomar el EPUB donde quedó.
-- Progreso actual es local al iPhone. Aún falta escribir/leer progreso con el manifiesto compartido Android usando Google Drive appData, correlacionar IDs remotos, y probar en dispositivo.
-- Compilación GitHub Actions pendiente de confirmar antes de considerar esta versión entregable.
+1. Android: abre y avanza un EPUB, realiza su sincronización normal y confirma el porcentaje.
+2. iOS: inicia sesión con la misma cuenta, autoriza progreso privado en Ajustes y pulsa **Sincronizar progreso Android y iOS**.
+3. Abre el mismo EPUB descargado, confirma el porcentaje y la ubicación.
+4. Avanza el EPUB y regresa a la biblioteca. iOS guarda la posición y, con autorización, envía sus cambios.
+5. Android: sincroniza y verifica la nueva posición.
+6. Comprueba que no desaparecieron otros libros, dispositivos ni lecturas. Prueba también el modo sin conexión.
+
+Si no existe manifiesto de Android, iOS **no crea una copia vacía** que pueda ocultar el progreso del otro dispositivo. Los libros solo se relacionan automáticamente cuando coinciden el identificador de Drive o el SHA-256.
+
+**Riesgo pendiente:** la actualización del manifiesto compartido usa lectura, mezcla y escritura, pero no incluye una transacción atómica entre Android e iOS. No se recomienda editar el progreso en ambos dispositivos exactamente al mismo tiempo hasta añadir control de versiones/concurrencia y pruebas de conflicto.
+
+## Funciones Android aún pendientes de portabilidad completa
+
+- Lectura EPUB remota en línea con caché temporal sin añadir el libro a la biblioteca.
+- Subida a Drive de libros importados directamente en iOS y reconciliación completa del catálogo.
+- Publicación voluntaria de la actividad de iOS en Comunidad, con permisos específicos y revocación.
+- Colecciones avanzadas, marcadores, resaltados, notas, búsqueda de texto y TTS.
+- Funciones de IA y todos los elementos visuales de Android; pruebas de paridad pantalla por pantalla.
+- Verificación real de carga de imágenes de portada con EPUB grandes, fallos de red y de permisos, y pruebas de sincronización concurrente.
+
+## Compilar, descargar e instalar sin Mac
+
+GitHub Actions: [iOS unsigned IPA (FlareStore)](https://github.com/ioezgamer/eReaderCREA/actions/workflows/ios-unsigned-ipa.yml). Cada push a esta rama ejecuta la compilación en macOS. Ejecuciones obsoletas se cancelan para evitar gastar minutos en versiones viejas.
+
+En una ejecución correcta, el archivo `CREA-Reader-iOS-0.9.0-unsigned.ipa` se publica automáticamente como prerelease en [GitHub Releases](https://github.com/ioezgamer/eReaderCREA/releases). **No se instala sin una firma válida**.
+
+Una X roja significa que ese commit no generó una IPA válida. Los logs de compilación también se adjuntan como `ios-build-errors` al fallar el compilador.
