@@ -4,6 +4,8 @@ import GoogleSignIn
 @MainActor
 final class CREAAuthSession: ObservableObject {
     @Published private(set) var accountEmail: String?
+    @Published private(set) var progressAuthorized = false
+    private let privateScope = "https://www.googleapis.com/auth/drive.appdata"
     @Published var message: String?
     var configured: Bool {
         guard let id = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String else { return false }
@@ -15,7 +17,10 @@ final class CREAAuthSession: ObservableObject {
             GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
         }
         GIDSignIn.sharedInstance.restorePreviousSignIn { [weak self] user, _ in
-            Task { @MainActor in self?.accountEmail = user?.profile?.email }
+            Task { @MainActor in
+                self?.accountEmail = user?.profile?.email
+                self?.progressAuthorized = user?.grantedScopes.contains("https://www.googleapis.com/auth/drive.appdata") ?? false
+            }
         }
     }
     func signIn() {
@@ -33,13 +38,43 @@ final class CREAAuthSession: ObservableObject {
         GIDSignIn.sharedInstance.signIn(withPresenting: controller, hint: nil, additionalScopes: ["https://www.googleapis.com/auth/drive.readonly", "https://www.googleapis.com/auth/drive.appdata"]) { [weak self] result, error in
             Task { @MainActor in
                 if let error { self?.message = error.localizedDescription }
-                else { self?.accountEmail = result?.user.profile?.email }
+                else {
+                    self?.accountEmail = result?.user.profile?.email
+                    self?.progressAuthorized = result?.user.grantedScopes.contains("https://www.googleapis.com/auth/drive.appdata") ?? false
+                }
+            }
+        }
+    }
+    func requestPrivateProgressAccess() {
+        guard let user = GIDSignIn.sharedInstance.currentUser else {
+            message = "Inicia sesión con Google primero."
+            return
+        }
+        if user.grantedScopes.contains(privateScope) {
+            progressAuthorized = true
+            return
+        }
+        guard let controller = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive })?
+            .windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+            message = "No se encontró una ventana activa para solicitar el permiso."
+            return
+        }
+        user.addScopes([privateScope], presenting: controller) { [weak self] result, error in
+            Task { @MainActor in
+                if let error { self?.message = error.localizedDescription }
+                else {
+                    self?.progressAuthorized = result?.user.grantedScopes.contains("https://www.googleapis.com/auth/drive.appdata") ?? false
+                    self?.message = self?.progressAuthorized == true ? nil : "Google no autorizó el acceso privado al progreso."
+                }
             }
         }
     }
     func signOut() {
         GIDSignIn.sharedInstance.signOut()
         accountEmail = nil
+        progressAuthorized = false
     }
 }
 
@@ -49,6 +84,15 @@ struct CREAGoogleAccountView: View {
         VStack(alignment: .leading, spacing: 12) {
             if let email = auth.accountEmail {
                 Label(email, systemImage: "person.crop.circle.fill")
+                if auth.progressAuthorized {
+                    Label("Progreso privado autorizado", systemImage: "checkmark.shield.fill")
+                        .font(.caption).foregroundStyle(.green)
+                } else {
+                    Button("Autorizar sincronización de progreso") {
+                        auth.requestPrivateProgressAccess()
+                    }
+                    .font(.subheadline)
+                }
                 Button("Cerrar sesión de Google") { auth.signOut() }
             } else {
                 Button {
