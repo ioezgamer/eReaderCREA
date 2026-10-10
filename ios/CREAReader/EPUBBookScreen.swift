@@ -114,7 +114,7 @@ struct EPUBNavigatorContainer: UIViewControllerRepresentable {
 }
 
 @MainActor
-final class CREALocationObserver: NavigatorDelegate {
+final class CREALocationObserver: EPUBNavigatorDelegate {
     let url: URL
     let onProgress: (Double) -> Void
     let onLocator: (String) -> Void
@@ -122,6 +122,9 @@ final class CREALocationObserver: NavigatorDelegate {
         self.url = url
         self.onProgress = onProgress
         self.onLocator = onLocator
+    }
+    func navigator(_ navigator: Navigator, presentError error: NavigatorError) {
+        NSLog("CREA Reader: Readium navigation error: %@", String(describing: error))
     }
     func navigator(_ navigator: Navigator, locationDidChange locator: Locator) {
         if let serialized = locator.jsonString {
