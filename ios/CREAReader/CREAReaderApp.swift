@@ -246,7 +246,9 @@ struct ReaderHomeView: View {
             }
             .navigationDestination(item: $selection) { book in
                 if book.kind == "EPUB" {
-                    EPUBBookScreen(url: library.url(for: book), title: book.name)
+                    EPUBBookScreen(url: library.url(for: book), title: book.name, onProgress: { amount in
+                        library.update(book) { $0.progress = amount; $0.lastOpened = Date() }
+                    })
                 } else {
                     PDFReaderScreen(url: library.url(for: book), title: book.name, onProgress: { amount in
                         library.update(book) { $0.progress = amount; $0.lastOpened = Date() }
