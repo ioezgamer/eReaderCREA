@@ -25,6 +25,10 @@ struct LocalBook: Identifiable, Codable, Hashable {
     var progress: Double = 0
     var lastOpened: Date? = nil
     var collection: String = ""
+    // Optional to preserve decoding of books imported before Drive synchronization.
+    var driveFileID: String?
+    var readingLocatorJSON: String?
+    var progressUpdatedAt: Date?
 }
 
 @MainActor final class LocalLibrary: ObservableObject {
@@ -43,7 +47,7 @@ struct LocalBook: Identifiable, Codable, Hashable {
 
     private var documents: URL { FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0] }
     func url(for book: LocalBook) -> URL { documents.appendingPathComponent(book.filename) }
-    func add(url source: URL, displayName: String? = nil) throws {
+    func add(url source: URL, displayName: String? = nil, driveFileID: String? = nil) throws {
         let ext = source.pathExtension.lowercased()
         guard ["epub", "pdf"].contains(ext) else {
             throw NSError(domain: "CREAReader", code: 1, userInfo: [NSLocalizedDescriptionKey: "Solo se admiten EPUB y PDF."])
@@ -67,7 +71,7 @@ struct LocalBook: Identifiable, Codable, Hashable {
             throw NSError(domain: "CREAReader", code: 2, userInfo: [NSLocalizedDescriptionKey: "No se pudo copiar el libro. Descárgalo desde iCloud primero."])
         }
         books.insert(LocalBook(id: UUID(), name: displayName ?? source.deletingPathExtension().lastPathComponent,
-                               filename: name, kind: ext.uppercased()), at: 0)
+                               filename: name, kind: ext.uppercased(), driveFileID: driveFileID), at: 0)
         persist()
     }
     func update(_ book: LocalBook, mutate: (inout LocalBook) -> Void) {
