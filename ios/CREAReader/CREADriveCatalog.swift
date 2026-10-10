@@ -195,6 +195,31 @@ final class CREADriveCatalog: ObservableObject {
         return (document, fileID)
     }
 
+    /// Update only the existing private Android manifest. Never create an empty
+    /// replacement which could hide books when Android has not synchronized yet.
+    func savePrivateProgressManifest(_ document: [String: Any], fileID: String) async throws {
+        guard let user = GIDSignIn.sharedInstance.currentUser,
+              user.grantedScopes.contains("https://www.googleapis.com/auth/drive.appdata") else {
+            throw failure("Falta el permiso privado de Drive. Habilítalo desde Ajustes.")
+        }
+        guard JSONSerialization.isValidJSONObject(document) else {
+            throw failure("Los datos de progreso no son un JSON válido.")
+        }
+        let access = try await token()
+        let body = try JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
+        var target = URLComponents(string: "https://www.googleapis.com/upload/drive/v3/files/" + fileID)!
+        target.queryItems = [URLQueryItem(name: "uploadType", value: "media")]
+        var call = URLRequest(url: target.url!)
+        call.httpMethod = "PATCH"
+        call.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
+        call.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        let (_, response) = try await URLSession.shared.upload(for: call, from: body)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            throw failure("Drive rechazó la escritura del progreso (HTTP \(code)).")
+        }
+    }
+
     func download(_ book: CREARemoteBook, into library: LocalLibrary) async {
         guard !downloading.contains(book.id) else { return }
         downloading.insert(book.id)
