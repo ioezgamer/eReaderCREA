@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import CryptoKit
 
 /// Reads Android's v2 progress manifest without deleting or rewriting it.
@@ -6,6 +7,7 @@ import CryptoKit
 final class CREAProgressSync: ObservableObject {
     @Published private(set) var status = "Progreso pendiente de sincronización"
     @Published private(set) var busy = false
+    @Published private(set) var remotePercents: [String: Int] = [:]
 
     private func sha256(for file: URL) -> String? {
         guard let bytes = try? Data(contentsOf: file, options: [.mappedIfSafe]) else { return nil }
@@ -31,6 +33,17 @@ final class CREAProgressSync: ObservableObject {
                 return
             }
             let entries = remote.document["books"] as? [[String: Any]] ?? []
+            var percentages: [String: Int] = [:]
+            for item in entries {
+                guard let remoteID = item["driveFileId"] as? String,
+                      let locator = item["progression"] as? String,
+                      let bytes = locator.data(using: .utf8),
+                      let json = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any],
+                      let locations = json["locations"] as? [String: Any],
+                      let amount = locations["totalProgression"] as? Double else { continue }
+                percentages[remoteID] = Int(max(0, min(100, (amount * 100).rounded())))
+            }
+            remotePercents = percentages
             var applied = 0
             for book in library.books {
                 guard let match = matchingBook(book, manifest: entries, library: library),
