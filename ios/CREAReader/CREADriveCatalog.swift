@@ -39,6 +39,8 @@ final class CREADriveCatalog: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var downloading: Set<String> = []
     @Published var errorMessage: String?
+    @Published private(set) var communityPublishing = false
+    @Published private(set) var communityStatus = ""
     @Published var lastSynced: Date?
     private let cacheKey = "crea.ios.drive.catalog.v1"
     private let folderName = "CREA Reader"
@@ -158,12 +160,107 @@ final class CREADriveCatalog: ObservableObject {
                 url.queryItems = [URLQueryItem(name: "alt", value: "media")]
                 if let data = try? await request(url.url!, token: access),
                    let profile = try? JSONDecoder().decode(CREACommunityProfile.self, from: data),
-                   profile.active && !profile.nickname.isEmpty {
+                   profile.active && !profile.nickname.isEmpty &&
+                   profile.userId != UserDefaults.standard.string(forKey: "crea.reader.syncDeviceID") {
                     members.append(profile)
                 }
             }
             community = members
         } catch { errorMessage = error.localizedDescription }
+    }
+
+    /// Create/update the same public community profile Android uses.
+    /// Only called after explicit opt-in and the separate Drive write permission.
+    func publishCommunity(enabled: Bool, nickname: String, library: LocalLibrary) async -> Bool {
+        guard !communityPublishing else { return false }
+        communityPublishing = true
+        defer { communityPublishing = false }
+        do {
+            guard GIDSignIn.sharedInstance.currentUser?.grantedScopes?
+                .contains("https://www.googleapis.com/auth/drive") == true else {
+                throw failure("Para compartir lecturas, autoriza el permiso adicional de Google Drive.")
+            }
+            let cleanName = String(nickname.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+            guard !enabled || cleanName.count >= 2 else {
+                throw failure("Escribe un apodo de al menos 2 caracteres para compartir.")
+            }
+            if folderID == nil { await synchronize() }
+            guard let folderID else { throw failure("No encuentro la carpeta CREA Reader en Drive.") }
+            let access = try await token()
+            var deviceID = UserDefaults.standard.string(forKey: "crea.reader.syncDeviceID")
+            if deviceID == nil {
+                deviceID = UUID().uuidString
+                UserDefaults.standard.set(deviceID, forKey: "crea.reader.syncDeviceID")
+            }
+            guard let stableID = deviceID else { throw failure("No se pudo obtener el ID local.") }
+            let fileName = "crea-lector-" + stableID + ".json"
+            let known = try await list(query: "'\(folderID)' in parents and name = '\(fileName)' and trashed = false",
+                                       fields: "id,name,mimeType", token: access)
+            let now = Int64(Date().timeIntervalSince1970 * 1000)
+            let readings: [[String: Any]] = enabled ? library.books.compactMap { book in
+                guard let remoteID = book.driveFileID,
+                      book.progress > 0, book.progressUpdatedAt != nil else { return nil }
+                return [
+                    "driveFileId": remoteID,
+                    "percent": Int(max(0, min(100, (book.progress * 100).rounded()))),
+                    "updatedAt": Int64((book.progressUpdatedAt ?? Date()).timeIntervalSince1970 * 1000)
+                ]
+            } : []
+            let profile: [String: Any] = [
+                "userId": stableID,
+                "nickname": enabled ? cleanName : "",
+                "active": enabled,
+                "updatedAt": now,
+                "readings": readings
+            ]
+            let bytes = try JSONSerialization.data(withJSONObject: profile)
+            let response: HTTPURLResponse?
+            if let existing = known.first {
+                var url = URLComponents(string: "https://www.googleapis.com/upload/drive/v3/files/" + existing.id)!
+                url.queryItems = [URLQueryItem(name: "uploadType", value: "media")]
+                var call = URLRequest(url: url.url!)
+                call.httpMethod = "PATCH"
+                call.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
+                call.setValue("application/json; charset=UTF-8", forHTTPHeaderField: "Content-Type")
+                let (_, result) = try await URLSession.shared.upload(for: call, from: bytes)
+                response = result as? HTTPURLResponse
+            } else {
+                // Revoking before any publish should not create a public file.
+                if !enabled {
+                    communityStatus = "No hay ninguna lectura publicada desde este iPhone."
+                    return true
+                }
+                let boundary = "CREA" + UUID().uuidString
+                let metadata: [String: Any] = [
+                    "name": fileName, "mimeType": "application/json", "parents": [folderID]
+                ]
+                let metadataBytes = try JSONSerialization.data(withJSONObject: metadata)
+                var data = Data()
+                data.append(Data(("--" + boundary + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n").utf8))
+                data.append(metadataBytes)
+                data.append(Data(("\r\n--" + boundary + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n").utf8))
+                data.append(bytes)
+                data.append(Data(("\r\n--" + boundary + "--\r\n").utf8))
+                var url = URLComponents(string: "https://www.googleapis.com/upload/drive/v3/files")!
+                url.queryItems = [URLQueryItem(name: "uploadType", value: "multipart"),
+                                  URLQueryItem(name: "fields", value: "id,name")]
+                var call = URLRequest(url: url.url!)
+                call.httpMethod = "POST"
+                call.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
+                call.setValue("multipart/related; boundary=" + boundary, forHTTPHeaderField: "Content-Type")
+                let (_, result) = try await URLSession.shared.upload(for: call, from: data)
+                response = result as? HTTPURLResponse
+            }
+            guard let response, (200...299).contains(response.statusCode) else {
+                throw failure("Drive rechazó el cambio de privacidad (HTTP \(response?.statusCode ?? 0)).")
+            }
+            communityStatus = enabled ? "Se comparten \(readings.count) lecturas con tu apodo."
+                                     : "Tus lecturas dejaron de compartirse."
+            return true
+        } catch {
+            communityStatus = error.localizedDescription
+            return false
+        }
     }
 
     private func coverCacheURL(for book: CREARemoteBook) -> URL {
