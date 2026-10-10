@@ -32,3 +32,8 @@ La compilación de estos cambios aún debe verificarse en Actions. Que compile n
 - En GitHub > Settings > Secrets and variables > Actions > Variables, crear `GOOGLE_IOS_CLIENT_ID` con el Client ID y `GOOGLE_IOS_URL_SCHEME` con su esquema invertido (por ejemplo `com.googleusercontent.apps.XXXXXXXX`). No son claves secretas pero es preferible configurar en Variables.
 - Ejecutar de nuevo el workflow tras configurarlas. Sin esas variables el botón de login aparece deshabilitado, pero la app debe poder compilar para probar lectura local.
 - Para sincronizar Drive se requerirá pedir el scope `https://www.googleapis.com/auth/drive` y `drive.appdata` con consentimiento y reutilizar las reglas de catálogo/sync del Android, sin descargar todos los EPUB.
+
+## Catálogo de Google Drive, fase 1
+Se agregó `CREADriveCatalog.swift`, que utiliza el token obtenido mediante Google Sign-In, localiza la carpeta `CREA Reader`, recorre sus subcarpetas y presenta únicamente los metadatos de libros EPUB/PDF. Guarda en caché la lista para consultarla sin conexión y permite descargar manualmente un libro a la biblioteca local. Usa el alcance OAuth `drive.readonly`, que permite leer libros subidos manualmente. No descarga todo el catálogo.
+
+**Aún no implementado:** sincronización de progreso entre iOS/Android mediante `appDataFolder`, subida de archivos importados, portadas reales y lectura en línea con caché temporal. El alcance actual es de solo lectura. La sincronización debe probarse en una cuenta de Workspace autorizada y la compilación verificarse con GitHub Actions. Si el usuario había iniciado sesión antes de este cambio, podría necesitar cerrar sesión y entrar otra vez para aceptar el nuevo permiso.
