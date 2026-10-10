@@ -127,6 +127,7 @@ struct ReaderHomeView: View {
     @State private var sort = "Últimos"
     @AppStorage("crea.reader.communityShareEnabled") private var communityShareEnabled = false
     @AppStorage("crea.reader.communityNickname") private var communityNickname = ""
+    @State private var catalogStatus = "Todos"
     @State private var catalogSearch = ""
     @State private var catalogCategory = "Todos"
     @State private var collectionTarget: LocalBook?
@@ -456,6 +457,17 @@ struct ReaderHomeView: View {
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
+                                    ForEach(["Todos", "Sin descargar", "Descargados", "Leyendo", "Terminados"], id: \.self) { state in
+                                        Button(state) { catalogStatus = state }
+                                            .font(.subheadline)
+                                            .padding(.horizontal, 12).padding(.vertical, 8)
+                                            .background(catalogStatus == state ? CREAStyle.blue : Color.primary.opacity(0.08), in: Capsule())
+                                            .foregroundStyle(catalogStatus == state ? Color.white : Color.primary)
+                                    }
+                                }
+                            }
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
                                     ForEach(["Todos"] + Array(Set(driveCatalog.books.compactMap { $0.category })).sorted(), id: \.self) { category in
                                         Button(category) { catalogCategory = category }
                                             .font(.subheadline)
@@ -467,8 +479,20 @@ struct ReaderHomeView: View {
                             }
                             LazyVGrid(columns: [GridItem(.adaptive(minimum: 135), spacing: 12)], spacing: 14) {
                                 ForEach(driveCatalog.books.filter { book in
-                                    (catalogCategory == "Todos" || book.category == catalogCategory) &&
-                                    (catalogSearch.isEmpty || book.displayName.localizedStandardContains(catalogSearch))
+                                    let local = library.books.first(where: { $0.driveFileID == book.id })
+                                    let percentage = local.map { Int($0.progress * 100) }
+                                        ?? progressSync.remotePercents[book.id] ?? 0
+                                    let matchesStatus: Bool
+                                    switch catalogStatus {
+                                    case "Sin descargar": matchesStatus = local == nil
+                                    case "Descargados": matchesStatus = local != nil
+                                    case "Leyendo": matchesStatus = percentage > 0 && percentage < 100
+                                    case "Terminados": matchesStatus = percentage >= 100
+                                    default: matchesStatus = true
+                                    }
+                                    return matchesStatus &&
+                                        (catalogCategory == "Todos" || book.category == catalogCategory) &&
+                                        (catalogSearch.isEmpty || book.displayName.localizedStandardContains(catalogSearch))
                                 }) { book in
                                     let localCopy = library.books.first(where: { $0.driveFileID == book.id })
                                     VStack(alignment: .leading, spacing: 10) {
