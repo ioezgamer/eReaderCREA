@@ -364,10 +364,7 @@ struct ReaderHomeView: View {
                             LazyVGrid(columns: [GridItem(.adaptive(minimum: 135), spacing: 12)], spacing: 14) {
                                 ForEach(driveCatalog.books) { book in
                                     VStack(alignment: .leading, spacing: 10) {
-                                        Image(systemName: book.isEPUB ? "book.closed.fill" : "doc.text.fill")
-                                            .font(.largeTitle).frame(maxWidth: .infinity).frame(height: 115)
-                                            .foregroundStyle(CREAStyle.blue)
-                                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                                        CREARemoteCoverView(book: book, catalog: driveCatalog)
                                         Text(book.displayName).font(.subheadline.bold()).lineLimit(2)
                                         Text(book.isEPUB ? "EPUB" : "PDF").font(.caption).foregroundStyle(.secondary)
                                         Button {
