@@ -309,7 +309,12 @@ struct ReaderHomeView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(book.name).font(.headline).foregroundStyle(.primary).lineLimit(2)
                     Text(book.kind).font(.caption).foregroundStyle(.secondary)
-                    ProgressView(value: book.progress).tint(CREAStyle.green)
+                    HStack(spacing: 8) {
+                        ProgressView(value: book.progress).tint(CREAStyle.green)
+                        Text("\(Int(book.progress * 100))%")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer()
                 Image(systemName: book.favorite ? "heart.fill" : "chevron.right")
