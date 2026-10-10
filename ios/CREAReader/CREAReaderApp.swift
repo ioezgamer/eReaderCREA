@@ -125,6 +125,8 @@ struct ReaderHomeView: View {
     @State private var search = ""
     @State private var filter = "Todos"
     @State private var sort = "Últimos"
+    @State private var catalogSearch = ""
+    @State private var catalogCategory = "Todos"
     @AppStorage("crea.reader.theme") private var theme = "Sistema"
     @Environment(\.colorScheme) private var colorScheme
 
@@ -396,12 +398,36 @@ struct ReaderHomeView: View {
                             }
                             Text("\(driveCatalog.books.count) libros encontrados. Solo se descargan los que elijas.")
                                 .font(.subheadline).foregroundStyle(.secondary)
+                            HStack {
+                                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                                TextField("Buscar libros en Drive", text: $catalogSearch)
+                                    .autocorrectionDisabled()
+                            }
+                            .padding(12)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(["Todos"] + Array(Set(driveCatalog.books.compactMap { $0.category })).sorted(), id: \.self) { category in
+                                        Button(category) { catalogCategory = category }
+                                            .font(.subheadline)
+                                            .padding(.horizontal, 12).padding(.vertical, 8)
+                                            .background(catalogCategory == category ? CREAStyle.blue : Color.primary.opacity(0.08), in: Capsule())
+                                            .foregroundStyle(catalogCategory == category ? Color.white : Color.primary)
+                                    }
+                                }
+                            }
                             LazyVGrid(columns: [GridItem(.adaptive(minimum: 135), spacing: 12)], spacing: 14) {
-                                ForEach(driveCatalog.books) { book in
+                                ForEach(driveCatalog.books.filter { book in
+                                    (catalogCategory == "Todos" || book.category == catalogCategory) &&
+                                    (catalogSearch.isEmpty || book.displayName.localizedStandardContains(catalogSearch))
+                                }) { book in
                                     let localCopy = library.books.first(where: { $0.driveFileID == book.id })
                                     VStack(alignment: .leading, spacing: 10) {
                                         CREARemoteCoverView(book: book, catalog: driveCatalog)
                                         Text(book.displayName).font(.subheadline.bold()).lineLimit(2)
+                                        if let category = book.category {
+                                            Text(category).font(.caption2).foregroundStyle(.secondary)
+                                        }
                                         HStack {
                                             Text(book.isEPUB ? "EPUB" : "PDF")
                                             Spacer()
