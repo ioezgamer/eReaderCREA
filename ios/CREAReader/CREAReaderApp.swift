@@ -596,134 +596,176 @@ struct ReaderHomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Qué leen los demás").font(.title2.bold())
-                    Text("Solo aparecen las personas que eligieron compartir sus lecturas con CREA.")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                    Button("Actualizar lecturas compartidas") {
-                        Task { await driveCatalog.loadCommunity() }
-                    }.buttonStyle(.borderedProminent)
-
-                    if !driveCatalog.community.isEmpty {
-                        let counts = Dictionary(
-                            grouping: driveCatalog.community.flatMap { $0.readings },
-                            by: { $0.driveFileId })
-                        let top = counts.map { CREAPopularBook(id: $0.key, count: $0.value.count) }
-                            .sorted {
-                                $0.count == $1.count ? $0.id < $1.id : $0.count > $1.count
-                            }.prefix(4)
-                        if !top.isEmpty {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Label("Los más leídos", systemImage: "chart.bar.fill").font(.headline)
-                                ForEach(Array(top)) { item in
-                                    HStack {
-                                        Text(driveCatalog.books.first(where: { $0.id == item.id })?.displayName
-                                             ?? "Libro compartido")
-                                            .font(.subheadline).lineLimit(2)
-                                        Spacer()
-                                        Text("\(item.count) lectores").font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                            .padding()
-                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
-                        }
-                    }
-
-                    if driveCatalog.community.isEmpty {
-                        ContentUnavailableView("Sin lecturas compartidas", systemImage: "person.2",
-                            description: Text("Aún no hay perfiles públicos disponibles en la carpeta compartida."))
-                    }
-                    ForEach(driveCatalog.community) { member in
-                        VStack(alignment: .leading, spacing: 10) {
-                            Label(member.nickname, systemImage: "person.crop.circle")
-                                .font(.headline)
-                            ForEach(member.readings, id: \.driveFileId) { reading in
-                                let title = driveCatalog.books.first(where: { $0.id == reading.driveFileId })?.displayName ?? "Libro compartido"
-                                HStack {
-                                    Text(title).font(.subheadline).lineLimit(2)
-                                    Spacer()
-                                    Text("\(reading.percent)%").font(.subheadline.monospacedDigit())
-                                }
-                                ProgressView(value: Double(max(0, min(reading.percent, 100))) / 100)
-                                    .tint(CREAStyle.green)
-                            }
-                        }
-                        .padding()
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
-                    }
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("Compartir mis lecturas", systemImage: "person.crop.circle.badge.checkmark")
-                            .font(.headline)
-                        Text("Es opcional. Solo se publica tu apodo, los títulos y el porcentaje de los libros que hayas leído. Puedes desactivarlo.")
-                            .font(.footnote).foregroundStyle(.secondary)
-                        if googleAuth.accountEmail == nil {
-                            Text("Inicia sesión con Google desde Ajustes para compartir.")
-                                .font(.footnote).foregroundStyle(.secondary)
-                        } else if !googleAuth.communityAuthorized {
-                            Button("Autorizar compartir con Comunidad") {
-                                googleAuth.requestCommunityAccess()
-                            }.buttonStyle(.bordered)
-                            Text("Este permiso permite modificar archivos en Drive. El catálogo de solo lectura sigue funcionando sin él.")
-                                .font(.caption).foregroundStyle(.secondary)
-                        } else {
-                            TextField("Apodo que verán los lectores", text: $communityNickname)
-                                .textInputAutocapitalization(.words)
-                                .autocorrectionDisabled()
-                                .textFieldStyle(.roundedBorder)
-                            Button {
-                                Task {
-                                    if await driveCatalog.publishCommunity(
-                                        enabled: true, nickname: communityNickname, library: library) {
-                                        communityShareEnabled = true
-                                    }
-                                }
-                            } label: {
-                                Label(communityShareEnabled ? "Actualizar lo que comparto" : "Empezar a compartir",
-                                      systemImage: "person.crop.circle.badge.plus")
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(driveCatalog.communityPublishing ||
-                                      (communityShareEnabled && communityShareAccount != (googleAuth.accountEmail ?? "")) ||
-                                      communityNickname.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
-                            if communityShareEnabled && communityShareAccount != (googleAuth.accountEmail ?? "") {
-                                Text("Tus lecturas están compartidas desde otra cuenta. Vuelve a esa cuenta para desactivarlo antes de cambiar.")
-                                    .font(.footnote).foregroundStyle(.orange)
-                            }
-
-                            if communityShareEnabled && communityShareAccount == (googleAuth.accountEmail ?? "") {
-                                Button(role: .destructive) {
-                                    Task {
-                                        if await driveCatalog.publishCommunity(
-                                            enabled: false, nickname: communityNickname, library: library) {
-                                            communityShareEnabled = false
-                                            communityShareAccount = ""
-                                        }
-                                    }
-                                } label: {
-                                    Label("Dejar de compartir", systemImage: "person.crop.circle.badge.xmark")
-                                }
-                                .disabled(driveCatalog.communityPublishing)
-                            }
-                        }
-                        if driveCatalog.communityPublishing { ProgressView("Actualizando comunidad") }
-                        if !driveCatalog.communityStatus.isEmpty {
-                            Text(driveCatalog.communityStatus).font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                        if let message = googleAuth.message {
-                            Text(message).font(.footnote).foregroundStyle(.red)
-                        }
-                    }
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
-                }.padding()
+                    communityHeading
+                    communityLeaderboard
+                    communityMembersSection
+                    communitySharingPanel
+                }
+                .padding()
             }
             .background(CREAStyle.gradient)
             .navigationTitle("Comunidad")
             .task(id: googleAuth.accountEmail) {
                 if googleAuth.accountEmail != nil { await driveCatalog.loadCommunity() }
+            }
+        }
+    }
+
+    private var communityHeading: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Qué leen los demás").font(.title2.bold())
+            Text("Solo aparecen las personas que eligieron compartir sus lecturas con CREA.")
+                .font(.subheadline).foregroundStyle(.secondary)
+            Button("Actualizar lecturas compartidas") {
+                Task { await driveCatalog.loadCommunity() }
+            }.buttonStyle(.borderedProminent)
+        }
+    }
+
+    private var communityLeaderboard: some View {
+        let grouped = Dictionary(grouping: driveCatalog.community.flatMap { $0.readings },
+                                 by: { $0.driveFileId })
+        let popular = Array(grouped.map { CREAPopularBook(id: $0.key, count: $0.value.count) }
+            .sorted { $0.count == $1.count ? $0.id < $1.id : $0.count > $1.count }
+            .prefix(4))
+        return Group {
+            if !popular.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("Los más leídos", systemImage: "chart.bar.fill").font(.headline)
+                    ForEach(popular) { item in
+                        HStack {
+                            Text(driveCatalog.books.first(where: { $0.id == item.id })?.displayName
+                                 ?? "Libro compartido")
+                                .font(.subheadline).lineLimit(2)
+                            Spacer()
+                            Text("\(item.count) lectores").font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding()
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
+            }
+        }
+    }
+
+    private var communityMembersSection: some View {
+        Group {
+            if driveCatalog.community.isEmpty {
+                ContentUnavailableView("Sin lecturas compartidas", systemImage: "person.2",
+                    description: Text("Aún no hay perfiles públicos disponibles en la carpeta compartida."))
+            }
+            ForEach(driveCatalog.community) { member in
+                communityMemberCard(member)
+            }
+        }
+    }
+
+    private func communityMemberCard(_ member: CREACommunityProfile) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(member.nickname, systemImage: "person.crop.circle").font(.headline)
+            ForEach(member.readings, id: \.driveFileId) { reading in
+                communityReadingRow(reading)
+            }
+        }
+        .padding()
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    private func communityReadingRow(_ reading: CREACommunityReading) -> some View {
+        let title = driveCatalog.books.first(where: { $0.id == reading.driveFileId })?.displayName
+            ?? "Libro compartido"
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title).font(.subheadline).lineLimit(2)
+                Spacer()
+                Text("\(reading.percent)%").font(.subheadline.monospacedDigit())
+            }
+            ProgressView(value: Double(max(0, min(reading.percent, 100))) / 100)
+                .tint(CREAStyle.green)
+        }
+    }
+
+    private var communityIsOnCurrentAccount: Bool {
+        communityShareEnabled && communityShareAccount == (googleAuth.accountEmail ?? "")
+    }
+
+    private var communitySharingPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Compartir mis lecturas", systemImage: "person.crop.circle.badge.checkmark")
+                .font(.headline)
+            Text("Es opcional. Solo se publica tu apodo, los libros vinculados y el porcentaje de lectura. Puedes desactivarlo.")
+                .font(.footnote).foregroundStyle(.secondary)
+            communitySharingAccountControls
+            if driveCatalog.communityPublishing { ProgressView("Actualizando comunidad") }
+            if !driveCatalog.communityStatus.isEmpty {
+                Text(driveCatalog.communityStatus).font(.footnote).foregroundStyle(.secondary)
+            }
+            if let message = googleAuth.message {
+                Text(message).font(.footnote).foregroundStyle(.red)
+            }
+        }
+        .padding()
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    @ViewBuilder
+    private var communitySharingAccountControls: some View {
+        if googleAuth.accountEmail == nil {
+            Text("Inicia sesión con Google desde Ajustes para compartir.")
+                .font(.footnote).foregroundStyle(.secondary)
+        } else if !googleAuth.communityAuthorized {
+            Button("Autorizar compartir con Comunidad") {
+                googleAuth.requestCommunityAccess()
+            }.buttonStyle(.bordered)
+            Text("Este permiso permite modificar archivos de Google Drive. El catálogo funciona sin él.")
+                .font(.caption).foregroundStyle(.secondary)
+        } else {
+            communitySharingButtons
+        }
+    }
+
+    private var communitySharingButtons: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            TextField("Apodo que verán los lectores", text: $communityNickname)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .textFieldStyle(.roundedBorder)
+            Button {
+                Task {
+                    let success = await driveCatalog.publishCommunity(
+                        enabled: true, nickname: communityNickname, library: library)
+                    if success {
+                        communityShareEnabled = true
+                        communityShareAccount = googleAuth.accountEmail ?? ""
+                    }
+                }
+            } label: {
+                Label(communityIsOnCurrentAccount ? "Actualizar lo que comparto" : "Empezar a compartir",
+                      systemImage: "person.crop.circle.badge.plus")
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(driveCatalog.communityPublishing ||
+                      (communityShareEnabled && !communityIsOnCurrentAccount) ||
+                      communityNickname.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
+            if communityShareEnabled && !communityIsOnCurrentAccount {
+                Text("Tus lecturas se compartieron desde otra cuenta. Inicia sesión con esa cuenta para desactivarlo antes de cambiar.")
+                    .font(.footnote).foregroundStyle(.orange)
+            }
+            if communityIsOnCurrentAccount {
+                Button(role: .destructive) {
+                    Task {
+                        let success = await driveCatalog.publishCommunity(
+                            enabled: false, nickname: communityNickname, library: library)
+                        if success {
+                            communityShareEnabled = false
+                            communityShareAccount = ""
+                        }
+                    }
+                } label: {
+                    Label("Dejar de compartir", systemImage: "person.crop.circle.badge.xmark")
+                }
+                .disabled(driveCatalog.communityPublishing)
             }
         }
     }
