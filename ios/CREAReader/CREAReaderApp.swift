@@ -131,6 +131,7 @@ struct ReaderHomeView: View {
     @State private var filter = "Todos"
     @State private var sort = "Últimos"
     @AppStorage("crea.reader.communityShareEnabled") private var communityShareEnabled = false
+    @AppStorage("crea.reader.communityShareAccount") private var communityShareAccount = ""
     @AppStorage("crea.reader.communityNickname") private var communityNickname = ""
     @State private var catalogStatus = "Todos"
     @State private var catalogSearch = ""
@@ -312,12 +313,12 @@ struct ReaderHomeView: View {
                         }
                     )
                     .onDisappear {
-                        if googleAuth.progressAuthorized || (communityShareEnabled && googleAuth.communityAuthorized) {
+                        if googleAuth.progressAuthorized || (communityShareEnabled && communityShareAccount == (googleAuth.accountEmail ?? "") && googleAuth.communityAuthorized) {
                             Task {
                                 if googleAuth.progressAuthorized {
                                     await progressSync.push(catalog: driveCatalog, library: library)
                                 }
-                                if communityShareEnabled && googleAuth.communityAuthorized {
+                                if communityShareEnabled && communityShareAccount == (googleAuth.accountEmail ?? "") && googleAuth.communityAuthorized {
                                     _ = await driveCatalog.publishCommunity(
                                         enabled: true, nickname: communityNickname, library: library)
                                 }
@@ -684,14 +685,20 @@ struct ReaderHomeView: View {
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(driveCatalog.communityPublishing ||
+                                      (communityShareEnabled && communityShareAccount != (googleAuth.accountEmail ?? "")) ||
                                       communityNickname.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
+                            if communityShareEnabled && communityShareAccount != (googleAuth.accountEmail ?? "") {
+                                Text("Tus lecturas están compartidas desde otra cuenta. Vuelve a esa cuenta para desactivarlo antes de cambiar.")
+                                    .font(.footnote).foregroundStyle(.orange)
+                            }
 
-                            if communityShareEnabled {
+                            if communityShareEnabled && communityShareAccount == (googleAuth.accountEmail ?? "") {
                                 Button(role: .destructive) {
                                     Task {
                                         if await driveCatalog.publishCommunity(
                                             enabled: false, nickname: communityNickname, library: library) {
                                             communityShareEnabled = false
+                                            communityShareAccount = ""
                                         }
                                     }
                                 } label: {
