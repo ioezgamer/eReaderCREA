@@ -30,7 +30,7 @@ final class CREAAuthSession: ObservableObject {
             message = "No se encontró una ventana activa para iniciar sesión."
             return
         }
-        GIDSignIn.sharedInstance.signIn(withPresenting: controller) { [weak self] result, error in
+        GIDSignIn.sharedInstance.signIn(withPresenting: controller, hint: nil, additionalScopes: ["https://www.googleapis.com/auth/drive.readonly"]) { [weak self] result, error in
             Task { @MainActor in
                 if let error { self?.message = error.localizedDescription }
                 else { self?.accountEmail = result?.user.profile?.email }
@@ -66,7 +66,7 @@ struct CREAGoogleAccountView: View {
             if let message = auth.message {
                 Text(message).font(.footnote).foregroundStyle(.red)
             }
-            Text("Iniciar sesión no activa todavía la sincronización con Google Drive.")
+            Text("El catálogo solo consulta libros; descargas manuales. Google Drive solicita permiso de lectura.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
