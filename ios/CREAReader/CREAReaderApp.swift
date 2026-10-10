@@ -43,7 +43,7 @@ struct LocalBook: Identifiable, Codable, Hashable {
 
     private var documents: URL { FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0] }
     func url(for book: LocalBook) -> URL { documents.appendingPathComponent(book.filename) }
-    func add(url source: URL) throws {
+    func add(url source: URL, displayName: String? = nil) throws {
         let ext = source.pathExtension.lowercased()
         guard ["epub", "pdf"].contains(ext) else {
             throw NSError(domain: "CREAReader", code: 1, userInfo: [NSLocalizedDescriptionKey: "Solo se admiten EPUB y PDF."])
@@ -66,7 +66,7 @@ struct LocalBook: Identifiable, Codable, Hashable {
               ((try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 0 else {
             throw NSError(domain: "CREAReader", code: 2, userInfo: [NSLocalizedDescriptionKey: "No se pudo copiar el libro. Descárgalo desde iCloud primero."])
         }
-        books.insert(LocalBook(id: UUID(), name: source.deletingPathExtension().lastPathComponent,
+        books.insert(LocalBook(id: UUID(), name: displayName ?? source.deletingPathExtension().lastPathComponent,
                                filename: name, kind: ext.uppercased()), at: 0)
         persist()
     }
@@ -111,6 +111,7 @@ private enum ReaderTab: Int, CaseIterable {
 struct ReaderHomeView: View {
     @StateObject private var library = LocalLibrary()
     @StateObject private var googleAuth = CREAAuthSession()
+    @StateObject private var driveCatalog = CREADriveCatalog()
     @State private var tab: ReaderTab = .library
     @State private var importing = false
     @State private var selection: LocalBook?
@@ -337,18 +338,62 @@ struct ReaderHomeView: View {
 
     private var catalogScreen: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                Image(systemName: "cloud.fill").font(.system(size: 58)).foregroundStyle(CREAStyle.blue)
-                Text("Catálogo en línea").font(.title2.bold())
-                Text("Todos los libros de tu carpeta CREA Reader en Google Drive, sin descargarlos automáticamente.")
-                    .multilineTextAlignment(.center).foregroundStyle(.secondary)
-                Label("Conexión con Google Drive pendiente", systemImage: "lock.shield")
-                    .font(.subheadline).padding(12).background(.regularMaterial, in: Capsule())
-                Text("La versión iOS necesita OAuth propio y sincronización del catálogo. Tu biblioteca Android no se modifica.")
-                    .font(.footnote).multilineTextAlignment(.center).foregroundStyle(.secondary)
+            Group {
+                if googleAuth.accountEmail == nil {
+                    VStack(spacing: 16) {
+                        Image(systemName: "cloud.fill").font(.largeTitle).foregroundStyle(CREAStyle.blue)
+                        Text("Inicia sesión para consultar tu catálogo de Google Drive")
+                            .multilineTextAlignment(.center)
+                        CREAGoogleAccountView(auth: googleAuth)
+                    }.padding()
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Label("Catálogo de CREA Reader", systemImage: "cloud")
+                                Spacer()
+                                if driveCatalog.isLoading { ProgressView() }
+                                Button("Actualizar") { Task { await driveCatalog.synchronize() } }
+                            }
+                            .padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                            if let issue = driveCatalog.errorMessage {
+                                Text(issue).font(.footnote).foregroundStyle(.red)
+                            }
+                            Text("\(driveCatalog.books.count) libros encontrados. Solo se descargan los que elijas.")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 135), spacing: 12)], spacing: 14) {
+                                ForEach(driveCatalog.books) { book in
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        Image(systemName: book.isEPUB ? "book.closed.fill" : "doc.text.fill")
+                                            .font(.largeTitle).frame(maxWidth: .infinity).frame(height: 115)
+                                            .foregroundStyle(CREAStyle.blue)
+                                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                                        Text(book.displayName).font(.subheadline.bold()).lineLimit(2)
+                                        Text(book.isEPUB ? "EPUB" : "PDF").font(.caption).foregroundStyle(.secondary)
+                                        Button {
+                                            Task { await driveCatalog.download(book, into: library) }
+                                        } label: {
+                                            if driveCatalog.downloading.contains(book.id) {
+                                                ProgressView()
+                                            } else {
+                                                Label("Descargar", systemImage: "arrow.down.circle")
+                                            }
+                                        }
+                                        .disabled(driveCatalog.downloading.contains(book.id))
+                                        .buttonStyle(.borderedProminent)
+                                    }
+                                    .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                                }
+                            }
+                        }.padding()
+                    }
+                    .refreshable { await driveCatalog.synchronize() }
+                    .task(id: googleAuth.accountEmail) { await driveCatalog.synchronize() }
+                }
             }
-            .padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(CREAStyle.gradient).navigationTitle("Catálogo en línea")
+            .background(CREAStyle.gradient)
+            .navigationTitle("Catálogo en línea")
         }
     }
 
