@@ -8,6 +8,7 @@ struct CREARemoteBook: Codable, Identifiable, Hashable {
     let size: String?
     let modifiedTime: String?
     let md5Checksum: String?
+    let thumbnailLink: String?
     var isEPUB: Bool { name.lowercased().hasSuffix(".epub") }
     var displayName: String { (name as NSString).deletingPathExtension }
 }
@@ -102,7 +103,7 @@ final class CREADriveCatalog: ObservableObject {
                 let parent = pending.removeFirst()
                 guard visited.insert(parent).inserted else { continue }
                 let children = try await list(query: "'\(parent)' in parents and trashed = false",
-                                              fields: "id,name,mimeType,size,modifiedTime,md5Checksum", token: access)
+                                              fields: "id,name,mimeType,size,modifiedTime,md5Checksum,thumbnailLink", token: access)
                 for file in children {
                     if file.mimeType == "application/vnd.google-apps.folder" { pending.append(file.id) }
                     else if file.name.lowercased().hasSuffix(".epub") || file.name.lowercased().hasSuffix(".pdf") { found.append(file) }
