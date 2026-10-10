@@ -7,7 +7,8 @@ import ReadiumNavigator
 final class EPUBBookModel: ObservableObject {
     @Published var navigator: EPUBNavigatorViewController?
     @Published var message: String?
-    func load(url: URL) async {
+    private var locationObserver: CREALocationObserver?
+    func load(url: URL, onProgress: @escaping (Double) -> Void) async {
         let http = DefaultHTTPClient()
         let retriever = AssetRetriever(httpClient: http)
         let opener = PublicationOpener(
@@ -30,7 +31,13 @@ final class EPUBBookModel: ObservableObject {
                 message = "No se pudo abrir la publicación: \(issue)"
             case .success(let publication):
                 do {
-                    navigator = try EPUBNavigatorViewController(publication: publication, initialLocation: nil)
+                    let lastLocation = UserDefaults.standard.string(forKey: "crea.epub.locator." + url.lastPathComponent)
+                    let initial = lastLocation.flatMap { try? Locator(jsonString: $0) }
+                    let reader = try EPUBNavigatorViewController(publication: publication, initialLocation: initial)
+                    let observer = CREALocationObserver(url: url, onProgress: onProgress)
+                    locationObserver = observer
+                    reader.delegate = observer
+                    navigator = reader
                 } catch {
                     message = error.localizedDescription
                 }
@@ -42,6 +49,7 @@ final class EPUBBookModel: ObservableObject {
 struct EPUBBookScreen: View {
     let url: URL
     let title: String
+    let onProgress: (Double) -> Void
     @StateObject private var model = EPUBBookModel()
     var body: some View {
         Group {
@@ -55,7 +63,7 @@ struct EPUBBookScreen: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: url) { await model.load(url: url) }
+        .task(id: url) { await model.load(url: url, onProgress: onProgress) }
     }
 }
 
@@ -63,4 +71,20 @@ struct EPUBNavigatorContainer: UIViewControllerRepresentable {
     let navigator: EPUBNavigatorViewController
     func makeUIViewController(context: Context) -> EPUBNavigatorViewController { navigator }
     func updateUIViewController(_ controller: EPUBNavigatorViewController, context: Context) {}
+}
+
+@MainActor
+final class CREALocationObserver: NavigatorDelegate {
+    let url: URL
+    let onProgress: (Double) -> Void
+    init(url: URL, onProgress: @escaping (Double) -> Void) {
+        self.url = url
+        self.onProgress = onProgress
+    }
+    func navigator(_ navigator: Navigator, locationDidChange locator: Locator) {
+        UserDefaults.standard.set(locator.jsonString, forKey: "crea.epub.locator." + url.lastPathComponent)
+        if let progression = locator.locations.totalProgression {
+            onProgress(max(0, min(1, progression)))
+        }
+    }
 }
