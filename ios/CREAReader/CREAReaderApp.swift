@@ -127,6 +127,8 @@ struct ReaderHomeView: View {
     @State private var sort = "Últimos"
     @State private var catalogSearch = ""
     @State private var catalogCategory = "Todos"
+    @State private var collectionTarget: LocalBook?
+    @State private var collectionName = ""
     @AppStorage("crea.reader.theme") private var theme = "Sistema"
     @Environment(\.colorScheme) private var colorScheme
 
@@ -136,7 +138,8 @@ struct ReaderHomeView: View {
             let kind = filter == "Todos" || (filter == "Favoritos" && book.favorite) ||
                 (filter == "Leyendo" && book.progress > 0 && book.progress < 1) ||
                 (filter == "Sin leer" && book.progress == 0) ||
-                (filter == "Terminados" && book.progress >= 1) || filter == book.kind
+                (filter == "Terminados" && book.progress >= 1) || filter == book.kind ||
+                (!book.collection.isEmpty && filter == book.collection)
             return text && kind
         }
         switch sort {
@@ -216,7 +219,8 @@ struct ReaderHomeView: View {
                     }
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
-                            ForEach(["Todos", "Leyendo", "Sin leer", "Terminados", "Favoritos", "EPUB", "PDF"], id: \.self) { value in
+                            ForEach(["Todos", "Leyendo", "Sin leer", "Terminados", "Favoritos", "EPUB", "PDF"] +
+                                Array(Set(library.books.map { $0.collection }.filter { !$0.isEmpty })).sorted(), id: \.self) { value in
                                 Button(value) { filter = value }
                                     .font(.subheadline.weight(.medium))
                                     .padding(.horizontal, 13).padding(.vertical, 9)
@@ -245,6 +249,22 @@ struct ReaderHomeView: View {
             .background(CREAStyle.gradient)
             .navigationTitle("CREA Reader")
             .searchable(text: $search, prompt: "Buscar en mi biblioteca")
+            .alert("Colección", isPresented: Binding(
+                get: { collectionTarget != nil },
+                set: { if !$0 { collectionTarget = nil } }
+            )) {
+                TextField("Nombre de la colección", text: $collectionName)
+                Button("Guardar") {
+                    if let book = collectionTarget {
+                        let cleaned = String(collectionName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+                        library.update(book) { $0.collection = cleaned }
+                    }
+                    collectionTarget = nil
+                }
+                Button("Cancelar", role: .cancel) { collectionTarget = nil }
+            } message: {
+                Text("Escribe un nombre o déjalo vacío para quitar la colección.")
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { importing = true } label: { Image(systemName: "plus.circle.fill").font(.title3) }
@@ -360,7 +380,14 @@ struct ReaderHomeView: View {
             library.update(book) { $0.favorite.toggle() }
         }
         Button("Marcar como terminado", systemImage: "checkmark.circle") {
-            library.update(book) { $0.progress = 1 }
+            library.update(book) {
+                $0.progress = 1
+                $0.progressUpdatedAt = Date()
+            }
+        }
+        Button("Añadir a colección", systemImage: "folder") {
+            collectionName = book.collection
+            collectionTarget = book
         }
         Button("Eliminar del dispositivo", systemImage: "trash", role: .destructive) { library.remove(book) }
     }
