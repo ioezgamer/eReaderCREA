@@ -45,11 +45,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/package/Payload"
           cp -R "$RUNNER_TEMP/crea-build/Build/Products/Release-iphoneos/CREAReader.app" "$RUNNER_TEMP/package/Payload/"
           cd "$RUNNER_TEMP/package"
-          zip -qr "$GITHUB_WORKSPACE/CREA-Reader-iOS-0.8.3-unsigned.ipa" Payload
+          zip -qr "$GITHUB_WORKSPACE/CREA-Reader-iOS-0.9.0-unsigned.ipa" Payload
       - uses: actions/upload-artifact@v4
         with:
           name: CREA-Reader-iOS-unsigned-IPA
-          path: CREA-Reader-iOS-0.8.3-unsigned.ipa
+          path: CREA-Reader-iOS-0.9.0-unsigned.ipa
           if-no-files-found: error
       - name: Publish downloadable IPA in GitHub Releases
         env:
@@ -57,7 +57,7 @@ jobs:
         run: |
           set -e
           TAG="ios-preview-${GITHUB_RUN_NUMBER}"
-          gh release create "$TAG" "CREA-Reader-iOS-0.8.3-unsigned.ipa" \
+          gh release create "$TAG" "CREA-Reader-iOS-0.9.0-unsigned.ipa" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "CREA Reader iOS - prueba ${GITHUB_RUN_NUMBER}" \
