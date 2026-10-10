@@ -45,9 +45,14 @@ final class CREAProgressSync: ObservableObject {
             }
             remotePercents = percentages
             var applied = 0
+            var linked = 0
             for book in library.books {
-                guard let match = matchingBook(book, manifest: entries, library: library),
-                      let locator = match["progression"] as? String,
+                guard let match = matchingBook(book, manifest: entries, library: library) else { continue }
+                if book.driveFileID == nil, let remoteID = match["driveFileId"] as? String {
+                    library.update(book) { $0.driveFileID = remoteID }
+                    linked += 1
+                }
+                guard let locator = match["progression"] as? String,
                       let data = locator.data(using: .utf8),
                       let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let locations = obj["locations"] as? [String: Any],
@@ -63,7 +68,7 @@ final class CREAProgressSync: ObservableObject {
                 UserDefaults.standard.set(locator, forKey: "crea.epub.locator." + book.filename)
                 applied += 1
             }
-            status = "Progreso recuperado de Android: \(applied) libros actualizados"
+            status = "Progreso recuperado: \(applied) avances y \(linked) libros vinculados"
         } catch {
             status = error.localizedDescription
         }
