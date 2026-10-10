@@ -13,6 +13,17 @@ struct CREARemoteBook: Codable, Identifiable, Hashable {
     var displayName: String { (name as NSString).deletingPathExtension }
 }
 
+struct CREACommunityReading: Decodable {
+    let driveFileId: String
+    let percent: Int
+}
+struct CREACommunityProfile: Decodable, Identifiable {
+    let userId: String
+    let nickname: String
+    let active: Bool
+    let readings: [CREACommunityReading]
+    var id: String { userId }
+}
 private struct DriveListResponse: Decodable {
     let files: [CREARemoteBook]
     let nextPageToken: String?
@@ -21,12 +32,14 @@ private struct DriveListResponse: Decodable {
 @MainActor
 final class CREADriveCatalog: ObservableObject {
     @Published private(set) var books: [CREARemoteBook] = []
+    @Published private(set) var community: [CREACommunityProfile] = []
     @Published private(set) var isLoading = false
     @Published private(set) var downloading: Set<String> = []
     @Published var errorMessage: String?
     @Published var lastSynced: Date?
     private let cacheKey = "crea.ios.drive.catalog.v1"
     private let folderName = "CREA Reader"
+    private var folderID: String?
     private let api = "https://www.googleapis.com/drive/v3/files"
 
     init() {
@@ -96,6 +109,7 @@ final class CREADriveCatalog: ObservableObject {
             guard let folder = folders.first else {
                 throw failure("No existe la carpeta CREA Reader en esta cuenta de Google.")
             }
+            folderID = folder.id
             var pending = [folder.id]
             var visited = Set<String>()
             var found: [CREARemoteBook] = []
@@ -116,6 +130,32 @@ final class CREADriveCatalog: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func loadCommunity() async {
+        guard let folderID else {
+            await synchronize()
+            if self.folderID == nil { return }
+            await loadCommunity()
+            return
+        }
+        do {
+            let access = try await token()
+            let files = try await list(query: "'\(folderID)' in parents and name contains 'crea-reader-community-' and trashed = false",
+                                       fields: "id,name,mimeType", token: access)
+            var members: [CREACommunityProfile] = []
+            for file in files.prefix(100) {
+                guard file.name.hasPrefix("crea-reader-community-") && file.name.hasSuffix(".json") else { continue }
+                var url = URLComponents(string: api + "/" + file.id)!
+                url.queryItems = [URLQueryItem(name: "alt", value: "media")]
+                if let data = try? await request(url.url!, token: access),
+                   let profile = try? JSONDecoder().decode(CREACommunityProfile.self, from: data),
+                   profile.active && !profile.nickname.isEmpty {
+                    members.append(profile)
+                }
+            }
+            community = members
+        } catch { errorMessage = error.localizedDescription }
     }
 
     func cover(for book: CREARemoteBook) async -> Data? {
