@@ -116,6 +116,7 @@ struct ReaderHomeView: View {
     @StateObject private var library = LocalLibrary()
     @StateObject private var googleAuth = CREAAuthSession()
     @StateObject private var driveCatalog = CREADriveCatalog()
+    @StateObject private var progressSync = CREAProgressSync()
     @State private var tab: ReaderTab = .library
     @State private var importing = false
     @State private var selection: LocalBook?
@@ -250,12 +251,36 @@ struct ReaderHomeView: View {
             }
             .navigationDestination(item: $selection) { book in
                 if book.kind == "EPUB" {
-                    EPUBBookScreen(url: library.url(for: book), title: book.name, onProgress: { amount in
-                        library.update(book) { $0.progress = amount; $0.lastOpened = Date() }
-                    })
+                    EPUBBookScreen(
+                        url: library.url(for: book),
+                        title: book.name,
+                        onProgress: { amount in
+                            library.update(book) {
+                                $0.progress = amount
+                                $0.progressUpdatedAt = Date()
+                                $0.lastOpened = Date()
+                            }
+                        },
+                        initialLocatorJSON: library.books.first(where: { $0.id == book.id })?.readingLocatorJSON,
+                        onLocator: { serialized in
+                            library.update(book) {
+                                $0.readingLocatorJSON = serialized
+                                $0.progressUpdatedAt = Date()
+                            }
+                        }
+                    )
+                    .onDisappear {
+                        if googleAuth.progressAuthorized {
+                            Task { await progressSync.push(catalog: driveCatalog, library: library) }
+                        }
+                    }
                 } else {
                     PDFReaderScreen(url: library.url(for: book), title: book.name, onProgress: { amount in
-                        library.update(book) { $0.progress = amount; $0.lastOpened = Date() }
+                        library.update(book) {
+                            $0.progress = amount
+                            $0.progressUpdatedAt = Date()
+                            $0.lastOpened = Date()
+                        }
                     })
                 }
             }
@@ -360,7 +385,10 @@ struct ReaderHomeView: View {
                                 Label("Catálogo de CREA Reader", systemImage: "cloud")
                                 Spacer()
                                 if driveCatalog.isLoading { ProgressView() }
-                                Button("Actualizar") { Task { await driveCatalog.synchronize() } }
+                                Button("Actualizar") { Task {
+                                    await driveCatalog.synchronize()
+                                    if googleAuth.progressAuthorized { await progressSync.pull(catalog: driveCatalog, library: library) }
+                                } }
                             }
                             .padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
                             if let issue = driveCatalog.errorMessage {
@@ -375,7 +403,10 @@ struct ReaderHomeView: View {
                                         Text(book.displayName).font(.subheadline.bold()).lineLimit(2)
                                         Text(book.isEPUB ? "EPUB" : "PDF").font(.caption).foregroundStyle(.secondary)
                                         Button {
-                                            Task { await driveCatalog.download(book, into: library) }
+                                            Task {
+                                                await driveCatalog.download(book, into: library)
+                                                if googleAuth.progressAuthorized { await progressSync.pull(catalog: driveCatalog, library: library) }
+                                            }
                                         } label: {
                                             if driveCatalog.downloading.contains(book.id) {
                                                 ProgressView()
@@ -392,8 +423,14 @@ struct ReaderHomeView: View {
                             }
                         }.padding()
                     }
-                    .refreshable { await driveCatalog.synchronize() }
-                    .task(id: googleAuth.accountEmail) { await driveCatalog.synchronize() }
+                    .refreshable {
+                        await driveCatalog.synchronize()
+                        if googleAuth.progressAuthorized { await progressSync.pull(catalog: driveCatalog, library: library) }
+                    }
+                    .task(id: googleAuth.accountEmail) {
+                        await driveCatalog.synchronize()
+                        if googleAuth.progressAuthorized { await progressSync.pull(catalog: driveCatalog, library: library) }
+                    }
                 }
             }
             .background(CREAStyle.gradient)
@@ -483,8 +520,21 @@ struct ReaderHomeView: View {
                 }
                 Section("Sincronización") {
                     CREAGoogleAccountView(auth: googleAuth)
-                    Label("Google Drive: sincronización pendiente", systemImage: "cloud.slash")
-                    Text("La app iOS todavía no solicita permisos de Drive ni sube archivos.").font(.footnote).foregroundStyle(.secondary)
+                    if googleAuth.progressAuthorized {
+                        Button {
+                            Task {
+                                await driveCatalog.synchronize()
+                                await progressSync.pull(catalog: driveCatalog, library: library)
+                                await progressSync.push(catalog: driveCatalog, library: library)
+                            }
+                        } label: {
+                            Label("Sincronizar progreso Android y iOS", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                        .disabled(progressSync.busy)
+                    }
+                    Text(progressSync.status).font(.footnote).foregroundStyle(.secondary)
+                    Text("Se conserva el progreso más reciente y los datos de los demás dispositivos.")
+                        .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("Información") {
                     LabeledContent("Versión iOS", value: "0.8.3 · desarrollo")
