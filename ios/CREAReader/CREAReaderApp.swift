@@ -593,7 +593,7 @@ struct ReaderHomeView: View {
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("Información") {
-                    LabeledContent("Versión iOS", value: "0.8.3 · desarrollo")
+                    LabeledContent("Versión iOS", value: "0.9.0 · beta")
                     Text("CREA Reader · Inspirado en la interfaz Android de CREA").font(.footnote).foregroundStyle(.secondary)
                 }
             }
