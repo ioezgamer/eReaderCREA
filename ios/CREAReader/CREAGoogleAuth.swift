@@ -5,6 +5,7 @@ import GoogleSignIn
 final class CREAAuthSession: ObservableObject {
     @Published private(set) var accountEmail: String?
     @Published private(set) var progressAuthorized = false
+    @Published private(set) var communityAuthorized = false
     private let privateScope = "https://www.googleapis.com/auth/drive.appdata"
     @Published var message: String?
     var configured: Bool {
@@ -20,6 +21,7 @@ final class CREAAuthSession: ObservableObject {
             Task { @MainActor in
                 self?.accountEmail = user?.profile?.email
                 self?.progressAuthorized = user?.grantedScopes?.contains("https://www.googleapis.com/auth/drive.appdata") ?? false
+                self?.communityAuthorized = user?.grantedScopes?.contains("https://www.googleapis.com/auth/drive") ?? false
             }
         }
     }
@@ -41,6 +43,7 @@ final class CREAAuthSession: ObservableObject {
                 else {
                     self?.accountEmail = result?.user.profile?.email
                     self?.progressAuthorized = result?.user.grantedScopes?.contains("https://www.googleapis.com/auth/drive.appdata") ?? false
+                    self?.communityAuthorized = result?.user.grantedScopes?.contains("https://www.googleapis.com/auth/drive") ?? false
                 }
             }
         }
@@ -71,10 +74,41 @@ final class CREAAuthSession: ObservableObject {
             }
         }
     }
+    /// Requires explicit user action: full Drive scope is used only when enabling
+    /// community sharing. The regular catalog works with drive.readonly.
+    func requestCommunityAccess() {
+        guard let user = GIDSignIn.sharedInstance.currentUser else {
+            message = "Primero inicia sesión con Google."
+            return
+        }
+        let scope = "https://www.googleapis.com/auth/drive"
+        if user.grantedScopes?.contains(scope) == true {
+            communityAuthorized = true
+            return
+        }
+        guard let controller = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive })?
+            .windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+            message = "No se encontró una ventana activa."
+            return
+        }
+        user.addScopes([scope], presenting: controller) { [weak self] result, error in
+            Task { @MainActor in
+                if let error { self?.message = error.localizedDescription }
+                else {
+                    self?.communityAuthorized = result?.user.grantedScopes?.contains(scope) ?? false
+                    self?.message = self?.communityAuthorized == true ? nil : "No se autorizó compartir lecturas."
+                }
+            }
+        }
+    }
+
     func signOut() {
         GIDSignIn.sharedInstance.signOut()
         accountEmail = nil
         progressAuthorized = false
+        communityAuthorized = false
     }
 }
 
