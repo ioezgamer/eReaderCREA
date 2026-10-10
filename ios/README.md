@@ -8,9 +8,9 @@ Aplicación nativa para iPhone y iPad (iOS 17 o superior). Código Android intac
 - Archivos: importación local EPUB/PDF desde Archivos e iCloud Drive, eliminación y favoritos.
 - Lectores: EPUB con Readium Swift 3.8; PDF con PDFKit; lectura local sin conexión.
 - Portadas: extracción del EPUB, miniatura primera página del PDF, miniatura Google Drive cuando esté disponible.
-- EPUB: porcentaje real, locator Readium guardado/restaurado, controles de tamaño de fuente, modo oscuro y desplazamiento vertical.
-- Biblioteca: cuadrícula/lista, filtros, búsqueda, progreso y continuar leyendo.
-- Google: inicio/cierre de sesión con OAuth iOS; catálogo Drive por subcarpetas/categorías, búsqueda, caché de metadatos y descarga individual. **No descarga automáticamente todos los libros.**
+- EPUB: porcentaje real, locator Readium guardado/restaurado, controles persistentes de tamaño de fuente, modo oscuro y desplazamiento vertical.
+- Biblioteca: cuadrícula/lista, filtros, búsqueda, progreso, continuar leyendo y colecciones locales creadas desde el menú de cada libro.
+- Google: inicio/cierre de sesión con OAuth iOS; catálogo Drive por subcarpetas/categorías, búsqueda, caché de metadatos, descarga individual y distinción descargado/en línea. **No descarga automáticamente todos los libros.**
 - Comunidad: lectura de perfiles voluntariamente publicados por Android (`crea-lector-*.json`). No publica lecturas de iOS por defecto.
 - Progreso Android/iOS: lectura del manifiesto privado `crea-reader-library-v2.json` mediante `drive.appdata`; vincula libros por Drive file ID o SHA-256 idéntico, aplica el timestamp más reciente y recupera el locator EPUB. Al cerrar un EPUB envía posiciones más recientes a ese mismo manifiesto, conservando los demás registros JSON y la lista de dispositivos.
 - Catálogo muestra si un libro está descargado, su avance conocido y permite abrirlo sin descargar duplicados cuando se vincula con Drive.
@@ -47,7 +47,7 @@ Si no existe manifiesto de Android, iOS **no crea una copia vacía** que pueda o
 - Lectura EPUB remota en línea con caché temporal sin añadir el libro a la biblioteca.
 - Subida a Drive de libros importados directamente en iOS y reconciliación completa del catálogo.
 - Publicación voluntaria de la actividad de iOS en Comunidad, con permisos específicos y revocación.
-- Colecciones avanzadas, marcadores, resaltados, notas, búsqueda de texto y TTS.
+- Sincronización de colecciones locales con Android, marcadores, resaltados, notas, búsqueda de texto y TTS.
 - Funciones de IA y todos los elementos visuales de Android; pruebas de paridad pantalla por pantalla.
 - Verificación real de carga de imágenes de portada con EPUB grandes, fallos de red y de permisos, y pruebas de sincronización concurrente.
 
@@ -58,3 +58,6 @@ GitHub Actions: [iOS unsigned IPA (FlareStore)](https://github.com/ioezgamer/eRe
 En una ejecución correcta, el archivo `CREA-Reader-iOS-0.9.0-unsigned.ipa` se publica automáticamente como prerelease en [GitHub Releases](https://github.com/ioezgamer/eReaderCREA/releases). **No se instala sin una firma válida**.
 
 Una X roja significa que ese commit no generó una IPA válida. Los logs de compilación también se adjuntan como `ios-build-errors` al fallar el compilador.
+
+## Diagnóstico de compilación
+El workflow ejecuta una comprobación de sintaxis Swift antes de Xcode y publica un estado `crea-ios-ipa` sobre el commit. Esto permite consultar el resultado real desde GitHub, sin confundir cambios de código con una IPA verificada. Si falla, revisar el artefacto `ios-build-errors` o el registro del paso Swift/Xcode del workflow.
