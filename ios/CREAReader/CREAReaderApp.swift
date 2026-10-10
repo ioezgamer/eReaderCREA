@@ -248,6 +248,18 @@ struct ReaderHomeView: View {
             }
             .background(CREAStyle.gradient)
             .navigationTitle("CREA Reader")
+            .task(id: googleAuth.progressAuthorized) {
+                if googleAuth.progressAuthorized {
+                    await driveCatalog.synchronize()
+                    await progressSync.pull(catalog: driveCatalog, library: library)
+                }
+            }
+            .refreshable {
+                if googleAuth.progressAuthorized {
+                    await driveCatalog.synchronize()
+                    await progressSync.pull(catalog: driveCatalog, library: library)
+                }
+            }
             .searchable(text: $search, prompt: "Buscar en mi biblioteca")
             .alert("Colección", isPresented: Binding(
                 get: { collectionTarget != nil },
