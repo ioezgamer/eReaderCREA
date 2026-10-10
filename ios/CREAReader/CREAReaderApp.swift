@@ -398,24 +398,54 @@ struct ReaderHomeView: View {
                                 .font(.subheadline).foregroundStyle(.secondary)
                             LazyVGrid(columns: [GridItem(.adaptive(minimum: 135), spacing: 12)], spacing: 14) {
                                 ForEach(driveCatalog.books) { book in
+                                    let localCopy = library.books.first(where: { $0.driveFileID == book.id })
                                     VStack(alignment: .leading, spacing: 10) {
                                         CREARemoteCoverView(book: book, catalog: driveCatalog)
                                         Text(book.displayName).font(.subheadline.bold()).lineLimit(2)
-                                        Text(book.isEPUB ? "EPUB" : "PDF").font(.caption).foregroundStyle(.secondary)
-                                        Button {
-                                            Task {
-                                                await driveCatalog.download(book, into: library)
-                                                if googleAuth.progressAuthorized { await progressSync.pull(catalog: driveCatalog, library: library) }
-                                            }
-                                        } label: {
-                                            if driveCatalog.downloading.contains(book.id) {
-                                                ProgressView()
+                                        HStack {
+                                            Text(book.isEPUB ? "EPUB" : "PDF")
+                                            Spacer()
+                                            if localCopy != nil {
+                                                Label("Descargado", systemImage: "checkmark.circle.fill")
                                             } else {
-                                                Label("Descargar", systemImage: "arrow.down.circle")
+                                                Text("En línea")
                                             }
                                         }
-                                        .disabled(driveCatalog.downloading.contains(book.id))
-                                        .buttonStyle(.borderedProminent)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        if let percent = localCopy.map({ Int($0.progress * 100) }) ?? progressSync.remotePercents[book.id],
+                                           percent > 0 {
+                                            HStack(spacing: 6) {
+                                                ProgressView(value: Double(percent) / 100).tint(CREAStyle.green)
+                                                Text("\(percent)%").font(.caption2.monospacedDigit())
+                                            }
+                                        }
+                                        if let localCopy {
+                                            Button {
+                                                tab = .library
+                                                open(localCopy)
+                                            } label: {
+                                                Label("Leer", systemImage: "book")
+                                            }
+                                            .buttonStyle(.borderedProminent)
+                                        } else {
+                                            Button {
+                                                Task {
+                                                    await driveCatalog.download(book, into: library)
+                                                    if googleAuth.progressAuthorized {
+                                                        await progressSync.pull(catalog: driveCatalog, library: library)
+                                                    }
+                                                }
+                                            } label: {
+                                                if driveCatalog.downloading.contains(book.id) {
+                                                    ProgressView()
+                                                } else {
+                                                    Label("Descargar", systemImage: "arrow.down.circle")
+                                                }
+                                            }
+                                            .disabled(driveCatalog.downloading.contains(book.id))
+                                            .buttonStyle(.borderedProminent)
+                                        }
                                     }
                                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
