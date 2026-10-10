@@ -141,11 +141,11 @@ final class CREADriveCatalog: ObservableObject {
         }
         do {
             let access = try await token()
-            let files = try await list(query: "'\(folderID)' in parents and name contains 'crea-reader-community-' and trashed = false",
+            let files = try await list(query: "'\(folderID)' in parents and name contains 'crea-lector-' and trashed = false",
                                        fields: "id,name,mimeType", token: access)
             var members: [CREACommunityProfile] = []
             for file in files.prefix(100) {
-                guard file.name.hasPrefix("crea-reader-community-") && file.name.hasSuffix(".json") else { continue }
+                guard file.name.hasPrefix("crea-lector-") && file.name.hasSuffix(".json") else { continue }
                 var url = URLComponents(string: api + "/" + file.id)!
                 url.queryItems = [URLQueryItem(name: "alt", value: "media")]
                 if let data = try? await request(url.url!, token: access),
