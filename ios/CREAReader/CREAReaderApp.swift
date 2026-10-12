@@ -8,7 +8,7 @@ struct CREAReaderApp: App {
     var body: some Scene { WindowGroup { ReaderHomeView().onOpenURL { _ = GIDSignIn.sharedInstance.handle($0) } } }
 }
 
-private enum CREAStyle {
+enum CREAStyle {
     static let blue = Color(red: 0.14, green: 0.47, blue: 0.88)
     static let pink = Color(red: 0.89, green: 0.28, blue: 0.65)
     static let orange = Color(red: 0.98, green: 0.54, blue: 0.22)
