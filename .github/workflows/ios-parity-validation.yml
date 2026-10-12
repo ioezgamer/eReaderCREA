@@ -55,7 +55,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/package/Payload"
           cp -R "$RUNNER_TEMP/parity-device/Build/Products/Release-iphoneos/CREAReader.app" "$RUNNER_TEMP/package/Payload/"
           cd "$RUNNER_TEMP/package"
-          zip -qr "$GITHUB_WORKSPACE/CREA-Reader-iOS-0.10.0-unsigned.ipa" Payload
+          zip -qr "$GITHUB_WORKSPACE/CREA-Reader-iOS-0.10.1-unsigned.ipa" Payload
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -63,4 +63,4 @@ jobs:
           path: |
             ${{ runner.temp }}/parity-*.log
             ${{ runner.temp }}/parity-tests.xcresult
-            CREA-Reader-iOS-0.10.0-unsigned.ipa
+            CREA-Reader-iOS-0.10.1-unsigned.ipa

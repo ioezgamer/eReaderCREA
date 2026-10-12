@@ -1,4 +1,4 @@
-# CREA Reader iOS 0.10.0
+# CREA Reader iOS 0.10.1
 
 Aplicación nativa para iPhone/iPad con iOS 17 o posterior, basada en `feature/ios-flarestore`. Esta entrega amplía la versión iOS con las herramientas y flujos de Android. La comparación detallada y las pruebas físicas están en [PARITY.md](PARITY.md).
 
