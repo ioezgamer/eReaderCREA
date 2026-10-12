@@ -1,4 +1,4 @@
-# CREA Reader iOS 0.9.1 beta
+# CREA Reader iOS 0.9.3 beta
 
 Aplicación nativa para iPhone y iPad (iOS 17 o superior). Código Android intacto. La aplicación iOS se compila mediante GitHub Actions en macOS y se distribuye como **IPA sin firmar** para instalar después con un firmador compatible como FlareStore.
 
@@ -44,7 +44,7 @@ Si no existe manifiesto de Android, iOS **no crea una copia vacía** que pueda o
 
 ## Funciones Android aún pendientes de portabilidad completa
 
-- Lectura EPUB remota en línea con caché temporal sin añadir el libro a la biblioteca.
+- Evaluación en dispositivo de la nueva lectura temporal en línea y vistas previas de EPUB/PDF.
 - Subida a Drive de libros importados directamente en iOS y reconciliación completa del catálogo.
 - Publicación voluntaria de la actividad de iOS en Comunidad, con permisos específicos y revocación.
 - Sincronización de colecciones locales con Android, marcadores, resaltados, notas, búsqueda de texto y TTS.
@@ -55,7 +55,7 @@ Si no existe manifiesto de Android, iOS **no crea una copia vacía** que pueda o
 
 GitHub Actions: [iOS unsigned IPA (FlareStore)](https://github.com/ioezgamer/eReaderCREA/actions/workflows/ios-unsigned-ipa.yml). Cada push a esta rama ejecuta la compilación en macOS. Ejecuciones obsoletas se cancelan para evitar gastar minutos en versiones viejas.
 
-En una ejecución correcta, el archivo `CREA-Reader-iOS-0.9.1-unsigned.ipa` se publica automáticamente como prerelease en [GitHub Releases](https://github.com/ioezgamer/eReaderCREA/releases). **No se instala sin una firma válida**.
+En una ejecución correcta, el archivo `CREA-Reader-iOS-0.9.3-unsigned.ipa` se publica automáticamente como prerelease en [GitHub Releases](https://github.com/ioezgamer/eReaderCREA/releases). **No se instala sin una firma válida**.
 
 Una X roja significa que ese commit no generó una IPA válida. Los logs de compilación también se adjuntan como `ios-build-errors` al fallar el compilador.
 
@@ -73,3 +73,16 @@ El workflow ejecuta una comprobación de sintaxis Swift antes de Xcode y publica
 - La tabla de popularidad representa solo lectores voluntarios de esa carpeta, no toda la comunidad de CREA.
 
 **Limitaciones:** la subida de perfiles depende de que el administrador de Google Workspace permita el nuevo alcance OAuth; el algoritmo remoto de portadas y el flujo de revocación necesitan pruebas reales. El permiso Drive completo es sensible y puede requerir verificación para proyectos con usuarios externos.
+
+## 0.9.3 beta: Información, muestra y lectura en línea
+
+Al tocar la portada o **Vista previa y ficha** desde Catálogo, se abre una ficha con:
+- Portada, formato, tamaño, título/autor/editorial desde metadatos reales (OPF de EPUB, PDFKit o descripción de Drive).
+- Sinopsis auténtica si existe en el paquete EPUB, asunto del PDF o descripción de Drive. Si no existe, se muestra claramente «sinopsis no disponible»; no se inventan sinopsis.
+- Número exacto de páginas PDF mediante PDFKit (para PDF de hasta 15 MB se carga al abrir la ficha; para mayores, se solicita al abrir la muestra). En EPUB solo se informa número de páginas cuando la edición declara un dato editorial explícito; el resto indica que la paginación depende del lector.
+- Botón **Vista previa**: primeras 3 páginas para PDF, primeras secciones EPUB auténticas cuando puede extraerse texto mediante solicitudes HTTP Range.
+- Botón **Leer en línea**: copia temporal autenticada desde Drive, sin agregar a Mi biblioteca; sirve en el lector nativo Readium/PDFKit. Requiere conexión inicial; el archivo temporal se borra al salir y se limpian copias huérfanas al reiniciar la app.
+- Botón **Descargar**: usa el flujo existente para guardar una copia permanente en Mi biblioteca.
+- Un archivo EPUB remoto con ZIP64, metadatos ausentes o extracción no compatible puede carecer de muestra o sinopsis aunque la lectura temporal continúe funcionando. Los PDF cifrados también pueden impedir la muestra. Los detalles tienen un límite de tamaño de 250 MB para lectura temporal y deben probarse en dispositivos físicos.
+
+**Alcance:** esta lectura temporal no guarda automáticamente progreso de lectura ni posición en la biblioteca, y no reemplaza la sincronización entre Android e iOS para los libros descargados. La compilación correcta tampoco demuestra que cada EPUB/PDF se pueda abrir; se necesita validar con archivos reales.
