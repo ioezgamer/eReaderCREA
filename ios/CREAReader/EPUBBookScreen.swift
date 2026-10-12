@@ -9,13 +9,25 @@ final class EPUBBookModel: ObservableObject {
     @Published var message: String?
     private var locationObserver: CREALocationObserver?
     private var publication: Publication?
+    private var preservedSelection: (text: String, context: String)?
 
     struct AIChapter {
         let text: String
         let title: String?
     }
 
+    func preservePassageSelection() {
+        if let current = selectedPassage() {
+            preservedSelection = current
+        }
+    }
+
     func selectedPassage() -> (text: String, context: String)? {
+        guard let current = activePassage() else { return preservedSelection }
+        return current
+    }
+
+    private func activePassage() -> (text: String, context: String)? {
         guard let text = navigator?.currentSelection?.locator.text,
               let picked = text.highlight?.trimmingCharacters(in: .whitespacesAndNewlines),
               !picked.isEmpty else { return nil }
@@ -133,6 +145,7 @@ struct EPUBBookScreen: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     if ai.canUse {
                         Button {
+                            model.preservePassageSelection()
                             showAI = true
                         } label: {
                             Label("Claude", systemImage: "sparkles")
