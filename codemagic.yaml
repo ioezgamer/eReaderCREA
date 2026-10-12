@@ -1,0 +1,103 @@
+# Manual alternative to GitHub Actions. No automatic triggers or publishing secrets.
+# Produces an unsigned IPA and a FlareStore website ZIP; does not deploy the site.
+workflows:
+  crea-reader-ios-flarestore:
+    name: CREA Reader - IPA and FlareStore artifacts
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      xcode: "16.4"
+      vars:
+        GOOGLE_IOS_CLIENT_ID: "101673121950-e6jb7e03imhbts9dc98em5gof37ebkn8.apps.googleusercontent.com"
+        GOOGLE_IOS_URL_SCHEME: "com.googleusercontent.apps.101673121950-e6jb7e03imhbts9dc98em5gof37ebkn8"
+    scripts:
+      - name: Generate official icons and Xcode project
+        script: |
+          #!/bin/bash
+          set -euo pipefail
+          cd "$CM_BUILD_DIR"
+          command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
+          python3 - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+          root = Path('ios/CREAReader/Assets.xcassets/AppIcon.appiconset')
+          source = Path('ios/IconSource.png')
+          if not source.is_file():
+              raise SystemExit('Missing official CREA Reader icon')
+          for item in json.loads((root / 'Contents.json').read_text())['images']:
+              pixels = int(round(float(item['size'].split('x')[0]) * float(item['scale'].rstrip('x'))))
+              subprocess.run(['sips', '-s', 'format', 'png', '-z', str(pixels), str(pixels),
+                              str(source), '--out', str(root / item['filename'])],
+                             check=True, stdout=subprocess.DEVNULL)
+          PY
+          (cd ios && xcodegen generate)
+          xcrun swiftc -frontend -parse ios/CREAReader/*.swift
+      - name: Compile for physical iPhone and iPad without signing
+        script: |
+          #!/bin/bash
+          set -euo pipefail
+          cd "$CM_BUILD_DIR"
+          case "$BUILD_NUMBER" in
+            ''|*[!0-9]*) echo 'Invalid Codemagic build number'; exit 1 ;;
+          esac
+          BUILD_VERSION="$((1000 + BUILD_NUMBER))"
+          xcodebuild -resolvePackageDependencies \
+            -project ios/CREAReader.xcodeproj -scheme CREAReader \
+            -derivedDataPath "$CM_BUILD_DIR/.cm-derived"
+          xcodebuild \
+            GOOGLE_IOS_CLIENT_ID="$GOOGLE_IOS_CLIENT_ID" \
+            GOOGLE_IOS_URL_SCHEME="$GOOGLE_IOS_URL_SCHEME" \
+            -project ios/CREAReader.xcodeproj -scheme CREAReader \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$CM_BUILD_DIR/.cm-derived" \
+            CURRENT_PROJECT_VERSION="$BUILD_VERSION" CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee "$CM_BUILD_DIR/ios-build.log"
+      - name: Validate IPA and prepare FlareStore distribution files
+        script: |
+          #!/bin/bash
+          set -euo pipefail
+          cd "$CM_BUILD_DIR"
+          APP="$CM_BUILD_DIR/.cm-derived/Build/Products/Release-iphoneos/CREAReader.app"
+          test -s "$APP/Assets.car"
+          python3 - "$APP" <<'PY'
+          import plistlib
+          import sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          with (root / 'Info.plist').open('rb') as source:
+              info = plistlib.load(source)
+          if info.get('CFBundleIdentifier') != 'org.crea.reader.ios':
+              raise SystemExit('Unexpected bundle identifier')
+          if not info.get('CFBundleShortVersionString') or not info.get('CFBundleVersion'):
+              raise SystemExit('Missing version or build number')
+          if not (root / info['CFBundleExecutable']).is_file():
+              raise SystemExit('Missing compiled executable')
+          icon = info.get('CFBundleIcons', {}).get('CFBundlePrimaryIcon', {}).get('CFBundleIconName')
+          if (icon or info.get('CFBundleIconName')) != 'AppIcon':
+              raise SystemExit('AppIcon is not registered')
+          PY
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")"
+          IPA="CREA-Reader-iOS-$VERSION-unsigned.ipa"
+          mkdir -p .cm-package/Payload dist/flarestore-public
+          cp -R "$APP" .cm-package/Payload/
+          (cd .cm-package && zip -qr "$CM_BUILD_DIR/dist/$IPA" Payload)
+          unzip -t "dist/$IPA" >/dev/null
+          cp "dist/$IPA" dist/flarestore-public/
+          cp ios/IconSource.png dist/flarestore-public/icon.png
+          python3 ios/scripts/generate_flarestore_source.py \
+            --plist "$APP/Info.plist" --ipa "$CM_BUILD_DIR/dist/$IPA" \
+            --output dist/flarestore-public/source.json \
+            --base-url "https://ioezgamer.github.io/eReaderCREA/" \
+            --notes "CREA Reader iOS $VERSION: progreso de lectura en linea y continuidad al descargar. Mantiene Google Drive y Claude IA opcional."
+          python3 -m json.tool dist/flarestore-public/source.json >/dev/null
+          printf '%s\n' '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CREA Reader</title><h1>CREA Reader para iOS</h1><p><a href="source.json">Fuente FlareStore</a></p></html>' > dist/flarestore-public/index.html
+          (cd dist/flarestore-public && shasum -a 256 "$IPA" > SHA256SUMS)
+          (cd dist/flarestore-public && zip -qr ../flarestore-site.zip .)
+          echo "Unsigned IPA and FlareStore files prepared as artifacts. No live deployment was performed."
+    artifacts:
+      - dist/*.ipa
+      - dist/flarestore-site.zip
+      - dist/flarestore-public/source.json
+      - dist/flarestore-public/SHA256SUMS
+      - ios-build.log
