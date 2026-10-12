@@ -1,6 +1,18 @@
 import Foundation
 import Compression
 
+struct CREABookMetadata: Codable {
+    var title: String?
+    var author: String?
+    var summary: String?
+    var publisher: String?
+    var language: String?
+    var published: String?
+    var editionPages: Int?
+    var excerpt: String?
+}
+
+
 /// Small, range-only ZIP reader for EPUB cover extraction.
 /// It never downloads an entire EPUB. All reads have explicit byte limits.
 enum CREARemoteEPUBCover {
@@ -116,11 +128,48 @@ enum CREARemoteEPUBCover {
         var epub3Cover: String?
         var fallbackCover: String?
         var itemByID: [String: String] = [:]
+        var spineIDs: [String] = []
+        var title: String?
+        var author: String?
+        var summary: String?
+        var publisher: String?
+        var language: String?
+        var published: String?
+        var editionPages: Int?
+        private var insideMetadata = false
+        private var activeField: String?
+        private var textBuffer = ""
+        private var metaPageProperty = false
+
+        private func clean(_ value: String) -> String {
+            var plain = value.replacingOccurrences(of: "<[^>]*>", with: " ", options: .regularExpression)
+            for (entity, character) in [("&nbsp;", " "), ("&amp;", "&"), ("&quot;", "\""),
+                                        ("&lt;", "<"), ("&gt;", ">"), ("&#39;", "'")] {
+                plain = plain.replacingOccurrences(of: entity, with: character)
+            }
+            return plain.components(separatedBy: .whitespacesAndNewlines)
+                .filter { !$0.isEmpty }.joined(separator: " ")
+        }
 
         func parser(_ parser: XMLParser, didStartElement elementName: String,
                     namespaceURI: String?, qualifiedName qName: String?,
                     attributes: [String: String]) {
             let name = elementName.split(separator: ":").last.map(String.init) ?? elementName
+            if name == "metadata" { insideMetadata = true }
+            if name == "itemref", let id = attributes["idref"] { spineIDs.append(id) }
+            if insideMetadata {
+                if ["title", "creator", "description", "publisher", "language", "date", "extent"].contains(name) {
+                    activeField = name
+                    textBuffer = ""
+                } else if name == "meta" {
+                    let value = (attributes["property"] ?? attributes["name"] ?? "").lowercased()
+                    if value.contains("numberofpages") || value == "calibre:pages" {
+                        activeField = "pages"
+                        metaPageProperty = true
+                        textBuffer = attributes["content"] ?? ""
+                    }
+                }
+            }
             if name == "rootfile", let path = attributes["full-path"] { containerPath = path }
             if name == "meta", attributes["name"] == "cover" { coverID = attributes["content"] }
             if name == "item", let href = attributes["href"] {
@@ -133,6 +182,38 @@ enum CREARemoteEPUBCover {
                     fallbackCover = href
                 }
             }
+        }
+
+        func parser(_ parser: XMLParser, foundCharacters string: String) {
+            if activeField != nil { textBuffer += string }
+        }
+
+        func parser(_ parser: XMLParser, didEndElement elementName: String,
+                    namespaceURI: String?, qualifiedName qName: String?) {
+            let name = elementName.split(separator: ":").last.map(String.init) ?? elementName
+            if let field = activeField, name == field || (name == "meta" && metaPageProperty) {
+                let value = clean(textBuffer)
+                if !value.isEmpty {
+                    switch field {
+                    case "title": title = title ?? value
+                    case "creator": author = author ?? value
+                    case "description": summary = summary ?? value
+                    case "publisher": publisher = publisher ?? value
+                    case "language": language = language ?? value
+                    case "date": published = published ?? value
+                    case "extent", "pages":
+                        let number = value.components(separatedBy: CharacterSet.decimalDigits.inverted).first {
+                            !$0.isEmpty
+                        }.flatMap(Int.init)
+                        if let number, (1...20000).contains(number) { editionPages = number }
+                    default: break
+                    }
+                }
+                activeField = nil
+                metaPageProperty = false
+                textBuffer = ""
+            }
+            if name == "metadata" { insideMetadata = false }
         }
 
         static func parse(_ data: Data) -> Scanner? {
@@ -153,6 +234,44 @@ enum CREARemoteEPUBCover {
             else { parts.append(component) }
         }
         return parts.joined(separator: "/")
+    }
+
+    private static func firstExcerpt(in archive: Archive, opfPath: String, package: Scanner) async -> String? {
+        for item in package.spineIDs.prefix(8) {
+            guard let relative = package.itemByID[item],
+                  !relative.lowercased().contains("nav"),
+                  let data = await archive.read(resolved(path: relative, relativeTo: opfPath)),
+                  let raw = String(data: data, encoding: .utf8) else { continue }
+            var plain = raw
+                .replacingOccurrences(of: "(?is)<(script|style|head|nav)[^>]*>.*?</\\1>", with: " ", options: .regularExpression)
+                .replacingOccurrences(of: "(?is)<[^>]+>", with: " ", options: .regularExpression)
+            for (a, b) in [("&nbsp;", " "), ("&amp;", "&"), ("&lt;", "<"),
+                           ("&gt;", ">"), ("&quot;", "\""), ("&#39;", "'")] {
+                plain = plain.replacingOccurrences(of: a, with: b)
+            }
+            plain = plain.components(separatedBy: .whitespacesAndNewlines)
+                .filter { !$0.isEmpty }.joined(separator: " ")
+            if plain.count >= 100 {
+                return String(plain.prefix(1400))
+            }
+        }
+        return nil
+    }
+
+    /// Reads genuine EPUB package metadata and an initial excerpt using bounded byte ranges.
+    /// It does not invent descriptions or assume a fixed page count for reflowable text.
+    static func inspect(size: Int64,
+                        readRange: @escaping (Int64, Int64) async -> Data?) async -> CREABookMetadata? {
+        guard let zip = await open(size: size, readRange: readRange),
+              let container = await zip.read("META-INF/container.xml"),
+              let opfPath = Scanner.parse(container)?.containerPath,
+              let package = await zip.read(opfPath),
+              let scanner = Scanner.parse(package) else { return nil }
+        let excerpt = await firstExcerpt(in: zip, opfPath: opfPath, package: scanner)
+        return CREABookMetadata(title: scanner.title, author: scanner.author,
+                                summary: scanner.summary, publisher: scanner.publisher,
+                                language: scanner.language, published: scanner.published,
+                                editionPages: scanner.editionPages, excerpt: excerpt)
     }
 
     static func extract(size: Int64,
