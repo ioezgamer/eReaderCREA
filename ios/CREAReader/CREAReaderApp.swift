@@ -128,6 +128,7 @@ struct ReaderHomeView: View {
     @StateObject private var googleAuth = CREAAuthSession()
     @StateObject private var driveCatalog = CREADriveCatalog()
     @StateObject private var progressSync = CREAProgressSync()
+    @StateObject private var readerAI = CREAReaderAI()
     @State private var tab: ReaderTab = .library
     @State private var importing = false
     @State private var selection: LocalBook?
@@ -180,6 +181,9 @@ struct ReaderHomeView: View {
                 settingsScreen.tabItem { Label("Ajustes", systemImage: ReaderTab.settings.icon) }.tag(ReaderTab.settings)
             }
             .tint(CREAStyle.blue)
+            .task(id: googleAuth.accountEmail) {
+                await readerAI.refresh(force: true)
+            }
         }
         .preferredColorScheme(theme == "Oscuro" ? .dark : theme == "Claro" ? .light : nil)
         .sheet(item: $selectedRemoteBook, onDismiss: {
@@ -198,6 +202,7 @@ struct ReaderHomeView: View {
                     book: book,
                     catalog: driveCatalog,
                     library: library,
+                    ai: readerAI,
                     onReadLocal: { local in
                         pendingLocalRead = local
                         selectedRemoteBook = nil
@@ -226,7 +231,7 @@ struct ReaderHomeView: View {
                         EPUBBookScreen(url: online.fileURL, title: online.book.displayName,
                                        onProgress: { _ in },
                                        initialLocatorJSON: nil,
-                                       onLocator: { _ in })
+                                       onLocator: { _ in }, ai: readerAI)
                     } else {
                         PDFReaderScreen(url: online.fileURL, title: online.book.displayName,
                                         onProgress: { _ in })
@@ -379,6 +384,7 @@ struct ReaderHomeView: View {
                                 $0.progressUpdatedAt = Date()
                             }
                         }
+                        , ai: readerAI
                     )
                     .onDisappear {
                         if googleAuth.progressAuthorized || (communityShareEnabled && communityShareAccount == (googleAuth.accountEmail ?? "") && googleAuth.communityAuthorized) {
@@ -908,6 +914,9 @@ struct ReaderHomeView: View {
                     Text(progressSync.status).font(.footnote).foregroundStyle(.secondary)
                     Text("Se conserva el progreso más reciente y los datos de los demás dispositivos.")
                         .font(.footnote).foregroundStyle(.secondary)
+                }
+                Section("Asistente de IA con Claude") {
+                    CREAAISettingsView(ai: readerAI)
                 }
                 Section("Información") {
                     LabeledContent("Versión iOS", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.9.3") · beta")
