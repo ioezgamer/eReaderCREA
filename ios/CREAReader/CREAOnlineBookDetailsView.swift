@@ -7,6 +7,7 @@ struct CREAOnlineBookDetailsView: View {
     let book: CREARemoteBook
     @ObservedObject var catalog: CREADriveCatalog
     @ObservedObject var library: LocalLibrary
+    @ObservedObject var progressSync: CREAProgressSync
     @ObservedObject var ai: CREAReaderAI
     let onReadLocal: (LocalBook) -> Void
     let onReadOnline: (URL) -> Void
@@ -27,6 +28,10 @@ struct CREAOnlineBookDetailsView: View {
 
     private var downloadedBook: LocalBook? {
         library.books.first(where: { $0.driveFileID == book.id })
+    }
+
+    private var currentProgress: Double {
+        downloadedBook?.progress ?? progressSync.checkpoint(for: book.id)?.progress ?? 0
     }
 
     private var formatLabel: String { book.isEPUB ? "EPUB" : "PDF" }
@@ -159,6 +164,11 @@ struct CREAOnlineBookDetailsView: View {
                         if let category = book.category {
                             Text(category).font(.caption).foregroundStyle(.secondary)
                         }
+                        if currentProgress > 0 {
+                            Label("Lectura: \(Int((currentProgress * 100).rounded()))%",
+                                  systemImage: "bookmark.fill")
+                                .font(.caption).foregroundStyle(CREAStyle.green)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -237,7 +247,9 @@ struct CREAOnlineBookDetailsView: View {
                         if let downloadedBook { onReadLocal(downloadedBook) }
                         else { readOnline() }
                     } label: {
-                        Label(downloadedBook == nil ? "Leer en línea" : "Leer libro descargado",
+                        Label(downloadedBook == nil
+                              ? (currentProgress > 0 ? "Continuar leyendo en línea" : "Leer en línea")
+                              : "Continuar libro descargado",
                               systemImage: "book.pages")
                             .frame(maxWidth: .infinity, minHeight: 46)
                     }

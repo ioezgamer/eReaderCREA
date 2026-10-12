@@ -202,6 +202,7 @@ struct ReaderHomeView: View {
                     book: book,
                     catalog: driveCatalog,
                     library: library,
+                    progressSync: progressSync,
                     ai: readerAI,
                     onReadLocal: { local in
                         pendingLocalRead = local
@@ -212,6 +213,7 @@ struct ReaderHomeView: View {
                         selectedRemoteBook = nil
                     },
                     onDownloaded: {
+                        progressSync.promoteDownloadedBook(book.id, library: library)
                         if googleAuth.progressAuthorized {
                             Task { await progressSync.pull(catalog: driveCatalog, library: library) }
                         }
@@ -228,18 +230,38 @@ struct ReaderHomeView: View {
             NavigationStack {
                 Group {
                     if online.book.isEPUB {
-                        EPUBBookScreen(url: online.fileURL, title: online.book.displayName,
-                                       onProgress: { _ in },
-                                       initialLocatorJSON: nil,
-                                       onLocator: { _ in }, ai: readerAI)
+                        EPUBBookScreen(
+                            url: online.fileURL,
+                            title: online.book.displayName,
+                            onProgress: { amount in
+                                progressSync.recordOnlineProgress(for: online.book.id, fraction: amount)
+                            },
+                            initialLocatorJSON: progressSync.checkpoint(for: online.book.id)?.locatorJSON,
+                            onLocator: { locator in
+                                progressSync.recordOnlineLocator(for: online.book.id, locator: locator)
+                            },
+                            ai: readerAI,
+                            isTemporaryOnline: true
+                        )
                     } else {
-                        PDFReaderScreen(url: online.fileURL, title: online.book.displayName,
-                                        onProgress: { _ in })
+                        PDFReaderScreen(
+                            url: online.fileURL,
+                            title: online.book.displayName,
+                            onProgress: { amount in
+                                progressSync.recordOnlineProgress(for: online.book.id, fraction: amount)
+                            },
+                            initialProgress: progressSync.checkpoint(for: online.book.id)?.progress ?? 0
+                        )
                     }
                 }
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Cerrar") { activeOnlineReading = nil }
+                    }
+                }
+                .onDisappear {
+                    if googleAuth.progressAuthorized {
+                        Task { await progressSync.push(catalog: driveCatalog, library: library) }
                     }
                 }
             }
@@ -406,7 +428,7 @@ struct ReaderHomeView: View {
                             $0.progressUpdatedAt = Date()
                             $0.lastOpened = Date()
                         }
-                    })
+                    }, initialProgress: book.progress)
                 }
             }
         }
@@ -561,7 +583,7 @@ struct ReaderHomeView: View {
                                 ForEach(driveCatalog.books.filter { book in
                                     let local = library.books.first(where: { $0.driveFileID == book.id })
                                     let percentage = local.map { Int($0.progress * 100) }
-                                        ?? progressSync.remotePercents[book.id] ?? 0
+                                        ?? progressSync.percent(for: book.id) ?? 0
                                     let matchesStatus: Bool
                                     switch catalogStatus {
                                     case "Sin descargar": matchesStatus = local == nil
@@ -604,7 +626,7 @@ struct ReaderHomeView: View {
                                         }
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
-                                        if let percent = localCopy.map({ Int($0.progress * 100) }) ?? progressSync.remotePercents[book.id],
+                                        if let percent = localCopy.map({ Int($0.progress * 100) }) ?? progressSync.percent(for: book.id),
                                            percent > 0 {
                                             HStack(spacing: 6) {
                                                 ProgressView(value: Double(percent) / 100).tint(CREAStyle.green)
@@ -631,6 +653,7 @@ struct ReaderHomeView: View {
                                             Button {
                                                 Task {
                                                     await driveCatalog.download(book, into: library)
+                                                    progressSync.promoteDownloadedBook(book.id, library: library)
                                                     if googleAuth.progressAuthorized {
                                                         await progressSync.pull(catalog: driveCatalog, library: library)
                                                     }
@@ -932,8 +955,10 @@ struct PDFReaderScreen: View {
     let url: URL
     let title: String
     let onProgress: (Double) -> Void
+    var initialProgress: Double = 0
+
     var body: some View {
-        PDFReaderView(url: url, onProgress: onProgress)
+        PDFReaderView(url: url, onProgress: onProgress, initialProgress: initialProgress)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
     }
@@ -942,12 +967,21 @@ struct PDFReaderScreen: View {
 struct PDFReaderView: UIViewRepresentable {
     let url: URL
     let onProgress: (Double) -> Void
+    var initialProgress: Double = 0
+
     func makeCoordinator() -> Coordinator { Coordinator(onProgress: onProgress) }
     func makeUIView(context: Context) -> PDFView {
         let view = PDFView()
         view.autoScales = true
         view.displayMode = .singlePageContinuous
-        view.document = PDFDocument(url: url)
+        if let document = PDFDocument(url: url) {
+            view.document = document
+            if initialProgress.isFinite && initialProgress > 0 && document.pageCount > 0 {
+                let pageIndex = max(0, min(document.pageCount - 1,
+                    Int(ceil(max(0, min(1, initialProgress)) * Double(document.pageCount))) - 1))
+                if let page = document.page(at: pageIndex) { view.go(to: page) }
+            }
+        }
         context.coordinator.observe(view)
         return view
     }

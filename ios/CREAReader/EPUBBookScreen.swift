@@ -67,7 +67,7 @@ final class EPUBBookModel: ObservableObject {
             theme: darkMode ? .dark : .light
         ))
     }
-    func load(url: URL, initialLocatorJSON: String?, onProgress: @escaping (Double) -> Void, onLocator: @escaping (String) -> Void) async {
+    func load(url: URL, initialLocatorJSON: String?, onProgress: @escaping (Double) -> Void, onLocator: @escaping (String) -> Void, persistFileLocator: Bool = true) async {
         let http = DefaultHTTPClient()
         let retriever = AssetRetriever(httpClient: http)
         let opener = PublicationOpener(
@@ -91,10 +91,10 @@ final class EPUBBookModel: ObservableObject {
             case .success(let publication):
                 self.publication = publication
                 do {
-                    let lastLocation = initialLocatorJSON ?? UserDefaults.standard.string(forKey: "crea.epub.locator." + url.lastPathComponent)
+                    let lastLocation = initialLocatorJSON ?? (persistFileLocator ? UserDefaults.standard.string(forKey: "crea.epub.locator." + url.lastPathComponent) : nil)
                     let initial = lastLocation.flatMap { try? Locator(jsonString: $0) }
                     let reader = try EPUBNavigatorViewController(publication: publication, initialLocation: initial)
-                    let observer = CREALocationObserver(url: url, onProgress: onProgress, onLocator: onLocator)
+                    let observer = CREALocationObserver(url: url, onProgress: onProgress, onLocator: onLocator, persistFileLocator: persistFileLocator)
                     locationObserver = observer
                     reader.delegate = observer
                     navigator = reader
@@ -113,6 +113,7 @@ struct EPUBBookScreen: View {
     let initialLocatorJSON: String?
     let onLocator: (String) -> Void
     @ObservedObject var ai: CREAReaderAI
+    var isTemporaryOnline: Bool = false
     @State private var showAI = false
     @StateObject private var model = EPUBBookModel()
     @AppStorage("crea.reader.epub.fontScale") private var fontSize = 1.1
@@ -135,7 +136,7 @@ struct EPUBBookScreen: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
                     .task(id: url) {
-                await model.load(url: url, initialLocatorJSON: initialLocatorJSON, onProgress: onProgress, onLocator: onLocator)
+                await model.load(url: url, initialLocatorJSON: initialLocatorJSON, onProgress: onProgress, onLocator: onLocator, persistFileLocator: !isTemporaryOnline)
                 applyPreferences()
             }
             .sheet(isPresented: $showAI) {
@@ -185,17 +186,21 @@ final class CREALocationObserver: EPUBNavigatorDelegate {
     let url: URL
     let onProgress: (Double) -> Void
     let onLocator: (String) -> Void
-    init(url: URL, onProgress: @escaping (Double) -> Void, onLocator: @escaping (String) -> Void) {
+    let persistFileLocator: Bool
+    init(url: URL, onProgress: @escaping (Double) -> Void, onLocator: @escaping (String) -> Void, persistFileLocator: Bool) {
         self.url = url
         self.onProgress = onProgress
         self.onLocator = onLocator
+        self.persistFileLocator = persistFileLocator
     }
     func navigator(_ navigator: Navigator, presentError error: NavigatorError) {
         NSLog("CREA Reader: Readium navigation error: %@", String(describing: error))
     }
     func navigator(_ navigator: Navigator, locationDidChange locator: Locator) {
         if let serialized = locator.jsonString {
-            UserDefaults.standard.set(serialized, forKey: "crea.epub.locator." + url.lastPathComponent)
+            if persistFileLocator {
+                UserDefaults.standard.set(serialized, forKey: "crea.epub.locator." + url.lastPathComponent)
+            }
             onLocator(serialized)
         }
         if let progression = locator.locations.totalProgression {
