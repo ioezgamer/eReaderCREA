@@ -58,16 +58,16 @@ struct CREAOnlineBookDetailsView: View {
             publisher: nil, language: nil, published: nil,
             editionPages: nil, excerpt: nil
         )
-        if details.title == nil, let value = attributes[.titleAttribute] as? String,
-           !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if details.title == nil, let value = attributes[PDFDocumentAttribute.titleAttribute] as? String,
+           !value.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
             details.title = value
         }
-        if details.author == nil, let value = attributes[.authorAttribute] as? String,
-           !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if details.author == nil, let value = attributes[PDFDocumentAttribute.authorAttribute] as? String,
+           !value.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
             details.author = value
         }
-        if details.summary == nil, let value = attributes[.subjectAttribute] as? String,
-           !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if details.summary == nil, let value = attributes[PDFDocumentAttribute.subjectAttribute] as? String,
+           !value.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
             details.summary = value
         }
         metadata = details
