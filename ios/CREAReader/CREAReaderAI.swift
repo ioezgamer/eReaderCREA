@@ -246,11 +246,8 @@ final class CREAReaderAI: ObservableObject {
 
     private func askText(task: String, input: [String: String]) async throws -> String {
         let result = try await ask(task: task, input: input)
-        guard let text = String(data: result, encoding: .utf8),
-              let string = try? JSONSerialization.jsonObject(with: Data("{\"value\":\(text)}".utf8))
-                as? [String: String],
-              let value = string["value"] else { throw CREAAIError.response }
-        return value
+        do { return try JSONDecoder().decode(String.self, from: result) }
+        catch { throw CREAAIError.response }
     }
 
     private func ask(task: String, input: [String: String]) async throws -> Data {
