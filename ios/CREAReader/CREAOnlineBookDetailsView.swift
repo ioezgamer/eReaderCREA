@@ -7,6 +7,7 @@ struct CREAOnlineBookDetailsView: View {
     let book: CREARemoteBook
     @ObservedObject var catalog: CREADriveCatalog
     @ObservedObject var library: LocalLibrary
+    @ObservedObject var ai: CREAReaderAI
     let onReadLocal: (LocalBook) -> Void
     let onReadOnline: (URL) -> Void
     let onDownloaded: () -> Void
@@ -18,6 +19,9 @@ struct CREAOnlineBookDetailsView: View {
     @State private var busy = false
     @State private var errorMessage: String?
     @State private var previewOpen = false
+    @State private var aiInfo: CREAAIBookInfo?
+    @State private var aiLoading = false
+    @State private var aiMessage: String?
     @State private var pdfPageCount: Int?
     @State private var pdfSamples: [UIImage] = []
 
@@ -180,6 +184,53 @@ struct CREAOnlineBookDetailsView: View {
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
+
+                if ai.canUse || aiInfo != nil {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Ficha inteligente con Claude", systemImage: "sparkles")
+                            .font(.headline).foregroundStyle(CREAStyle.blue)
+                        Text("Genera una sinopsis a partir del nombre y del fragmento disponible. Claude puede equivocarse: verifica los datos importantes.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        if let aiInfo {
+                            Text(aiInfo.title).font(.headline)
+                            if let author = aiInfo.author {
+                                Text("Autor sugerido: " + author)
+                                    .font(.subheadline)
+                            }
+                            Text(aiInfo.summary).textSelection(.enabled)
+                            Text("Categorías: " + aiInfo.categories.joined(separator: ", "))
+                                .font(.caption).foregroundStyle(.secondary)
+                            Text("Nivel lector: " + aiInfo.level + " · Confianza: " + aiInfo.confidence)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if aiLoading { ProgressView("Consultando Claude…") }
+                        if let aiMessage {
+                            Text(aiMessage).font(.footnote).foregroundStyle(.red)
+                        }
+                        if ai.canUse {
+                            Button {
+                                Task {
+                                    guard !aiLoading else { return }
+                                    aiLoading = true
+                                    aiMessage = nil
+                                    defer { aiLoading = false }
+                                    do {
+                                        aiInfo = try await ai.bookInfo(
+                                            fileName: book.name, excerpt: metadata?.excerpt)
+                                    } catch {
+                                        aiMessage = error.localizedDescription
+                                    }
+                                }
+                            } label: {
+                                Label(aiInfo == nil ? "Crear sinopsis con Claude" : "Regenerar ficha",
+                                      systemImage: "sparkles")
+                            }
+                            .disabled(aiLoading)
+                        }
+                    }
+                    .padding(16)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
+                }
 
                 VStack(spacing: 10) {
                     Button {
