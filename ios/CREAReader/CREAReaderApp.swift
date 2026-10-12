@@ -51,8 +51,10 @@ struct LocalBook: Identifiable, Codable, Hashable {
     func url(for book: LocalBook) -> URL { documents.appendingPathComponent(book.filename) }
     func add(url source: URL, displayName: String? = nil, driveFileID: String? = nil) throws {
         let ext = source.pathExtension.lowercased()
-        guard ["epub", "pdf"].contains(ext) else {
-            throw NSError(domain: "CREAReader", code: 1, userInfo: [NSLocalizedDescriptionKey: "Solo se admiten EPUB y PDF."])
+        let audioFormats = ["mp3", "m4a", "m4b", "aac", "wav", "audiobook"]
+        let imageFormats = ["cbz", "jpg", "jpeg", "png", "gif", "webp"]
+        guard (["epub", "pdf"] + audioFormats + imageFormats).contains(ext) else {
+            throw NSError(domain: "CREAReader", code: 1, userInfo: [NSLocalizedDescriptionKey: "Formato no compatible. Importa EPUB, PDF, audio o imágenes/CBZ."])
         }
         let hasAccess = source.startAccessingSecurityScopedResource()
         defer { if hasAccess { source.stopAccessingSecurityScopedResource() } }
@@ -81,7 +83,7 @@ struct LocalBook: Identifiable, Codable, Hashable {
             return
         }
         books.insert(LocalBook(id: UUID(), name: displayName ?? source.deletingPathExtension().lastPathComponent,
-                               filename: name, kind: ext.uppercased(), driveFileID: driveFileID, contentHash: hash,
+                               filename: name, kind: audioFormats.contains(ext) ? "AUDIO" : imageFormats.contains(ext) ? "IMAGEN" : ext.uppercased(), driveFileID: driveFileID, contentHash: hash,
                                driveAccount: driveFileID == nil ? nil : GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased()), at: 0)
         persist()
     }
@@ -334,7 +336,7 @@ struct ReaderHomeView: View {
                     }
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
-                            ForEach(["Todos", "Leyendo", "Sin leer", "Terminados", "Favoritos", "EPUB", "PDF"] +
+                            ForEach(["Todos", "Leyendo", "Sin leer", "Terminados", "Favoritos", "EPUB", "PDF", "AUDIO", "IMAGEN"] +
                                 Array(Set(library.books.map { $0.collection }.filter { !$0.isEmpty })).sorted(), id: \.self) { value in
                                 Button(value) { filter = value }
                                     .font(.subheadline.weight(.medium))
@@ -432,6 +434,11 @@ struct ReaderHomeView: View {
                             }
                         }
                     }
+                } else if book.kind == "AUDIO" || book.kind == "IMAGEN" {
+                    CREAMediaScreen(url: library.url(for: book), title: book.name, audioMode: book.kind == "AUDIO",
+                        initialProgress: book.progress, locator: book.readingLocatorJSON,
+                        onProgress: { amount in library.update(book) { $0.progress = amount; $0.progressUpdatedAt = Date(); $0.lastOpened = Date() } },
+                        onLocator: { json in library.update(book) { $0.readingLocatorJSON = json; $0.progressUpdatedAt = Date() } })
                 } else {
                     PDFReaderScreen(url: library.url(for: book), title: book.name, onProgress: { amount in
                         library.update(book) {
@@ -513,7 +520,7 @@ struct ReaderHomeView: View {
 
     @ViewBuilder private func bookActions(_ book: LocalBook) -> some View {
         ShareLink(item: library.url(for: book)) { Label("Compartir archivo", systemImage: "square.and.arrow.up") }
-        if googleAuth.communityAuthorized {
+        if googleAuth.communityAuthorized && ["EPUB", "PDF"].contains(book.kind) {
             Button("Subir a Google Drive", systemImage: "icloud.and.arrow.up") {
                 Task { await driveCatalog.upload(book, library: library) }
             }.disabled(driveCatalog.uploading.contains(book.id))
@@ -907,6 +914,7 @@ struct ReaderHomeView: View {
         NavigationStack {
             Form {
                 Section("Apariencia") {
+                    NavigationLink("Lectura en voz alta") { CREAVoiceSettings() }
                     Picker("Tema", selection: $theme) {
                         Text("Sistema").tag("Sistema")
                         Text("Claro").tag("Claro")
@@ -931,7 +939,7 @@ struct ReaderHomeView: View {
                         } else {
                             Button("Subir libros locales a Drive") {
                                 Task {
-                                    for book in library.books where book.driveFileID == nil {
+                                    for book in library.books where book.driveFileID == nil && ["EPUB", "PDF"].contains(book.kind) {
                                         await driveCatalog.upload(book, library: library)
                                     }
                                     await progressSync.push(catalog: driveCatalog, library: library)
@@ -974,7 +982,7 @@ struct BookFilePicker: UIViewControllerRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         let epub = UTType(filenameExtension: "epub") ?? UTType(importedAs: "org.idpf.epub-container")
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.pdf, epub], asCopy: true)
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.pdf, epub, .audio, .image, UTType(filenameExtension: "cbz") ?? .zip, UTType(filenameExtension: "audiobook") ?? .json], asCopy: true)
         picker.allowsMultipleSelection = true
         picker.delegate = context.coordinator
         return picker

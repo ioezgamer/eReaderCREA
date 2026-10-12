@@ -10,7 +10,7 @@ struct CREAOPDSEntry: Identifiable {
     var acquisition: CREAOPDSLink? {
         links.first { $0.rel.contains("acquisition") && ($0.type.contains("epub") || $0.type.contains("pdf")) }
     }
-    var navigation: CREAOPDSLink? { links.first { $0.type.contains("atom") && !$0.rel.contains("acquisition") } }
+    var navigation: CREAOPDSLink? { links.first { ($0.type.contains("atom") || $0.type.contains("opds+json")) && !$0.rel.contains("acquisition") } }
 }
 struct CREAOPDSLink {
     let url: URL
@@ -28,9 +28,38 @@ final class CREAOPDSParser: NSObject, XMLParserDelegate {
     private var text = ""
     init(base: URL) { self.base = base }
     func parse(_ data: Data) throws {
+        if data.first(where: { ![9, 10, 13, 32].contains($0) }) == 123 { try parseJSON(data); return }
         let parser = XMLParser(data: data)
         parser.shouldProcessNamespaces = true; parser.shouldResolveExternalEntities = false; parser.delegate = self
         guard parser.parse() else { throw parser.parserError ?? URLError(.cannotParseResponse) }
+    }
+    private func parseJSON(_ data: Data) throws {
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              root["publications"] != nil || root["navigation"] != nil || root["groups"] != nil else { throw URLError(.cannotParseResponse) }
+        func links(_ values: [[String: Any]]) -> [CREAOPDSLink] {
+            values.compactMap { value in
+                guard let href = value["href"] as? String, let url = URL(string: href, relativeTo: base)?.absoluteURL,
+                      ["https", "http"].contains(url.scheme ?? "") else { return nil }
+                let relation = value["rel"] as? String ?? (value["rel"] as? [String])?.joined(separator: " ") ?? "alternate"
+                return CREAOPDSLink(url: url, rel: relation, type: value["type"] as? String ?? "")
+            }
+        }
+        func read(_ feed: [String: Any]) {
+            for book in feed["publications"] as? [[String: Any]] ?? [] {
+                let metadata = book["metadata"] as? [String: Any] ?? [:]
+                var author = metadata["author"] as? String ?? ""
+                if let people = metadata["author"] as? [[String: Any]] { author = people.compactMap { $0["name"] as? String }.joined(separator: ", ") }
+                if let person = metadata["author"] as? [String: Any] { author = person["name"] as? String ?? "" }
+                entries.append(CREAOPDSEntry(title: metadata["title"] as? String ?? "Libro", author: author,
+                    summary: metadata["description"] as? String ?? "", links: links(book["links"] as? [[String: Any]] ?? [])))
+            }
+            for nav in feed["navigation"] as? [[String: Any]] ?? [] {
+                entries.append(CREAOPDSEntry(title: nav["title"] as? String ?? "Sección", links: links([nav])))
+            }
+            for group in feed["groups"] as? [[String: Any]] ?? [] { read(group) }
+        }
+        read(root)
+        next = links(root["links"] as? [[String: Any]] ?? []).first { $0.rel == "next" }?.url
     }
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes: [String: String]) {
         stack.append(elementName); text = ""

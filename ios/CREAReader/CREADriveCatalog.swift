@@ -33,6 +33,21 @@ private struct DriveListResponse: Decodable {
     let nextPageToken: String?
 }
 
+private struct CREASharedInsightIndex: Decodable {
+    struct Entry: Decodable {
+        let driveFileId: String
+        let title: String
+        let author: String?
+        let summary: String
+        let categories: [String]
+        let level: String
+        let confidence: String
+        var info: CREAAIBookInfo { CREAAIBookInfo(title: title, author: author, summary: summary, categories: categories, level: level, confidence: confidence) }
+    }
+    let schema: Int
+    let books: [Entry]
+}
+
 @MainActor
 final class CREADriveCatalog: ObservableObject {
     @Published private(set) var books: [CREARemoteBook] = []
@@ -40,6 +55,7 @@ final class CREADriveCatalog: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var downloading: Set<String> = []
     @Published private(set) var uploading: Set<UUID> = []
+    @Published private(set) var sharedInsights: [String: CREAAIBookInfo] = [:]
     @Published var errorMessage: String?
     @Published private(set) var communityPublishing = false
     @Published private(set) var communityStatus = ""
@@ -202,9 +218,24 @@ final class CREADriveCatalog: ObservableObject {
             UserDefaults.standard.set(try JSONEncoder().encode(books), forKey: cacheKey)
             lastSynced = Date()
             errorMessage = nil
+            await loadSharedInsights()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func loadSharedInsights() async {
+        guard let folderID else { return }
+        do {
+            let access = try await token()
+            let files = try await list(query: "'\(folderID)' in parents and name = 'crea-ai-catalog.json' and trashed = false", fields: "id,name,mimeType", token: access)
+            guard let id = files.first?.id else { sharedInsights = [:]; return }
+            let data = try await request(URL(string: api + "/" + id + "?alt=media")!, token: access)
+            guard data.count <= 10_000_000 else { throw failure("El índice de fichas supera el tamaño admitido.") }
+            let index = try JSONDecoder().decode(CREASharedInsightIndex.self, from: data)
+            guard index.schema == 1 else { throw failure("Versión de fichas compartidas no compatible.") }
+            sharedInsights = Dictionary(index.books.map { ($0.driveFileId, $0.info) }, uniquingKeysWith: { _, latest in latest })
+        } catch { errorMessage = "El catálogo está disponible, pero no se pudieron actualizar las fichas compartidas: " + error.localizedDescription }
     }
 
     func loadCommunity() async {

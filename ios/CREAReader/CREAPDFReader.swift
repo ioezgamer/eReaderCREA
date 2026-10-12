@@ -92,6 +92,7 @@ import AVFoundation
         guard !text.isEmpty else { failure = "Esta página no contiene texto; no se aplica OCR a imágenes."; return }
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: "es-ES")
+        CREAVoiceConfiguration.apply(to: utterance)
         voice.speak(utterance); speaking = true
     }
     func stop() { voice.stopSpeaking(at: .immediate); speaking = false }

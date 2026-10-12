@@ -10,7 +10,7 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
     private var locationObserver: CREALocationObserver?
     private var publication: Publication?
     private var preservedSelection: (text: String, context: String)?
-    @Published var contents: [Link] = []
+    @Published var contents: [ReadiumShared.Link] = []
     @Published var results: [Locator] = []
     @Published var searching = false
     @Published var searchError: String?
@@ -20,10 +20,11 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
     @Published var selectedAnnotation: CREAAnnotation?
     @Published var metadata = ""
     private var speech: PublicationSpeechSynthesizer?
+    private let voiceDelegate = CREAVoiceEngineDelegate()
     private var searchGeneration = UUID()
 
     func go(_ locator: Locator) async { _ = await navigator?.go(to: locator) }
-    func go(_ link: Link) async { _ = await navigator?.go(to: link) }
+    func go(_ link: ReadiumShared.Link) async { _ = await navigator?.go(to: link) }
     func goToPercent(_ fraction: Double) async {
         guard let publication, let positions = try? await publication.positions().get(), !positions.isEmpty else { return }
         let index = min(positions.count - 1, max(0, Int(fraction * Double(positions.count - 1))))
@@ -176,7 +177,8 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
                 self.publication = publication
                 contents = publication.tableOfContents
                 metadata = "\(publication.metadata.title ?? url.lastPathComponent)\n\(publication.metadata.authors.map { $0.name }.joined(separator: ", "))"
-                speech = PublicationSpeechSynthesizer(publication: publication)
+                let delegate = voiceDelegate
+                speech = PublicationSpeechSynthesizer(publication: publication, engineFactory: { AVTTSEngine(delegate: delegate) })
                 speech?.delegate = self
                 do {
                     let lastLocation = initialLocatorJSON ?? (persistFileLocator ? UserDefaults.standard.string(forKey: "crea.epub.locator." + url.lastPathComponent) : nil)
@@ -437,8 +439,8 @@ struct EPUBToolsSheet: View {
 }
 
 struct EPUBContentsRows: View {
-    let links: [Link]
-    let onSelect: (Link) -> Void
+    let links: [ReadiumShared.Link]
+    let onSelect: (ReadiumShared.Link) -> Void
     var body: some View {
         ForEach(Array(links.enumerated()), id: \.offset) { _, link in
             Button(link.title ?? "Sección") { onSelect(link) }
