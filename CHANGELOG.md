@@ -2,6 +2,7 @@
 
 ## 0.9.3 - 2026-10-12
 
+- **Explorar: agregar repositorios de EPUB gratis**: el botón + abre un directorio de fuentes gratuitas (en español, clásicos, infantil y académico). Las que tienen catálogo OPDS (textos.info, Project Gutenberg, Unglue.it) se agregan a Explorar con un toque y se pueden quitar; las demás abren el sitio para descargar un EPUB e importarlo. «Agregar por dirección (OPDS)» sigue disponible.
 - **Sin libros duplicados al importar**: si el mismo archivo ya está en Mi biblioteca, no se agrega otra copia (aviso «ya está en tu biblioteca»). Si parece el mismo libro con otro archivo (mismo título y autor sin importar mayúsculas ni tildes, o mismo identificador, en el mismo formato), se pregunta antes de agregarlo. Antes, reimportar el mismo archivo reemplazaba el libro en silencio y se perdían sus notas, marcadores, favorito y posición. Esto también cubre lo que envía CREA Home.
 - **Categorías con subcarpetas**: las subcarpetas de Drive dentro de otras se muestran como subcategorías («Ciencias / Biología»). Al elegir una categoría aparecen sus subcategorías, y la categoría incluye los libros de todas ellas. Antes solo contaba el primer nivel.
 - **Mi biblioteca por categorías**: los libros descargados de Drive toman la categoría de su carpeta (y la siguen si se mueve o renombra); a los importados en el dispositivo se les puede asignar una desde el menú del libro (mantener pulsado → «Categoría»).
