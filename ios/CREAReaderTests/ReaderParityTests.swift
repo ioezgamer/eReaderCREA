@@ -187,7 +187,8 @@ final class ReaderParityTests: XCTestCase {
         library.update(book) { $0.progress = 0.4; $0.readingLocatorJSON = json }
         library.markFinished(book)
         let current = try XCTUnwrap(library.books.first { $0.id == book.id })
-        let locator = try Locator(jsonString: XCTUnwrap(current.readingLocatorJSON))
+        let serialized = try XCTUnwrap(current.readingLocatorJSON)
+        let locator = try XCTUnwrap(try Locator(jsonString: serialized))
         XCTAssertEqual(current.progress, 1)
         XCTAssertEqual(locator.locations.totalProgression, 1)
         XCTAssertEqual(locator.text.highlight, "lectura")
