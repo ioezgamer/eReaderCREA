@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.9.4 - 2026-10-12
+
+- **Títulos limpios para libros subidos a mano a Drive**: un archivo llamado «_libros_epub_La-leyenda-de-Sleepy-Hollow-y-otros-cuentos-de-fantasmas.epub» ahora se muestra como «La leyenda de Sleepy Hollow y otros cuentos de fantasmas»: se quita el prefijo «libros epub» de las descargas web y los guiones se leen como espacios cuando el nombre es de ese tipo («Spider-Man» conserva su guion). Los libros subidos desde la app ya se nombraban bien.
+
 ## 0.9.3 - 2026-10-12
 
 - **Explorar: agregar repositorios de EPUB gratis**: el botón + abre un directorio de fuentes gratuitas (en español, clásicos, infantil y académico). Las que tienen catálogo OPDS (textos.info, Project Gutenberg, Unglue.it) se agregan a Explorar con un toque y se pueden quitar; las demás abren el sitio para descargar un EPUB e importarlo. «Agregar por dirección (OPDS)» sigue disponible.

@@ -62,6 +62,14 @@ class DriveNamingTest {
     }
 
     @Test
+    fun cleansWebDownloadNames() {
+        val sleepy = DriveNaming.describe("_libros_epub_La-leyenda-de-Sleepy-Hollow-y-otros-cuentos-de-fantasmas.epub", createdByApp = false)
+        assertEquals("La leyenda de Sleepy Hollow y otros cuentos de fantasmas", sleepy.title)
+        assertEquals("Fabulas", DriveNaming.describe("_libros_epub_Fabulas.epub", createdByApp = false).title)
+        assertEquals("Spider-Man", DriveNaming.describe("Spider-Man.epub", createdByApp = false).title)
+    }
+
+    @Test
     fun picksMimeTypeFromExtension() {
         assertEquals("application/pdf", DriveNaming.mimeTypeFor("a.pdf"))
         assertEquals("application/epub+zip", DriveNaming.mimeTypeFor("a.EPUB"))

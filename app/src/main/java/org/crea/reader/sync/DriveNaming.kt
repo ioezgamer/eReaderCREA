@@ -8,6 +8,8 @@ object DriveNaming {
     private const val SEPARATOR = " - "
     private val forbidden = Regex("""[\/:*?"<>|\u0000-\u001F]""")
     private val spaces = Regex("""\s+""")
+    private val webPrefix = Regex("""^(?:libros?\s+)?epub\s+""", RegexOption.IGNORE_CASE)
+    private val slugHyphen = Regex("""(?<=\S)-(?=\S)""")
 
     data class BookNames(val title: String, val author: String?)
 
@@ -38,6 +40,7 @@ object DriveNaming {
     fun describe(fileName: String, createdByApp: Boolean): BookNames {
         val base = if (formatOf(fileName, null) != null) fileName.substringBeforeLast('.') else fileName
         val clean = base.replace('_', ' ').replace(spaces, " ").trim().ifEmpty { fileName.trim() }
+        val tidy = if (createdByApp) clean else tidyForeign(clean)
         if (createdByApp) {
             val at = clean.lastIndexOf(SEPARATOR)
             if (at > 0) {
@@ -46,7 +49,17 @@ object DriveNaming {
                 if (title.isNotEmpty() && author.isNotEmpty()) return BookNames(title, author)
             }
         }
-        return BookNames(clean, null)
+        return BookNames(tidy, null)
+    }
+
+    /**
+     * Web downloads often name a file like "libros epub La-leyenda-de-Sleepy-Hollow": drop the "libros epub" prefix
+     * and read the hyphens as spaces when the name is a slug (two or more), so "Spider-Man" keeps its hyphen.
+     */
+    private fun tidyForeign(name: String): String {
+        val noPrefix = name.replace(webPrefix, "").ifEmpty { name }
+        val slug = if (slugHyphen.findAll(noPrefix).count() >= 2) noPrefix.replace(slugHyphen, " ") else noPrefix
+        return slug.replace(spaces, " ").trim().ifEmpty { name }
     }
 
     /** "Title - Author.ext", safe for any file system and short enough for Drive listings. */
