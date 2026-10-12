@@ -28,13 +28,13 @@ final class CREAProgressSync: ObservableObject {
 
     private func accountKey(_ id: String) -> String? {
         guard !id.isEmpty,
-              let email = GIDSignIn.sharedInstance.currentUser?.profile?.email?.lowercased(),
+              let email = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased(),
               !email.isEmpty else { return nil }
         return email + "|" + id
     }
 
     private func onlineReadingsForThisAccount() -> [(id: String, checkpoint: CREAOnlineReadingCheckpoint)] {
-        guard let email = GIDSignIn.sharedInstance.currentUser?.profile?.email?.lowercased() else { return [] }
+        guard let email = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() else { return [] }
         let prefix = email + "|"
         return onlineCheckpoints.compactMap { key, value in
             guard key.hasPrefix(prefix) else { return nil }
