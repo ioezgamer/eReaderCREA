@@ -17,6 +17,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.crea.reader.online.CategoryPaths
 
 class GoogleDriveRestClient(
     private val accessToken: String,
@@ -107,12 +108,17 @@ class GoogleDriveRestClient(
 
     class CatalogEntry(val file: DriveFile, val category: String?)
 
+    /** Every book in the folder tree, and every sub-folder by its category path. */
+    class CatalogListing(val entries: List<CatalogEntry>, val folders: Map<String, String>)
+
     /**
-     * Metadata of every EPUB/PDF under [rootFolderId], walking sub-folders (the first level below
-     * the root becomes the category). Only listings are requested; no file content is read.
+     * Metadata of every EPUB/PDF under [rootFolderId], walking sub-folders. The folder path below
+     * the root is the category ("Ciencias / Biología"); books at the root have none. Only listings
+     * are requested; no file content is read.
      */
-    suspend fun listCatalog(rootFolderId: String): List<CatalogEntry> {
+    suspend fun listCatalog(rootFolderId: String): CatalogListing {
         val entries = mutableListOf<CatalogEntry>()
+        val folders = mutableMapOf<String, String>()
         val visited = mutableSetOf(rootFolderId)
         val pending = ArrayDeque<Pair<String, String?>>()
         pending.addLast(rootFolderId to null)
@@ -127,13 +133,17 @@ class GoogleDriveRestClient(
             )
             for (child in children) {
                 when {
-                    child.mimeType == FOLDER_MIME ->
-                        if (visited.add(child.id)) pending.addLast(child.id to (category ?: child.name))
+                    child.mimeType == FOLDER_MIME -> if (visited.add(child.id)) {
+                        val path = CategoryPaths.join(category, child.name)
+                        // Two folders with the same name at the same level: the first one listed wins.
+                        folders.putIfAbsent(path, child.id)
+                        pending.addLast(child.id to path)
+                    }
                     DriveNaming.isBookFile(child.name, child.mimeType) -> entries += CatalogEntry(child, category)
                 }
             }
         }
-        return entries
+        return CatalogListing(entries, folders)
     }
 
     suspend fun listAppData(): List<DriveFile> =

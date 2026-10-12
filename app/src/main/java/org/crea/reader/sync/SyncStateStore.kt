@@ -34,6 +34,36 @@ class SyncStateStore(context: Context) {
 
     fun setEnabled(enabled: Boolean) = update { putBoolean(KEY_ENABLED, enabled) }
 
+    /**
+     * Books the user asked to upload, by content hash, with the folder (category path) chosen for
+     * each; "" is the main folder. Nothing is uploaded without being asked (0.9.3).
+     */
+    val pendingUploads: Map<String, String>
+        get() = decodePairs(preferences.getStringSet(KEY_PENDING_UPLOADS, emptySet()))
+
+    fun requestUpload(contentHash: String, category: String?) = update {
+        val current = pendingUploads + (contentHash to category.orEmpty())
+        putStringSet(KEY_PENDING_UPLOADS, encodePairs(current))
+    }
+
+    fun clearUpload(contentHash: String) = update {
+        putStringSet(KEY_PENDING_UPLOADS, encodePairs(pendingUploads - contentHash))
+    }
+
+    /** Category path -> Drive folder id, from the last listing; what "Subir a Drive" offers. */
+    var categoryFolders: Map<String, String>
+        get() = decodePairs(preferences.getStringSet(KEY_CATEGORY_FOLDERS, emptySet()))
+        set(value) = update { putStringSet(KEY_CATEGORY_FOLDERS, encodePairs(value)) }
+
+    private fun encodePairs(map: Map<String, String>): Set<String> =
+        map.mapTo(mutableSetOf()) { (key, value) -> key + PAIR_SEPARATOR + value }
+
+    private fun decodePairs(values: Set<String>?): Map<String, String> =
+        values.orEmpty().mapNotNull { entry ->
+            val at = entry.indexOf(PAIR_SEPARATOR)
+            if (at < 0) null else entry.substring(0, at) to entry.substring(at + 1)
+        }.toMap()
+
     fun markRunning() = update { putString(KEY_STATUS, STATUS_RUNNING).remove(KEY_ERROR) }
 
     fun markSuccess(timestamp: Long, bookCount: Int, summary: Summary, account: String?) = update {
@@ -44,6 +74,7 @@ class SyncStateStore(context: Context) {
         putInt(KEY_UPDATED, summary.updated)
         putInt(KEY_UPLOADED, summary.uploaded)
         putInt(KEY_REMOVED, summary.removed)
+        putInt(KEY_ALREADY_IN_DRIVE, summary.alreadyInDrive)
         if (account != null) putString(KEY_ACCOUNT, account)
         remove(KEY_ERROR)
     }
@@ -72,6 +103,7 @@ class SyncStateStore(context: Context) {
             updated = preferences.getInt(KEY_UPDATED, 0),
             uploaded = preferences.getInt(KEY_UPLOADED, 0),
             removed = preferences.getInt(KEY_REMOVED, 0),
+            alreadyInDrive = preferences.getInt(KEY_ALREADY_IN_DRIVE, 0),
         ),
     )
 
@@ -80,6 +112,8 @@ class SyncStateStore(context: Context) {
         val updated: Int = 0,
         val uploaded: Int = 0,
         val removed: Int = 0,
+        /** Uploads asked for but skipped because Drive already had the book. */
+        val alreadyInDrive: Int = 0,
     ) {
         val hasChanges get() = added + updated + removed + uploaded > 0
     }
@@ -114,5 +148,9 @@ class SyncStateStore(context: Context) {
         private const val KEY_UPDATED = "last_updated"
         private const val KEY_UPLOADED = "last_uploaded"
         private const val KEY_REMOVED = "last_removed"
+        private const val KEY_ALREADY_IN_DRIVE = "last_already_in_drive"
+        private const val KEY_PENDING_UPLOADS = "pending_uploads"
+        private const val KEY_CATEGORY_FOLDERS = "category_folders"
+        private const val PAIR_SEPARATOR = '\t'
     }
 }

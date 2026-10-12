@@ -1,5 +1,15 @@
 # Historial de cambios
 
+## 0.9.3 - 2026-10-12
+
+- **Sin libros duplicados al importar**: si el mismo archivo ya está en Mi biblioteca, no se agrega otra copia (aviso «ya está en tu biblioteca»). Si parece el mismo libro con otro archivo (mismo título y autor sin importar mayúsculas ni tildes, o mismo identificador, en el mismo formato), se pregunta antes de agregarlo. Antes, reimportar el mismo archivo reemplazaba el libro en silencio y se perdían sus notas, marcadores, favorito y posición. Esto también cubre lo que envía CREA Home.
+- **Categorías con subcarpetas**: las subcarpetas de Drive dentro de otras se muestran como subcategorías («Ciencias / Biología»). Al elegir una categoría aparecen sus subcategorías, y la categoría incluye los libros de todas ellas. Antes solo contaba el primer nivel.
+- **Mi biblioteca por categorías**: los libros descargados de Drive toman la categoría de su carpeta (y la siguen si se mueve o renombra); a los importados en el dispositivo se les puede asignar una desde el menú del libro (mantener pulsado → «Categoría»).
+- **Subir a Drive solo a petición**: un libro importado ya no se sube solo a la raíz de la carpeta. Desde el menú del libro, «Subir a Drive» deja elegir la carpeta (categoría), y si Drive ya tiene ese archivo o un libro con el mismo título y autor, no se sube otra copia.
+- **Corrige el cierre de la app** con «Agregar desde la web»: ahora el libro se descarga e importa como cualquier otro.
+- Rendimiento en tablets antiguas: APK más liviano (solo ARM, ~17 MB en lugar de ~27 MB), portadas más nítidas (hasta 300×450, JPEG) y la sincronización al abrir la app solo si pasaron más de 15 minutos.
+- Base de datos: migración 5 → 6 (columna `category` en `books`, rellenada desde el catálogo de Drive). El esquema se exporta en `app/schemas/` y una prueba automática ejecuta la migración sobre SQLite real.
+
 ## 0.9.2 - 2026-10-09
 
 - **Lector de voz más natural**: si no elegiste voz, ahora se usa automáticamente la de mayor calidad disponible que funciona sin Internet (antes la del sistema, normalmente la más básica). En Ajustes de voz las voces se ordenan de mejor a peor y se muestran con nombre comprensible ("Voz 1 (calidad alta · ES · necesita Internet)") en lugar de códigos técnicos, y hay un botón «Mejorar o instalar voces» que abre los ajustes de voz del dispositivo.

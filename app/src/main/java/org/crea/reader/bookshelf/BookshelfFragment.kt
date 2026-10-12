@@ -42,6 +42,8 @@ import org.crea.reader.databinding.FragmentBookshelfBinding
 import org.crea.reader.databinding.ItemSheetActionBinding
 import org.crea.reader.databinding.SheetAddBookBinding
 import org.crea.reader.databinding.SheetBookActionsBinding
+import org.crea.reader.online.CategoryChips
+import org.crea.reader.online.CategoryPaths
 import org.crea.reader.opds.GridAutoFitLayoutManager
 import org.crea.reader.reader.ReaderActivityContract
 import org.crea.reader.sync.LibrarySyncEngine
@@ -80,6 +82,7 @@ class BookshelfFragment : Fragment() {
     private var collections = emptyList<BookCollection>()
     private var members = emptyList<CollectionBook>()
     private var selectedCollection: Long? = null
+    private var selectedCategory: String? = null
     private var collectionChips = mapOf<Int, Long>()
     private var viewOptions = ViewOptions(ViewMode.GRID, CoverSize.MEDIUM)
     private var syncRunning = false
@@ -213,7 +216,8 @@ class BookshelfFragment : Fragment() {
         val inCollection = selectedCollection?.let { id ->
             members.filter { it.collectionId == id }.mapTo(hashSetOf()) { it.contentHash }
         }
-        val visibleBooks = LibraryRules.apply(allBooks, query, marks, collection = inCollection)
+        renderCategories()
+        val visibleBooks = LibraryRules.apply(allBooks, query, marks, collection = inCollection, category = selectedCategory)
         bookshelfAdapter.submitList(visibleBooks)
         renderStorage()
         renderContinueReading()
@@ -330,6 +334,73 @@ class BookshelfFragment : Fragment() {
         }, REFRESH_GRACE_MS)
     }
 
+    // region Categories
+
+    private fun renderCategories() {
+        val paths = allBooks.mapNotNull { it.category }.toSet()
+        if (selectedCategory != null && paths.none { CategoryPaths.matches(it, selectedCategory) }) selectedCategory = null
+        binding.bookshelfCategoriesScroll.isVisible = paths.isNotEmpty()
+        CategoryChips.render(binding.bookshelfCategories, layoutInflater, paths, selectedCategory) { category ->
+            selectedCategory = category
+            binding.bookshelfCategories.post { if (view != null) applyFilters() }
+        }
+    }
+
+    /** Every category known on this device: the books' own and the Drive folders. */
+    private fun knownCategories(): List<String> {
+        val collator = java.text.Collator.getInstance().apply { strength = java.text.Collator.PRIMARY }
+        return (allBooks.mapNotNull { it.category } + app.syncStateStore.categoryFolders.keys)
+            .distinct()
+            .sortedWith(collator)
+    }
+
+    private fun showCategoryDialog(book: Book) {
+        val id = book.id ?: return
+        if (book.remoteFileId != null) {
+            // Drive is the source of truth for downloaded books: the folder decides.
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.category_title)
+                .setMessage(getString(R.string.category_from_drive, book.category ?: getString(R.string.category_none)))
+                .setPositiveButton(R.string.ok, null)
+                .show()
+            return
+        }
+        val options = knownCategories()
+        val labels = (listOf(getString(R.string.category_none)) + options).toTypedArray()
+        val current = options.indexOf(book.category).let { if (it < 0) 0 else it + 1 }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.category_title)
+            .setSingleChoiceItems(labels, current) { dialog, which ->
+                bookshelfViewModel.setCategory(id, if (which == 0) null else options[which - 1])
+                dialog.dismiss()
+            }
+            .setNeutralButton(R.string.category_new) { _, _ ->
+                askCollectionName(R.string.category_new, "") { bookshelfViewModel.setCategory(id, it) }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    /** Uploads only when asked, to the Drive folder chosen here; Drive is checked for copies first. */
+    private fun showUploadDialog(book: Book) {
+        val folders = app.syncStateStore.categoryFolders.keys.sortedWith(
+            java.text.Collator.getInstance().apply { strength = java.text.Collator.PRIMARY }
+        )
+        val labels = (listOf(getString(R.string.upload_main_folder)) + folders).toTypedArray()
+        var choice = folders.indexOf(book.category).let { if (it < 0) 0 else it + 1 }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.upload_title)
+            .setSingleChoiceItems(labels, choice) { _, which -> choice = which }
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.upload_action) { _, _ ->
+                bookshelfViewModel.requestUpload(book, if (choice == 0) null else folders[choice - 1])
+                Snackbar.make(binding.root, R.string.upload_queued, Snackbar.LENGTH_LONG).show()
+            }
+            .show()
+    }
+
+    // endregion
+
     // region Collections
 
     private fun renderCollections() {
@@ -438,6 +509,8 @@ class BookshelfFragment : Fragment() {
     private fun clearFilters() {
         binding.bookshelfSearch.text?.clear()
         binding.bookshelfFilters.check(R.id.filter_all)
+        selectedCategory = null
+        applyFilters()
     }
 
     private fun showSortMenu(anchor: View) {
@@ -493,6 +566,23 @@ class BookshelfFragment : Fragment() {
         bindAction(sheet.bookSheetCollections, R.drawable.ic_menu_book, R.string.collection_add_to, null) {
             dialog.dismiss()
             showCollectionsDialog(book)
+        }
+        bindAction(sheet.bookSheetCategory, R.drawable.ic_folder, R.string.category_title, null) {
+            dialog.dismiss()
+            showCategoryDialog(book)
+        }
+        sheet.bookSheetCategory.sheetActionDetail.isVisible = true
+        sheet.bookSheetCategory.sheetActionDetail.text = book.category ?: getString(R.string.category_none)
+        val pendingUpload = book.contentHash in app.syncStateStore.pendingUploads
+        sheet.bookSheetUpload.root.isVisible = book.remoteFileId == null && app.syncStateStore.isEnabled
+        bindAction(
+            sheet.bookSheetUpload,
+            R.drawable.ic_cloud_upload,
+            R.string.upload_title,
+            if (pendingUpload) R.string.upload_pending else R.string.upload_detail,
+        ) {
+            dialog.dismiss()
+            showUploadDialog(book)
         }
         bindAction(sheet.bookSheetDelete, R.drawable.ic_baseline_delete_24, R.string.book_action_delete, null) {
             dialog.dismiss()

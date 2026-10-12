@@ -27,8 +27,8 @@ import org.crea.reader.data.model.SyncTombstone
         Book::class, Bookmark::class, Highlight::class, Catalog::class, SyncTombstone::class, DriveBook::class,
         HighlightStash::class, BookCollection::class, CollectionBook::class, BookInsight::class,
     ],
-    version = 5,
-    exportSchema = false
+    version = 6,
+    exportSchema = true
 )
 @ColumnTypeConverters(
     HighlightConverters::class
@@ -50,7 +50,7 @@ abstract class AppDatabase : RoomDatabase() {
         private var INSTANCE: AppDatabase? = null
 
         /** Adds the online catalog table; the books already downloaded are left untouched. */
-        private val MIGRATION_1_2 = object : Migration(1, 2) {
+        val MIGRATION_1_2 = object : Migration(1, 2) {
             override suspend fun migrate(connection: SQLiteConnection) {
                 connection.execSQL(
                     "CREATE TABLE IF NOT EXISTS `drive_catalog` (`drive_file_id` TEXT NOT NULL, " +
@@ -69,14 +69,14 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         /** Adds the favourite flag to the books already downloaded. */
-        private val MIGRATION_2_3 = object : Migration(2, 3) {
+        val MIGRATION_2_3 = object : Migration(2, 3) {
             override suspend fun migrate(connection: SQLiteConnection) {
                 connection.execSQL("ALTER TABLE `books` ADD COLUMN `favorite` INTEGER NOT NULL DEFAULT 0")
             }
         }
 
         /** Update tracking, notes kept across deleting a book, and the user's collections. */
-        private val MIGRATION_3_4 = object : Migration(3, 4) {
+        val MIGRATION_3_4 = object : Migration(3, 4) {
             override suspend fun migrate(connection: SQLiteConnection) {
                 connection.execSQL("ALTER TABLE `books` ADD COLUMN `remote_md5` TEXT")
                 connection.execSQL(
@@ -105,7 +105,7 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         /** AI-generated book information for the online catalog. */
-        private val MIGRATION_4_5 = object : Migration(4, 5) {
+        val MIGRATION_4_5 = object : Migration(4, 5) {
             override suspend fun migrate(connection: SQLiteConnection) {
                 connection.execSQL(
                     "CREATE TABLE IF NOT EXISTS `book_insights` (`drive_file_id` TEXT NOT NULL, `version` TEXT NOT NULL, " +
@@ -114,6 +114,24 @@ abstract class AppDatabase : RoomDatabase() {
                 )
             }
         }
+
+        /**
+         * Categories for the books in "Mi biblioteca". Books downloaded from Drive take the folder
+         * they are in, so the library can be browsed like the catalog from the first launch.
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE `books` ADD COLUMN `category` TEXT")
+                connection.execSQL(
+                    "UPDATE `books` SET `category` = (SELECT `category` FROM `drive_catalog` " +
+                        "WHERE `drive_catalog`.`drive_file_id` = `books`.`remote_file_id`) " +
+                        "WHERE `remote_file_id` IS NOT NULL"
+                )
+            }
+        }
+
+        val MIGRATIONS: Array<Migration>
+            get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
 
         fun getDatabase(context: Context): AppDatabase {
             val tempInstance = INSTANCE
@@ -125,7 +143,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     "database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(*MIGRATIONS)
                     .build()
                 INSTANCE = instance
                 return instance

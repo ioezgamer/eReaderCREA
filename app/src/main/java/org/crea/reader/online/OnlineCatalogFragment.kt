@@ -15,7 +15,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.android.material.chip.Chip
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -51,7 +50,7 @@ class OnlineCatalogFragment : Fragment() {
     private var syncProgress: LibrarySyncEngine.Progress? = null
     private var online = true
     private var viewOptions = ViewOptions(ViewMode.LIST, CoverSize.MEDIUM)
-    private var categoryChips = mapOf<Int, String>()
+    private var knownCategories = emptyList<String>()
 
     private val app: Application
         get() = requireContext().applicationContext as Application
@@ -108,10 +107,6 @@ class OnlineCatalogFragment : Fragment() {
                 else -> CatalogFilter.ALL
             }
             viewModel.updateQuery { it.copy(filter = filter) }
-        }
-        binding.catalogCategories.setOnCheckedStateChangeListener { _, checkedIds ->
-            val category = checkedIds.firstOrNull()?.let { categoryChips[it] }
-            viewModel.updateQuery { it.copy(category = category) }
         }
         binding.catalogSortButton.setOnClickListener { showSortMenu(it) }
         binding.catalogViewButton.setOnClickListener {
@@ -235,26 +230,17 @@ class OnlineCatalogFragment : Fragment() {
     }
 
     private fun renderCategories(categories: List<String>) {
+        knownCategories = categories
         binding.catalogCategoriesScroll.isVisible = categories.isNotEmpty()
-        val selected = viewModel.query.value.category
-        if (selected != null && selected !in categories) viewModel.updateQuery { it.copy(category = null) }
-
-        val group = binding.catalogCategories
-        group.setOnCheckedStateChangeListener(null)
-        group.removeAllViews()
-        val chips = mutableMapOf<Int, String>()
-        for (category in categories) {
-            val chip = layoutInflater.inflate(R.layout.item_filter_chip, group, false) as Chip
-            chip.id = View.generateViewId()
-            chip.text = category
-            chip.isChecked = category == viewModel.query.value.category
-            chips[chip.id] = category
-            group.addView(chip)
+        var selected = viewModel.query.value.category
+        if (selected != null && categories.none { CategoryPaths.matches(it, selected) }) {
+            selected = null
+            viewModel.updateQuery { it.copy(category = null) }
         }
-        categoryChips = chips
-        group.setOnCheckedStateChangeListener { _, checkedIds ->
-            val category = checkedIds.firstOrNull()?.let { categoryChips[it] }
+        CategoryChips.render(binding.catalogCategories, layoutInflater, categories, selected) { category ->
             viewModel.updateQuery { it.copy(category = category) }
+            // Opening a category shows its sub-categories.
+            binding.catalogCategories.post { if (view != null) renderCategories(knownCategories) }
         }
     }
 
@@ -317,8 +303,8 @@ class OnlineCatalogFragment : Fragment() {
     private fun clearFilters() {
         binding.catalogSearch.text?.clear()
         binding.catalogFilters.check(R.id.catalog_filter_all)
-        binding.catalogCategories.clearCheck()
         viewModel.updateQuery { it.copy(text = "", filter = CatalogFilter.ALL, category = null) }
+        renderCategories(knownCategories)
     }
 
     private fun showSortMenu(anchor: View) {

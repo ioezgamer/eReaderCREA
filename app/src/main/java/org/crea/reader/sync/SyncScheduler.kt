@@ -15,7 +15,7 @@ object SyncScheduler {
     private const val IMMEDIATE_NAME = "crea-library-immediate-sync"
     private const val SOON_NAME = "crea-library-soon-sync"
     private const val SOON_DELAY_SECONDS = 30L
-    private const val STALE_AFTER_MS = 5 * 60 * 1000L
+    private const val STALE_AFTER_MS = 15 * 60 * 1000L
 
     private val constraints = Constraints.Builder()
         .setRequiredNetworkType(NetworkType.CONNECTED)

@@ -27,6 +27,7 @@ import org.crea.reader.data.db.InsightsDao
 import org.crea.reader.data.model.BookInsight
 import org.crea.reader.data.model.Book
 import org.crea.reader.data.model.DriveBook
+import org.crea.reader.domain.DuplicateRules
 import org.crea.reader.online.OnlineBookIds
 import org.crea.reader.utils.ReadingProgress
 import org.crea.reader.utils.md5
@@ -38,7 +39,8 @@ import timber.log.Timber
  * - The folder is the source of truth for *which books exist*. Each sync reads only metadata
  *   (names, sizes, checksums, thumbnails) into the local catalog; it never downloads a book.
  *   Books reach "Mi biblioteca" only when the user asks for them.
- * - Books the user imported on this device are still uploaded to the folder, and a small manifest
+ * - A book imported on this device is uploaded only when the user asks ("Subir a Drive"), to the
+ *   folder (category) they choose, and never if the folder already has it (0.9.3). A small manifest
  *   in the app's private Drive space carries reading progress between devices.
  * - Nothing here deletes or modifies a book that is already in the folder.
  */
@@ -108,7 +110,9 @@ class LibrarySyncEngine(
         val folderId = resolveFolder(drive)
         // A failed listing throws here, before anything local changes, so a bad connection can
         // never make the catalog look empty.
-        val listing = drive.listCatalog(folderId).toMutableList()
+        val catalogListing = drive.listCatalog(folderId)
+        stateStore.categoryFolders = catalogListing.folders
+        val listing = catalogListing.entries.toMutableList()
         val live = listing.map { it.file.id }.toSet()
 
         linkLocalCopies(listing)
@@ -142,40 +146,72 @@ class LibrarySyncEngine(
             }
         }
 
-        // Only books that were never linked to a Drive file are uploaded; a downloaded book whose
-        // file later disappeared from Drive is not pushed back.
-        val uploads = plan.uploadBooks.mapNotNull { pending ->
-            bookRepository.getByContentHash(pending.contentHash)?.takeIf { it.remoteFileId == null }
+        // Only the books the user asked to upload ("Subir a Drive"), each to the folder they chose.
+        val requested = stateStore.pendingUploads
+        val uploads = requested.keys.mapNotNull { hash ->
+            val book = bookRepository.getByContentHash(hash)
+            if (book == null || book.remoteFileId != null) {
+                stateStore.clearUpload(hash)
+                null
+            } else {
+                book
+            }
         }
         for ((index, local) in uploads.withIndex()) {
             report(Stage.UPLOADING, index + 1, uploads.size, local.title)
-            val localFile = local.url.toFile() ?: continue
+            val localFile = local.url.toFile()
+            if (localFile == null) {
+                stateStore.clearUpload(local.contentHash)
+                continue
+            }
             // The same file may already be in the folder (dropped there by hand): link it instead
             // of uploading a duplicate. Drive reports an MD5 for every file it stores.
             val md5 = localFile.md5()
             val identical = listing.firstOrNull { it.file.md5Checksum == md5 }
             if (identical != null) {
                 bookRepository.linkToDrive(local.contentHash, identical.file.id, md5, local.updatedAt)
+                stateStore.clearUpload(local.contentHash)
+                summary.alreadyInDrive++
                 continue
             }
+            // Another copy of the same book (same title and author, same format): not uploaded again.
+            val format = local.fileExtension().uppercase()
+            val sameBook = listing.firstOrNull { entry ->
+                val names = DriveNaming.describe(entry.file.name, createdByApp = entry.file.appProperties?.get("kind") == "book")
+                DriveNaming.formatOf(entry.file.name, entry.file.mimeType) == format &&
+                    // Files put in Drive by hand have no author: their name alone is compared.
+                    DuplicateRules.sameTitleAndAuthor(local.title, if (names.author == null) null else local.author, names.title, names.author)
+            }
+            if (sameBook != null) {
+                stateStore.clearUpload(local.contentHash)
+                summary.alreadyInDrive++
+                continue
+            }
+            val category = requested[local.contentHash].orEmpty().ifEmpty { null }
+            val target = category?.let { catalogListing.folders[it] } ?: folderId
             val uploaded = drive.uploadBook(
-                folderId = folderId,
+                folderId = target,
                 name = DriveNaming.bookFileName(local.title, local.author, local.fileExtension()),
                 file = localFile,
                 contentHash = local.contentHash,
             )
+            val uploadedCategory = category?.takeIf { it in catalogListing.folders }
+            listing += GoogleDriveRestClient.CatalogEntry(uploaded, category = uploadedCategory)
             bookRepository.linkToDrive(
                 local.contentHash,
                 uploaded.id,
                 uploaded.md5Checksum ?: md5,
                 maxOf(local.updatedAt, Clock.System.now().toEpochMilliseconds())
             )
-            listing += GoogleDriveRestClient.CatalogEntry(uploaded, category = null)
+            local.id?.let { bookRepository.setCategory(it, uploadedCategory) }
+            stateStore.clearUpload(local.contentHash)
             summary.uploaded++
         }
 
         report(Stage.CHECKING)
         refreshCatalog(listing, summary)
+        // Downloaded books follow their folder if someone moved or renamed it in Drive.
+        bookRepository.followDriveCategories()
         recordMissingVersions(listing)
         fetchCovers(drive, listing)
         syncInsights(drive, folderId, listing)
@@ -636,7 +672,10 @@ class LibrarySyncEngine(
         var updated = 0
         var removed = 0
         var uploaded = 0
-        fun toSummary() = SyncStateStore.Summary(added = added, updated = updated, uploaded = uploaded, removed = removed)
+        var alreadyInDrive = 0
+        fun toSummary() = SyncStateStore.Summary(
+            added = added, updated = updated, uploaded = uploaded, removed = removed, alreadyInDrive = alreadyInDrive,
+        )
     }
 
     data class Result(val bookCount: Int, val completedAt: Long)

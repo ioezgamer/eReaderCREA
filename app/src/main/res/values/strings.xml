@@ -105,6 +105,23 @@
     <string name="import_publication_no_acquisition">Acquisition is not possible.</string>
 
     <string name="import_publication_success">Publication added to your library</string>
+    <string name="sync_summary_already_in_drive">%1$d not uploaded because Drive already had them.</string>
+    <string name="category_title">Category</string>
+    <string name="category_none">No category</string>
+    <string name="category_new">New category</string>
+    <string name="category_from_drive">This book is in the Drive folder "%1$s" and its category follows that folder. To change it, move the file in Drive.</string>
+    <string name="upload_title">Upload to Drive</string>
+    <string name="upload_detail">Share it in the CREA Reader folder</string>
+    <string name="upload_pending">Queued: it will be uploaded on the next sync</string>
+    <string name="upload_main_folder">Main folder (no category)</string>
+    <string name="upload_action">Upload</string>
+    <string name="upload_queued">It will be uploaded when syncing. If Drive already has this book, no copy is made.</string>
+    <string name="import_this_book">this book</string>
+    <string name="import_already_in_library">"%1$s" is already in your library. No copy was added.</string>
+    <string name="import_duplicate_title">Add another copy?</string>
+    <string name="import_duplicate_message">"%1$s" is already in your library and "%2$s" looks like the same book (same title and author, or same identifier). Add it as a separate book?</string>
+    <string name="import_duplicate_skip">Don\'t add</string>
+    <string name="import_duplicate_add">Add another copy</string>
     <string name="import_publication_unable_add_pub_database">Unable to add publication to the database</string>
     <string name="import_publication_inconsistent_state">Import failed because of exceptional conditions. Please try again.</string>
 

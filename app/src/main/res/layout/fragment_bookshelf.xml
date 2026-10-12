@@ -371,6 +371,25 @@
                 </com.google.android.material.chip.ChipGroup>
             </HorizontalScrollView>
 
+            <!-- Categories: Drive folders and the ones chosen on this device ("Ciencias / Biología") -->
+            <HorizontalScrollView
+                android:id="@+id/bookshelf_categories_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:scrollbars="none"
+                android:visibility="gone">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/bookshelf_categories"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:singleLine="true"
+                    app:singleSelection="true" />
+            </HorizontalScrollView>
+
             <!-- The user's own shelves ("Para clase", "Pendientes"...) -->
             <HorizontalScrollView
                 android:layout_width="match_parent"

@@ -3,6 +3,7 @@ package org.crea.reader.bookshelf
 import java.text.Collator
 import org.crea.reader.data.model.Book
 import org.crea.reader.online.CatalogRows
+import org.crea.reader.online.CategoryPaths
 import org.crea.reader.utils.ReadingProgress
 
 enum class LibraryFilter {
@@ -32,6 +33,8 @@ object LibraryRules {
         now: Long = System.currentTimeMillis(),
         /** Content hashes of the selected collection, or null when no collection is selected. */
         collection: Set<String>? = null,
+        /** Selected category path; its sub-categories are included. Null = every book. */
+        category: String? = null,
     ): List<Book> {
         val words = CatalogRows.fold(query.text).split(' ').filter { it.isNotEmpty() }
         val recentSince = now - RECENT_DAYS * DAY_MS
@@ -39,7 +42,8 @@ object LibraryRules {
             .filter { book ->
                 val key = CatalogRows.fold("${book.title.orEmpty()} ${book.author.orEmpty()}")
                 words.all { key.contains(it) } && matches(book, query.filter, marks, recentSince) &&
-                    (collection == null || book.contentHash in collection)
+                    (collection == null || book.contentHash in collection) &&
+                    CategoryPaths.matches(book.category, category)
             }
             .sortedWith(comparator(query.sort))
     }

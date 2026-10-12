@@ -25,7 +25,9 @@ interface BooksDao {
      * @param book The book to insert
      * @return ID of the book that was added (primary key)
      */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // IGNORE, never REPLACE: replacing would delete the existing row and, with it, its notes,
+    // bookmarks and reading position. Callers check for duplicates first (DuplicateRules).
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertBook(book: Book): Long
 
     /**
@@ -173,7 +175,25 @@ interface BooksDao {
         "UPDATE ${Book.TABLE_NAME} SET ${Book.REMOTE_FILE_ID} = :remoteFileId, ${Book.REMOTE_MD5} = :md5, " +
             "${Book.UPDATED_AT} = :updatedAt WHERE ${Book.CONTENT_HASH} = :contentHash"
     )
-    suspend fun linkToDrive(contentHash: String, remoteFileId: String, md5: String?, updatedAt: Long)
+    suspend fun linkToDriveOnly(contentHash: String, remoteFileId: String, md5: String?, updatedAt: Long)
+
+    /** A book linked to Drive takes the category of the folder its file is in (when the catalog knows it). */
+    @Query(
+        "UPDATE ${Book.TABLE_NAME} SET ${Book.CATEGORY} = (SELECT category FROM drive_catalog " +
+            "WHERE drive_catalog.drive_file_id = ${Book.TABLE_NAME}.${Book.REMOTE_FILE_ID}) " +
+            "WHERE ${Book.REMOTE_FILE_ID} IS NOT NULL AND EXISTS (SELECT 1 FROM drive_catalog " +
+            "WHERE drive_catalog.drive_file_id = ${Book.TABLE_NAME}.${Book.REMOTE_FILE_ID})"
+    )
+    suspend fun followDriveCategories()
+
+    @Transaction
+    suspend fun linkToDrive(contentHash: String, remoteFileId: String, md5: String?, updatedAt: Long) {
+        linkToDriveOnly(contentHash, remoteFileId, md5, updatedAt)
+        followDriveCategories()
+    }
+
+    @Query("UPDATE ${Book.TABLE_NAME} SET ${Book.CATEGORY} = :category WHERE ${Book.ID} = :id")
+    suspend fun setCategory(id: Long, category: String?)
 
     /** Copies a book's notes and highlights aside before the book row (and, by cascade, them) goes away. */
     @Query(

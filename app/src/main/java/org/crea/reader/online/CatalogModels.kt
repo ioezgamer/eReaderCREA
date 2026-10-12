@@ -117,7 +117,7 @@ object CatalogRows {
                     CatalogFilter.EPUB -> row.book.format == "EPUB"
                     CatalogFilter.PDF -> row.book.format == "PDF"
                 }
-                matchesText && matchesFilter && (query.category == null || row.displayCategory == query.category)
+                matchesText && matchesFilter && CategoryPaths.matches(row.displayCategory, query.category)
             }
             .sortedWith(
                 when (query.sort) {

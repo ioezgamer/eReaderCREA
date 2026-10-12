@@ -38,11 +38,21 @@ class MainViewModel(
             is Bookshelf.Event.ImportPublicationError -> {
                 channel.send(Event.ImportPublicationError(event.error))
             }
-            Bookshelf.Event.ImportPublicationSuccess -> {
+            is Bookshelf.Event.ImportPublicationSuccess -> {
                 channel.send(Event.ImportPublicationSuccess)
+            }
+            is Bookshelf.Event.AlreadyInLibrary -> {
+                channel.send(Event.AlreadyInLibrary(event.title))
+            }
+            is Bookshelf.Event.PossibleDuplicate -> {
+                channel.send(Event.PossibleDuplicate(event.token, event.title, event.existingTitle))
             }
         }
     }
+
+    fun confirmImport(token: Long) = app.bookshelf.confirmImport(token)
+
+    fun discardImport(token: Long) = app.bookshelf.discardImport(token)
 
     sealed class Event {
 
@@ -52,6 +62,10 @@ class MainViewModel(
         class ImportPublicationError(
             val error: ImportError,
         ) : Event()
+
+        class AlreadyInLibrary(val title: String?) : Event()
+
+        class PossibleDuplicate(val token: Long, val title: String?, val existingTitle: String?) : Event()
     }
 }
 

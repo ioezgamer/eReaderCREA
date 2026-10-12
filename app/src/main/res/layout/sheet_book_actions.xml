@@ -43,6 +43,14 @@
         layout="@layout/item_sheet_action" />
 
     <include
+        android:id="@+id/book_sheet_category"
+        layout="@layout/item_sheet_action" />
+
+    <include
+        android:id="@+id/book_sheet_upload"
+        layout="@layout/item_sheet_action" />
+
+    <include
         android:id="@+id/book_sheet_delete"
         layout="@layout/item_sheet_action" />
 </LinearLayout>

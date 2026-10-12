@@ -26,7 +26,6 @@ import org.crea.reader.data.model.Bookmark
 import org.crea.reader.data.model.CollectionBook
 import org.crea.reader.data.model.Highlight
 import org.crea.reader.utils.extensions.readium.authorName
-import org.crea.reader.utils.sha256
 
 class BookRepository(
     private val booksDao: BooksDao,
@@ -101,6 +100,7 @@ class BookRepository(
         mediaType: MediaType,
         publication: Publication,
         cover: File,
+        contentHash: String,
     ): Long {
         val now = Clock.System.now().toEpochMilliseconds()
         val publicationFile = requireNotNull((url as? AbsoluteUrl)?.toFile()) {
@@ -115,7 +115,7 @@ class BookRepository(
             mediaType = mediaType,
             progression = "{}",
             cover = cover.path,
-            contentHash = publicationFile.sha256(),
+            contentHash = contentHash,
             fileSize = publicationFile.length(),
             updatedAt = now,
         )
@@ -157,6 +157,11 @@ class BookRepository(
     suspend fun getByRemoteFileId(remoteFileId: String): Book? = booksDao.getByRemoteFileId(remoteFileId)
 
     suspend fun setFavorite(bookId: Long, favorite: Boolean) = booksDao.setFavorite(bookId, favorite)
+
+    suspend fun setCategory(bookId: Long, category: String?) = booksDao.setCategory(bookId, category?.trim()?.takeIf { it.isNotEmpty() })
+
+    /** After a catalog refresh: downloaded books follow their Drive folder if it was moved or renamed. */
+    suspend fun followDriveCategories() = booksDao.followDriveCategories()
 
     fun bookmarkedBookIds(): Flow<List<Long>> = booksDao.getBookmarkedBookIds()
 

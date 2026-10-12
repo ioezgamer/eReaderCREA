@@ -109,7 +109,11 @@ Cada sincronización:
 1. Lista la carpeta y sus subcarpetas con paginación (1000 por página) y solo los campos necesarios. Si el listado falla, no se toca nada local, así que un corte de red nunca vacía el catálogo.
 2. Compara por id de Drive y escribe únicamente lo nuevo, modificado o eliminado (un solo cambio atómico en Room).
 3. Descarga las miniaturas que Drive genera (normalmente PDF) para los libros nuevos o modificados que no están en el dispositivo, con un máximo por sincronización. El token solo se envía a hosts de Google y no se guarda en ninguna parte.
-4. Sube los libros importados localmente que aún no están en Drive (si el mismo archivo ya está, se enlaza por MD5 en lugar de duplicarlo) y aplica el progreso de lectura más reciente desde el manifiesto JSON (`crea-reader-library-v2.json`, en el espacio privado `appDataFolder`). Solo se reescribe si cambió.
+4. Sube **solo los libros que el usuario pidió** («Subir a Drive», a la carpeta/categoría elegida). Si el mismo archivo ya está, se enlaza por MD5; si hay un libro con el mismo título y autor en el mismo formato, no se sube. Después aplica el progreso de lectura más reciente desde el manifiesto JSON (`crea-reader-library-v2.json`, en el espacio privado `appDataFolder`). Solo se reescribe si cambió.
+
+**Categorías**: la ruta de subcarpetas bajo «CREA Reader» es la categoría (`Ciencias / Biología`); los archivos en la raíz no tienen. Los libros descargados siguen la carpeta de su archivo; los importados en el dispositivo tienen la que elija el usuario. Puede haber subcarpetas dentro de subcarpetas (hasta 500 carpetas en total).
+
+**Duplicados al importar** (`domain/DuplicateRules.kt`): mismo SHA-256 → no se agrega; mismo identificador o mismo título y autor en el mismo formato → se pregunta. La inserción en Room usa `IGNORE`, nunca `REPLACE`, para no borrar notas ni progreso.
 
 La sincronización **no descarga libros, no borra libros locales y no modifica ni elimina archivos de Drive**. Si un archivo desaparece de Drive se quita del catálogo, pero la copia ya descargada se conserva. Eliminar un libro de Mi biblioteca solo borra la copia local; su posición de lectura y sus marcadores pasan a la entrada del catálogo y vuelven si se descarga otra vez (los resaltados y notas dependen del libro local y se eliminan con él).
 

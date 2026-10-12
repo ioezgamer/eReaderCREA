@@ -18,6 +18,7 @@ import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import org.crea.reader.sync.SyncScheduler
 
@@ -80,6 +81,37 @@ class MainActivity : AppCompatActivity() {
 
             is MainViewModel.Event.ImportPublicationError -> {
                 event.error.toUserError().show(this)
+            }
+
+            is MainViewModel.Event.AlreadyInLibrary ->
+                Snackbar.make(
+                    findViewById(android.R.id.content),
+                    getString(R.string.import_already_in_library, event.title ?: getString(R.string.import_this_book)),
+                    Snackbar.LENGTH_LONG
+                ).show()
+
+            is MainViewModel.Event.PossibleDuplicate -> {
+                var decided = false
+                MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.import_duplicate_title)
+                    .setMessage(
+                        getString(
+                            R.string.import_duplicate_message,
+                            event.existingTitle ?: getString(R.string.import_this_book),
+                            event.title ?: getString(R.string.import_this_book),
+                        )
+                    )
+                    .setNegativeButton(R.string.import_duplicate_skip) { _, _ ->
+                        decided = true
+                        viewModel.discardImport(event.token)
+                    }
+                    .setPositiveButton(R.string.import_duplicate_add) { _, _ ->
+                        decided = true
+                        viewModel.confirmImport(event.token)
+                    }
+                    // Closing the dialog any other way keeps the library as it was.
+                    .setOnDismissListener { if (!decided) viewModel.discardImport(event.token) }
+                    .show()
             }
         }
     }

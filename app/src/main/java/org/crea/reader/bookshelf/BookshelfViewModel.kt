@@ -13,7 +13,6 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import org.readium.r2.shared.util.AbsoluteUrl
-import org.readium.r2.shared.util.toUrl
 import org.crea.reader.data.model.Book
 import org.crea.reader.reader.OpeningError
 import org.crea.reader.reader.ReaderActivityContract
@@ -65,12 +64,22 @@ class BookshelfViewModel(application: Application) : AndroidViewModel(applicatio
         app.bookshelf.importPublicationFromStorage(uri)
     }
 
-    fun addPublicationFromStorage(uri: Uri) {
-        app.bookshelf.addPublicationFromStorage(uri.toUrl()!! as AbsoluteUrl)
+    /**
+     * "Agregar desde la web": the book is downloaded and imported like any other file. (It used to
+     * be added by its web address, which the library cannot keep, and the app closed.)
+     */
+    fun addPublicationFromWeb(url: AbsoluteUrl) {
+        app.bookshelf.importPublicationFromHttp(url)
     }
 
-    fun addPublicationFromWeb(url: AbsoluteUrl) {
-        app.bookshelf.addPublicationFromWeb(url)
+    fun setCategory(bookId: Long, category: String?) {
+        viewModelScope.launch { app.bookRepository.setCategory(bookId, category) }
+    }
+
+    /** Asks the next sync to upload this book to the chosen Drive folder (null = the main folder). */
+    fun requestUpload(book: Book, category: String?) {
+        app.syncStateStore.requestUpload(book.contentHash, category)
+        org.crea.reader.sync.SyncScheduler.runNow(app)
     }
 
     fun openPublication(

@@ -182,7 +182,9 @@ class SyncFragment : Fragment() {
                             else -> null
                         },
                         summary.uploaded.takeIf { it > 0 }
-                            ?.let { getString(R.string.sync_summary_uploaded, it) }
+                            ?.let { getString(R.string.sync_summary_uploaded, it) },
+                        summary.alreadyInDrive.takeIf { it > 0 }
+                            ?.let { getString(R.string.sync_summary_already_in_drive, it) }
                     ).joinToString("\n")
                     binding.syncStatusExtra.isVisible = true
                 } else {

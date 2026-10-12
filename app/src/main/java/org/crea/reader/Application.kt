@@ -235,7 +235,8 @@ class Application : android.app.Application() {
             downloadsDir.listFiles { file -> file.name.startsWith("drive-") }?.forEach { it.delete() }
         }
         SyncScheduler.schedule(this)
-        if (syncStateStore.isEnabled) SyncScheduler.runNow(this)
+        // Not on every process start (CREA Home, a shared file...): only if the library is stale.
+        SyncScheduler.runIfStale(this, syncStateStore.snapshot())
     }
 
     /** The name the owner gave the device in Android's settings, or its model. */

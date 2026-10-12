@@ -52,6 +52,12 @@ data class Book(
     /** MD5 Drive reported for the file this copy came from; a different value in the catalog means an update. */
     @ColumnInfo(name = REMOTE_MD5)
     val remoteMd5: String? = null,
+    /**
+     * Category path ("Ciencias / Biología"). Books downloaded from Drive follow the folder they are
+     * in; books imported on this device get the one the user chooses (null = sin categoría).
+     */
+    @ColumnInfo(name = CATEGORY)
+    val category: String? = null,
 ) {
 
     constructor(
@@ -71,6 +77,7 @@ data class Book(
         remoteFileId: String? = null,
         favorite: Boolean = false,
         remoteMd5: String? = null,
+        category: String? = null,
     ) : this(
         id = id,
         creation = creation,
@@ -87,7 +94,8 @@ data class Book(
         progressUpdatedAt = progressUpdatedAt,
         remoteFileId = remoteFileId,
         favorite = favorite,
-        remoteMd5 = remoteMd5
+        remoteMd5 = remoteMd5,
+        category = category,
     )
 
     val url: AbsoluteUrl get() = AbsoluteUrl(href)!!
@@ -114,6 +122,7 @@ data class Book(
         const val REMOTE_FILE_ID = "remote_file_id"
         const val FAVORITE = "favorite"
         const val REMOTE_MD5 = "remote_md5"
+        const val CATEGORY = "category"
     }
 }
 

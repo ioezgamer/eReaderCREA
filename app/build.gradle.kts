@@ -25,12 +25,13 @@ android {
         applicationId = "org.crea.reader"
         minSdk = 24
         targetSdk = 37
-        versionCode = 20
-        versionName = "0.9.2"
+        versionCode = 21
+        versionName = "0.9.3"
         // Address of the AI server (see server/README.md). Empty = AI features do not exist in this build.
         buildConfigField("String", "AI_BASE_URL", "\"${project.findProperty("aiBaseUrl") ?: ""}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        ndk.abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+        // Every CREA tablet is ARM: the x86 libraries only go into debug builds, for the emulator.
+        ndk.abiFilters += listOf("armeabi-v7a", "arm64-v8a")
     }
 
     compileOptions {
@@ -57,6 +58,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            ndk.abiFilters += listOf("x86", "x86_64")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -147,4 +151,6 @@ dependencies {
     ksp("androidx.room3:room3-compiler:3.0.2")
 
     testImplementation("junit:junit:4.13.2")
+    // Real SQLite on the JVM, to run the Room migrations against the exported schemas.
+    testImplementation("androidx.sqlite:sqlite-bundled-jvm:2.7.0")
 }
