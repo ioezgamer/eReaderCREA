@@ -57,7 +57,7 @@ jobs:
           GOOGLE_IOS_CLIENT_ID="${GOOGLE_IOS_CLIENT_ID:-101673121950-e6jb7e03imhbts9dc98em5gof37ebkn8.apps.googleusercontent.com}"
           GOOGLE_IOS_URL_SCHEME="${GOOGLE_IOS_URL_SCHEME:-com.googleusercontent.apps.101673121950-e6jb7e03imhbts9dc98em5gof37ebkn8}"
           xcodebuild -resolvePackageDependencies -project ios/CREAReader.xcodeproj -scheme CREAReader
-          xcodebuild GOOGLE_IOS_CLIENT_ID="$GOOGLE_IOS_CLIENT_ID" GOOGLE_IOS_URL_SCHEME="$GOOGLE_IOS_URL_SCHEME" -project ios/CREAReader.xcodeproj -scheme CREAReader -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/crea-build" CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$GITHUB_WORKSPACE/ios-build.log"
+          xcodebuild GOOGLE_IOS_CLIENT_ID="$GOOGLE_IOS_CLIENT_ID" GOOGLE_IOS_URL_SCHEME="$GOOGLE_IOS_URL_SCHEME" -project ios/CREAReader.xcodeproj -scheme CREAReader -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/crea-build" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$GITHUB_WORKSPACE/ios-build.log"
       - name: Upload compiler diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
