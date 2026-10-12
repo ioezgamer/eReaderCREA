@@ -95,6 +95,12 @@ private struct CREAPopularBook: Identifiable {
     let count: Int
 }
 
+private struct CREAOnlineReadingSession: Identifiable {
+    let id = UUID()
+    let book: CREARemoteBook
+    let fileURL: URL
+}
+
 private enum ReaderTab: Int, CaseIterable {
     case library, catalog, explore, community, settings
     var title: String {
@@ -136,6 +142,11 @@ struct ReaderHomeView: View {
     @State private var catalogStatus = "Todos"
     @State private var catalogSearch = ""
     @State private var catalogCategory = "Todos"
+    @State private var selectedRemoteBook: CREARemoteBook?
+    @State private var pendingOnlineReading: CREAOnlineReadingSession?
+    @State private var activeOnlineReading: CREAOnlineReadingSession?
+    @State private var temporaryOnlineFile: URL?
+    @State private var pendingLocalRead: LocalBook?
     @State private var collectionTarget: LocalBook?
     @State private var collectionName = ""
     @AppStorage("crea.reader.theme") private var theme = "Sistema"
@@ -171,6 +182,63 @@ struct ReaderHomeView: View {
             .tint(CREAStyle.blue)
         }
         .preferredColorScheme(theme == "Oscuro" ? .dark : theme == "Claro" ? .light : nil)
+        .sheet(item: $selectedRemoteBook, onDismiss: {
+            if let pending = pendingOnlineReading {
+                pendingOnlineReading = nil
+                temporaryOnlineFile = pending.fileURL
+                activeOnlineReading = pending
+            } else if let pending = pendingLocalRead {
+                pendingLocalRead = nil
+                tab = .library
+                open(pending)
+            }
+        }) { book in
+            NavigationStack {
+                CREAOnlineBookDetailsView(
+                    book: book,
+                    catalog: driveCatalog,
+                    library: library,
+                    onReadLocal: { local in
+                        pendingLocalRead = local
+                        selectedRemoteBook = nil
+                    },
+                    onReadOnline: { temporary in
+                        pendingOnlineReading = CREAOnlineReadingSession(book: book, fileURL: temporary)
+                        selectedRemoteBook = nil
+                    },
+                    onDownloaded: {
+                        if googleAuth.progressAuthorized {
+                            Task { await progressSync.pull(catalog: driveCatalog, library: library) }
+                        }
+                    }
+                )
+            }
+        }
+        .fullScreenCover(item: $activeOnlineReading, onDismiss: {
+            if let temporaryOnlineFile {
+                try? FileManager.default.removeItem(at: temporaryOnlineFile)
+                self.temporaryOnlineFile = nil
+            }
+        }) { online in
+            NavigationStack {
+                Group {
+                    if online.book.isEPUB {
+                        EPUBBookScreen(url: online.fileURL, title: online.book.displayName,
+                                       onProgress: { _ in },
+                                       initialLocatorJSON: nil,
+                                       onLocator: { _ in })
+                    } else {
+                        PDFReaderScreen(url: online.fileURL, title: online.book.displayName,
+                                        onProgress: { _ in })
+                    }
+                }
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cerrar") { activeOnlineReading = nil }
+                    }
+                }
+            }
+        }
         .sheet(isPresented: $importing) {
             BookFilePicker { picked in
                 importing = false
@@ -502,8 +570,20 @@ struct ReaderHomeView: View {
                                 }) { book in
                                     let localCopy = library.books.first(where: { $0.driveFileID == book.id })
                                     VStack(alignment: .leading, spacing: 10) {
-                                        CREARemoteCoverView(book: book, catalog: driveCatalog)
-                                        Text(book.displayName).font(.subheadline.bold()).lineLimit(2)
+                                        Button {
+                                            selectedRemoteBook = book
+                                        } label: {
+                                            CREARemoteCoverView(book: book, catalog: driveCatalog)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .accessibilityLabel("Ver información de \(book.displayName)")
+                                        Button {
+                                            selectedRemoteBook = book
+                                        } label: {
+                                            Text(book.displayName).font(.subheadline.bold())
+                                                .foregroundStyle(.primary).lineLimit(2)
+                                        }
+                                        .buttonStyle(.plain)
                                         if let category = book.category {
                                             Text(category).font(.caption2).foregroundStyle(.secondary)
                                         }
@@ -525,6 +605,14 @@ struct ReaderHomeView: View {
                                                 Text("\(percent)%").font(.caption2.monospacedDigit())
                                             }
                                         }
+                                        Button {
+                                            selectedRemoteBook = book
+                                        } label: {
+                                            Label("Vista previa y ficha", systemImage: "eye")
+                                                .font(.caption)
+                                                .frame(maxWidth: .infinity, minHeight: 44)
+                                        }
+                                        .buttonStyle(.bordered)
                                         if let localCopy {
                                             Button {
                                                 tab = .library
