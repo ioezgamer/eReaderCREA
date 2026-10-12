@@ -1,4 +1,4 @@
-# CREA Reader iOS 0.9.3 beta
+# CREA Reader iOS 0.9.4 beta
 
 Aplicación nativa para iPhone y iPad (iOS 17 o superior). Código Android intacto. La aplicación iOS se compila mediante GitHub Actions en macOS y se distribuye como **IPA sin firmar** para instalar después con un firmador compatible como FlareStore.
 
@@ -55,7 +55,7 @@ Si no existe manifiesto de Android, iOS **no crea una copia vacía** que pueda o
 
 GitHub Actions: [iOS unsigned IPA (FlareStore)](https://github.com/ioezgamer/eReaderCREA/actions/workflows/ios-unsigned-ipa.yml). Cada push a esta rama ejecuta la compilación en macOS. Ejecuciones obsoletas se cancelan para evitar gastar minutos en versiones viejas.
 
-En una ejecución correcta, el archivo `CREA-Reader-iOS-0.9.3-unsigned.ipa` se publica automáticamente como prerelease en [GitHub Releases](https://github.com/ioezgamer/eReaderCREA/releases). **No se instala sin una firma válida**.
+En una ejecución correcta, el archivo `CREA-Reader-iOS-0.9.4-unsigned.ipa` se publica automáticamente como prerelease en [GitHub Releases](https://github.com/ioezgamer/eReaderCREA/releases). **No se instala sin una firma válida**.
 
 Una X roja significa que ese commit no generó una IPA válida. Los logs de compilación también se adjuntan como `ios-build-errors` al fallar el compilador.
 
@@ -74,7 +74,7 @@ El workflow ejecuta una comprobación de sintaxis Swift antes de Xcode y publica
 
 **Limitaciones:** la subida de perfiles depende de que el administrador de Google Workspace permita el nuevo alcance OAuth; el algoritmo remoto de portadas y el flujo de revocación necesitan pruebas reales. El permiso Drive completo es sensible y puede requerir verificación para proyectos con usuarios externos.
 
-## 0.9.3 beta: Información, muestra y lectura en línea
+## 0.9.4 beta: Información, muestra y lectura en línea
 
 Al tocar la portada o **Vista previa y ficha** desde Catálogo, se abre una ficha con:
 - Portada, formato, tamaño, título/autor/editorial desde metadatos reales (OPF de EPUB, PDFKit o descripción de Drive).
@@ -86,3 +86,27 @@ Al tocar la portada o **Vista previa y ficha** desde Catálogo, se abre una fich
 - Un archivo EPUB remoto con ZIP64, metadatos ausentes o extracción no compatible puede carecer de muestra o sinopsis aunque la lectura temporal continúe funcionando. Los PDF cifrados también pueden impedir la muestra. Los detalles tienen un límite de tamaño de 250 MB para lectura temporal y deben probarse en dispositivos físicos.
 
 **Alcance:** esta lectura temporal no guarda automáticamente progreso de lectura ni posición en la biblioteca, y no reemplaza la sincronización entre Android e iOS para los libros descargados. La compilación correcta tampoco demuestra que cada EPUB/PDF se pueda abrir; se necesita validar con archivos reales.
+
+## 0.9.4 beta: integración Claude de Android en iOS
+
+La versión iOS utiliza **el mismo servidor de IA que Android**, definido en `server/`; la app no incluye ni solicita una clave de Anthropic. Las peticiones se envían con el token OAuth de Google y la cabecera `X-Device-Id` al servicio intermedio de CREA. Los prompts, límites diarios, presupuesto mensual y modelo elegido siguen configurados en el servidor.
+
+Funciones portadas:
+- Selecciona un fragmento EPUB y pulsa **Claude** en la barra de lectura para explicar, simplificar, traducir o definir. La app captura la selección antes de presentar el panel.
+- Desde **Claude → Resumen**, obtiene el texto del archivo XHTML del capítulo actual y lo resume. Solo disponible cuando el recurso contiene texto legible de al menos 200 caracteres.
+- Desde **Claude → Docentes**, genera preguntas literales, inferenciales y críticas, actividades y vocabulario a partir del capítulo actual, con grado opcional.
+- En **Catálogo → Ficha de libro**, se puede pulsar **Crear sinopsis con Claude** para obtener un título sugerido, autor, categorías, nivel y resumen. La ficha generada aparece diferenciada de los metadatos reales del libro y no se sobrescriben los originales.
+
+Para activar:
+1. Publica o reutiliza el servidor Node.js de `server/` en Render o Cloud Run. Introduce `ANTHROPIC_API_KEY` **solo en las variables secretas del servidor**. La IPA nunca incorpora esa clave.
+2. Verifica que `https://URL_DEL_SERVIDOR/healthz` responda y que las cuentas permitidas estén definidas en `ALLOWED_DOMAINS`.
+3. En iOS, abre **Ajustes → Asistente de IA con Claude**; introduce el dominio HTTPS del servidor y activa **Asistente de Claude**. Se aceptan `ai.creanicaragua.org`, `crea-reader-ai[-sufijo].onrender.com` o `crea-reader-ai[-sufijo].run.app`. Cualquier otro dominio debe ser revisado explícitamente antes de enviar tokens Google.
+4. Inicia sesión con Google y pulsa **Comprobar conexión con Claude**. El servidor debe permitir el dominio `@creanicaragua.org`. Si se configuró `ALLOWED_AUDIENCES`, añade también el cliente OAuth iOS `101673121950-e6jb7e03imhbts9dc98em5gof37ebkn8.apps.googleusercontent.com`, además del Android. De otro modo el servidor rechazará el token iOS con 401.
+5. Abre un EPUB de texto y prueba las acciones de lectura o abre una ficha del catálogo.
+
+Políticas de datos: las opciones de IA están desactivadas por defecto; no se manda texto a Claude hasta que el usuario activa la función y pulsa **Consultar Claude** o **Crear sinopsis con Claude**. La app no conserva localmente resultados por defecto y el lector continúa funcionando si el servidor no responde. El progreso, Drive y la comunidad no requieren IA. Para mostrar botones de Claude, `GET /v1/status` debe devolver `available: true`; si se agotan cuotas o créditos, los botones no se activan.
+
+Limitaciones y pruebas pendientes:
+- Los EPUB cifrados, las imágenes y los PDF escaneados no garantizan extracción de texto del capítulo.
+- La navegación de capítulos utiliza el recurso XHTML actual, no adivina divisiones literarias en libros mal estructurados.
+- Una compilación iOS exitosa no prueba que el servidor esté desplegado, que los permisos OAuth sean correctos ni que queden créditos de Claude. Validar con una cuenta real de CREA y el servidor configurado.
