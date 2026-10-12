@@ -151,4 +151,24 @@ final class ReaderParityTests: XCTestCase {
         XCTAssertEqual(library.memberships(current), [renamed])
         XCTAssertTrue(FileManager.default.fileExists(atPath: library.url(for: current).path))
     }
+    @MainActor func testBackgroundCatalogKeepsActiveTemporaryBook() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("CREAReaderOnline", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appendingPathComponent(UUID().uuidString + ".epub")
+        try Data("active reader sentinel".utf8).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let catalog = CREADriveCatalog(cleanupTemporaryFiles: false)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
+        XCTAssertTrue(catalog.books.isEmpty)
+    }
+    @MainActor func testFailedImportCleansIncompleteCopy() throws {
+        let library = LocalLibrary()
+        let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let before = Set(try FileManager.default.contentsOfDirectory(atPath: directory.path))
+        let empty = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".epub")
+        try Data().write(to: empty)
+        defer { try? FileManager.default.removeItem(at: empty) }
+        XCTAssertThrowsError(try library.add(url: empty))
+        XCTAssertEqual(Set(try FileManager.default.contentsOfDirectory(atPath: directory.path)), before)
+    }
 }

@@ -80,6 +80,8 @@ struct LocalBook: Identifiable, Codable, Hashable {
         defer { if hasAccess { source.stopAccessingSecurityScopedResource() } }
         let name = UUID().uuidString + "." + ext
         let destination = documents.appendingPathComponent(name)
+        var committed = false
+        defer { if !committed { try? FileManager.default.removeItem(at: destination) } }
         var coordinationError: NSError?
         var copyError: Error?
         NSFileCoordinator(filePresenter: nil).coordinate(readingItemAt: source, options: [], error: &coordinationError) { coordinatedURL in
@@ -107,6 +109,7 @@ struct LocalBook: Identifiable, Codable, Hashable {
                                driveAccount: driveFileID == nil ? nil : GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased(),
                                importedAt: Date(), fileSize: try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize), at: 0)
         persist()
+        committed = true
         if let added = books.first { Task { await enrich(added, preserveTitle: displayName != nil) } }
     }
     private func enrich(_ book: LocalBook, preserveTitle: Bool) async {

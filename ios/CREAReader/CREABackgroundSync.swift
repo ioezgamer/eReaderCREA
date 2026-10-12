@@ -22,7 +22,7 @@ enum CREABackgroundSync {
                     guard user.grantedScopes?.contains("https://www.googleapis.com/auth/drive.appdata") == true else {
                         refresh.setTaskCompleted(success: false); return
                     }
-                    let library = LocalLibrary.shared, catalog = CREADriveCatalog(), progress = CREAProgressSync()
+                    let library = LocalLibrary.shared, catalog = CREADriveCatalog(cleanupTemporaryFiles: false), progress = CREAProgressSync()
                     await catalog.synchronize()
                     try Task.checkCancellation()
                     await progress.pull(catalog: catalog, library: library)

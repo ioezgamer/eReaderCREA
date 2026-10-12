@@ -69,11 +69,11 @@ final class CREADriveCatalog: ObservableObject {
     private var scopedCacheKey: String { cacheKey + "." + (accountID ?? "signed-out") }
     private let api = "https://www.googleapis.com/drive/v3/files"
 
-    init() {
+    init(cleanupTemporaryFiles: Bool = true) {
         // Remove any orphaned reading copies left by an app crash or forced quit.
         let leftovers = FileManager.default.temporaryDirectory
             .appendingPathComponent("CREAReaderOnline", isDirectory: true)
-        try? FileManager.default.removeItem(at: leftovers)
+        if cleanupTemporaryFiles { try? FileManager.default.removeItem(at: leftovers) }
     }
 
     func resetForCurrentAccount() {
