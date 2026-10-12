@@ -910,7 +910,7 @@ struct ReaderHomeView: View {
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("Información") {
-                    LabeledContent("Versión iOS", value: "0.9.0 · beta")
+                    LabeledContent("Versión iOS", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.9.3") · beta")
                     Text("CREA Reader · Inspirado en la interfaz Android de CREA").font(.footnote).foregroundStyle(.secondary)
                 }
             }
