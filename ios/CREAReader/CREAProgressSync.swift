@@ -274,8 +274,7 @@ final class CREAProgressSync: ObservableObject {
                                 locator: book.readingLocatorJSON, stamp: stamp)
                 }
                 if book.kind == "PDF", let id, stamp > 0,
-                   let data = try? JSONSerialization.data(withJSONObject: ["href": book.name + ".pdf", "type": "application/pdf", "locations": ["totalProgression": book.progress]]),
-                   let locator = String(data: data, encoding: .utf8) {
+                   let locator = book.readingLocatorJSON ?? (try? JSONSerialization.data(withJSONObject: ["href": book.filename, "type": "application/pdf", "locations": ["totalProgression": book.progress]])).flatMap({ String(data: $0, encoding: .utf8) }) {
                     updateEntry(id: id, hash: matched?["contentHash"] as? String, locator: locator, stamp: stamp)
                 }
             }
@@ -298,6 +297,10 @@ final class CREAProgressSync: ObservableObject {
             }
             let list: [[String: Any]] = readings.sorted { $0.key < $1.key }.map { id, value in
                 ["driveFileId": id, "percent": value.percent, "updatedAt": value.stamp]
+            }
+            if remote == nil && entries.isEmpty && list.isEmpty {
+                status = "No hay libros vinculados ni progreso para enviar."
+                return
             }
             var devices = document["devices"] as? [[String: Any]] ?? []
             let previous = devices.first(where: { $0["deviceId"] as? String == deviceID })

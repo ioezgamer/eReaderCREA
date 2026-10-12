@@ -110,4 +110,45 @@ final class ReaderParityTests: XCTestCase {
         XCTAssertNotNil(parser.entries[1].navigation)
         XCTAssertNotNil(parser.next)
     }
+    @MainActor func testRealComicHasTwoImagesAndPersistsProgress() async throws {
+        let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "reader", withExtension: "cbz"))
+        let model = CREAMediaModel()
+        var progress = 0.0
+        await model.load(url: fixture, audioMode: false, initialProgress: 0, locator: nil, onProgress: { progress = $0 }, onLocator: { _ in })
+        XCTAssertNil(model.error)
+        XCTAssertEqual(model.links.count, 2)
+        XCTAssertNotNil(model.image)
+        await model.showImage(1)
+        XCTAssertEqual(progress, 1)
+    }
+    @MainActor func testRealAudioCreatesNavigatorAndReadingOrder() async throws {
+        let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "reader", withExtension: "wav"))
+        let model = CREAMediaModel()
+        await model.load(url: fixture, audioMode: true, initialProgress: 0, locator: nil, onProgress: { _ in }, onLocator: { _ in })
+        XCTAssertNil(model.error)
+        XCTAssertNotNil(model.audio)
+        XCTAssertFalse(model.links.isEmpty)
+        model.audio?.pause()
+    }
+    @MainActor func testCollectionsAllowMultipleMembershipsAndDeletionKeepsBook() throws {
+        let library = LocalLibrary()
+        let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "reader", withExtension: "epub"))
+        try library.add(url: fixture)
+        let book = try XCTUnwrap(library.books.first)
+        let first = "A" + UUID().uuidString, second = "B" + UUID().uuidString, renamed = "C" + UUID().uuidString
+        defer {
+            library.remove(book); library.deleteCollection(first); library.deleteCollection(second); library.deleteCollection(renamed)
+        }
+        try library.createCollection(first); try library.createCollection(second)
+        XCTAssertThrowsError(try library.createCollection(first.lowercased()))
+        library.setMembership(book, collection: first, included: true)
+        library.setMembership(book, collection: second, included: true)
+        var current = try XCTUnwrap(library.books.first { $0.id == book.id })
+        XCTAssertEqual(library.memberships(current).count, 2)
+        try library.renameCollection(second, to: renamed)
+        library.deleteCollection(first)
+        current = try XCTUnwrap(library.books.first { $0.id == book.id })
+        XCTAssertEqual(library.memberships(current), [renamed])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: library.url(for: current).path))
+    }
 }

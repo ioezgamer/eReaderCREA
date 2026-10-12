@@ -4,7 +4,7 @@ Referencia: Android `origin/main`, iOS basada en `feature/ios-flarestore` commit
 
 | Función Android | Implementación iOS | Verificación necesaria |
 | --- | --- | --- |
-| Biblioteca EPUB/PDF, búsqueda, filtros, favoritos, colecciones, orden y continuar | SwiftUI, persistencia local y locator Readium | Reinicio, modo avión, iPad |
+| Biblioteca EPUB/PDF, búsqueda, filtros, favoritos, colecciones, orden y continuar | SwiftUI, persistencia local, colecciones múltiples con creación/renombrado/eliminación, filtros Android y locator Readium | Reinicio, modo avión, iPad |
 | Importar desde Archivos / compartir | Importación múltiple, iCloud, hash SHA-256 para evitar duplicados, exportación con ShareLink | Archivos iCloud y documentos grandes |
 | EPUB | Readium 3.8, posición exacta, índice jerárquico y salto porcentual | EPUB reflow y fixed layout |
 | Buscar en el libro | Servicio de búsqueda Readium; resultados navegables; PDFKit en PDF | Acentos, errores, EPUB grande |
@@ -20,17 +20,19 @@ Referencia: Android `origin/main`, iOS basada en `feature/ios-flarestore` commit
 | Explorar OPDS | Fuentes y temas/autores Android, navegación, paginación, ficha textual y descarga directa EPUB/PDF | Disponibilidad y variantes reales de feeds |
 | Comunidad | Lectura, popularidad, publicación voluntaria y revocación existentes | Permisos y cuenta real |
 | Claude | Selección, resumen, guía docente y ficha inteligente existentes | Servidor CREA y cuotas reales |
-| Ajustes y apariencia | Tema sistema/claro/oscuro y organización de biblioteca | Dynamic Type y VoiceOver |
+| Ajustes y apariencia | Tema sistema/claro/oscuro, idioma español/inglés y organización de biblioteca | Dynamic Type y VoiceOver; algunos diagnósticos permanecen en español |
+| Audio e imagen/CBZ | AudioNavigator: pistas, avance, pausa, saltos de 15 s, velocidad; imágenes paginadas con zoom | Audiolibros y cómics reales |
+| Dispositivos | Lecturas y avances del manifiesto privado por dispositivo | Múltiples tablets/iPhone |
 
-## Límites que impiden declarar paridad total
+## Alcance y validación pendiente
 
-- La rama Android incorpora catálogo compartido de fichas IA `crea-ai-catalog.json`; todavía requiere integración iOS.
+- Las fichas compartidas `crea-ai-catalog.json` se leen con el esquema Android y se muestran diferenciadas de los metadatos editoriales.
 - Las anotaciones son locales. Android actualmente guarda marcadores, resaltados y colecciones en Room y no los transporta en el manifiesto v2. Añadir campos iOS a ese manifiesto no habilitaría intercambio con Android: requiere un contrato común y cambios en ambos clientes.
-- El lector Android incluye formatos audio/imagen y soporte de gestión LCP; esta versión iOS admite EPUB/PDF sin DRM. Implementar audio/imagen y LCP requiere un flujo dedicado y, para LCP, la dependencia/licencia correspondiente.
-- El TTS EPUB recorre la publicación; el PDF lee página o selección. No se implementa OCR. La selección de voz/velocidad completa está pendiente.
-- OPDS implementa Atom/OPDS 1 sin autenticación; OPDS 2 y gestión persistente de catálogos personalizados están pendientes.
+- Audio e imagen/CBZ se importan y abren con Readium/UIImage. El usuario confirmó el 12 de octubre de 2026 que solo utilizan libros sin DRM; LCP queda fuera del alcance de esta entrega.
+- El TTS EPUB recorre la publicación; el PDF lee página o selección. No se implementa OCR. La voz instalada, velocidad y tono se configuran desde Ajustes.
+- OPDS admite Atom/OPDS 1 y JSON/OPDS 2, paginación y catálogos personalizados persistentes; los proveedores que requieren autenticación necesitan un flujo adicional.
 - La creación simultánea del primer manifiesto no es atómica entre clientes. Se vuelve a consultar antes de crear; no constituye una transacción distribuida.
-- Las notificaciones y tareas periódicas de Android no son equivalentes en iOS; la sincronización actual se realiza desde la aplicación abierta.
+- La sincronización automática es opcional al volver a primer plano y usa BGAppRefreshTask. iOS decide la frecuencia y disponibilidad del trabajo en segundo plano.
 
 ## Validación automatizada
 

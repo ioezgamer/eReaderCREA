@@ -8,7 +8,7 @@ import ReadiumStreamer
 @main
 struct CREAReaderApp: App {
     init() { CREABackgroundSync.register() }
-    var body: some Scene { WindowGroup { ReaderHomeView().onOpenURL { _ = GIDSignIn.sharedInstance.handle($0) } } }
+    var body: some Scene { WindowGroup { ReaderHomeView() } }
 }
 
 enum CREAStyle {
@@ -35,20 +35,35 @@ struct LocalBook: Identifiable, Codable, Hashable {
     var contentHash: String?
     var driveAccount: String?
     var author: String?
+    var collections: [String]?
+    var importedAt: Date?
+    var fileSize: Int?
 }
 
 @MainActor final class LocalLibrary: ObservableObject {
     static let shared = LocalLibrary()
     @Published private(set) var books: [LocalBook] = []
     @Published var layoutGrid = true
+    @Published private var collectionNames: [String] = []
     private let storeKey = "crea.reader.localBooks"
     private let layoutKey = "crea.reader.layoutGrid"
 
     init() {
+        collectionNames = UserDefaults.standard.stringArray(forKey: "crea.reader.collections") ?? []
         layoutGrid = UserDefaults.standard.object(forKey: layoutKey) as? Bool ?? true
         if let data = UserDefaults.standard.data(forKey: storeKey),
            let saved = try? JSONDecoder().decode([LocalBook].self, from: data) {
             books = saved.filter { FileManager.default.fileExists(atPath: url(for: $0).path) }
+        }
+        Task {
+            for book in books where book.contentHash == nil || book.importedAt == nil || book.fileSize == nil {
+                let source = url(for: book)
+                let hash: String?
+                if let stored = book.contentHash { hash = stored }
+                else { hash = try? await Task.detached { try CREABookIdentity.hash(source) }.value }
+                let values = try? source.resourceValues(forKeys: [.creationDateKey, .fileSizeKey])
+                update(book) { $0.contentHash = hash; $0.importedAt = $0.importedAt ?? values?.creationDate; $0.fileSize = values?.fileSize }
+            }
         }
     }
 
@@ -89,7 +104,8 @@ struct LocalBook: Identifiable, Codable, Hashable {
         }
         books.insert(LocalBook(id: UUID(), name: displayName ?? source.deletingPathExtension().lastPathComponent,
                                filename: name, kind: audioFormats.contains(ext) ? "AUDIO" : imageFormats.contains(ext) ? "IMAGEN" : ext.uppercased(), driveFileID: driveFileID, contentHash: hash,
-                               driveAccount: driveFileID == nil ? nil : GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased()), at: 0)
+                               driveAccount: driveFileID == nil ? nil : GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased(),
+                               importedAt: Date(), fileSize: try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize), at: 0)
         persist()
         if let added = books.first { Task { await enrich(added, preserveTitle: displayName != nil) } }
     }
@@ -118,6 +134,32 @@ struct LocalBook: Identifiable, Codable, Hashable {
         persist()
     }
     func setGrid(_ value: Bool) { layoutGrid = value; UserDefaults.standard.set(value, forKey: layoutKey) }
+    var collections: [String] { Array(Set(collectionNames + books.flatMap { memberships($0) })).sorted() }
+    func memberships(_ book: LocalBook) -> [String] { Array(Set((book.collections ?? []) + (book.collection.isEmpty ? [] : [book.collection]))).sorted() }
+    func setMembership(_ book: LocalBook, collection: String, included: Bool) {
+        guard let current = books.first(where: { $0.id == book.id }) else { return }
+        var names = Set(memberships(current)); if included { names.insert(collection) } else { names.remove(collection) }
+        update(book) { $0.collection = ""; $0.collections = names.sorted() }
+    }
+    func createCollection(_ raw: String) throws {
+        let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name.count <= 40, !collections.contains(where: { $0.localizedCaseInsensitiveCompare(name) == .orderedSame }) else {
+            throw NSError(domain: "CREAReader", code: 4, userInfo: [NSLocalizedDescriptionKey: "Usa un nombre único de 1 a 40 caracteres."])
+        }
+        collectionNames.append(name); UserDefaults.standard.set(collectionNames, forKey: "crea.reader.collections")
+    }
+    func deleteCollection(_ name: String) {
+        collectionNames.removeAll { $0 == name }
+        for book in books where memberships(book).contains(name) { setMembership(book, collection: name, included: false) }
+        UserDefaults.standard.set(collectionNames, forKey: "crea.reader.collections")
+    }
+    func renameCollection(_ old: String, to new: String) throws {
+        if old == new.trimmingCharacters(in: .whitespacesAndNewlines) { return }
+        try createCollection(new)
+        let name = new.trimmingCharacters(in: .whitespacesAndNewlines)
+        for book in books where memberships(book).contains(old) { setMembership(book, collection: name, included: true) }
+        deleteCollection(old)
+    }
     func remove(_ book: LocalBook) {
         try? FileManager.default.removeItem(at: url(for: book))
         books.removeAll { $0.id == book.id }
@@ -174,7 +216,7 @@ struct ReaderHomeView: View {
     @State private var notice: String?
     @State private var search = ""
     @State private var filter = "Todos"
-    @State private var sort = "Últimos"
+    @AppStorage("crea.reader.library.sort") private var sort = "Últimos"
     @AppStorage("crea.reader.communityShareEnabled") private var communityShareEnabled = false
     @AppStorage("crea.reader.communityShareAccount") private var communityShareAccount = ""
     @AppStorage("crea.reader.communityNickname") private var communityNickname = ""
@@ -188,6 +230,9 @@ struct ReaderHomeView: View {
     @State private var pendingLocalRead: LocalBook?
     @State private var collectionTarget: LocalBook?
     @State private var collectionName = ""
+    @State private var selectedCollection: String?
+    @State private var showCollectionManager = false
+    @ObservedObject private var annotations = CREAAnnotationStore.shared
     @AppStorage("crea.reader.theme") private var theme = "Sistema"
     @AppStorage("crea.reader.language") private var language = "es"
     @AppStorage("crea.reader.autoSync") private var autoSync = false
@@ -198,16 +243,22 @@ struct ReaderHomeView: View {
         let matching = library.books.filter { book in
             let text = search.isEmpty || (book.name + " " + (book.author ?? "")).localizedStandardContains(search)
             let kind = filter == "Todos" || (filter == "Favoritos" && book.favorite) ||
-                (filter == "Leyendo" && book.progress > 0 && book.progress < 1) ||
+                (filter == "Leyendo" && book.progress > 0 && book.progress < 0.98) ||
                 (filter == "Sin leer" && book.progress == 0) ||
-                (filter == "Terminados" && book.progress >= 1) || filter == book.kind ||
-                (!book.collection.isEmpty && filter == book.collection)
-            return text && kind
+                (filter == "Terminados" && book.progress >= 0.98) || filter == book.kind ||
+                (filter == "En Drive" && book.driveFileID != nil) ||
+                (filter == "Solo aquí" && book.driveFileID == nil) ||
+                (filter == "Recientes" && (book.importedAt ?? .distantPast) > Date().addingTimeInterval(-14 * 86400)) ||
+                (filter == "Marcadores" && annotations.items(for: book.contentHash ?? "").contains { $0.kind == "bookmark" }) ||
+                (filter == "Con notas" && annotations.items(for: book.contentHash ?? "").contains { !$0.note.isEmpty })
+            return text && kind && (selectedCollection.map { library.memberships(book).contains($0) } ?? true)
         }
         switch sort {
         case "Título": return matching.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         case "Autor": return matching.sorted { ($0.author ?? "").localizedStandardCompare($1.author ?? "") == .orderedAscending }
         case "Progreso": return matching.sorted { $0.progress > $1.progress }
+        case "Descarga": return matching.sorted { ($0.importedAt ?? .distantPast) > ($1.importedAt ?? .distantPast) }
+        case "Tamaño": return matching.sorted { ($0.fileSize ?? 0) > ($1.fileSize ?? 0) }
         default: return matching.sorted { ($0.lastOpened ?? .distantPast) > ($1.lastOpened ?? .distantPast) }
         }
     }
@@ -231,6 +282,12 @@ struct ReaderHomeView: View {
         }
         .preferredColorScheme(theme == "Oscuro" ? .dark : theme == "Claro" ? .light : nil)
         .environment(\.locale, Locale(identifier: language))
+        .onOpenURL { url in
+            if GIDSignIn.sharedInstance.handle(url) { return }
+            guard url.isFileURL else { return }
+            do { try library.add(url: url); tab = .library; notice = "Libro importado a Mi biblioteca" }
+            catch { self.error = error.localizedDescription }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { CREABackgroundSync.schedule() }
             if phase == .active && autoSync && googleAuth.progressAuthorized {
@@ -367,20 +424,30 @@ struct ReaderHomeView: View {
                             Button("Lista", systemImage: "list.bullet") { library.setGrid(false) }
                         } label: { Image(systemName: library.layoutGrid ? "square.grid.2x2" : "list.bullet").font(.title3) }
                         Menu {
-                            ForEach(["Últimos", "Título", "Autor", "Progreso"], id: \.self) { value in
+                            ForEach(["Últimos", "Descarga", "Título", "Autor", "Progreso", "Tamaño"], id: \.self) { value in
                                 Button(LocalizedStringKey(value)) { sort = value }
                             }
                         } label: { Image(systemName: "arrow.up.arrow.down").font(.title3) }
                     }
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
-                            ForEach(["Todos", "Leyendo", "Sin leer", "Terminados", "Favoritos", "EPUB", "PDF", "AUDIO", "IMAGEN"] +
-                                Array(Set(library.books.map { $0.collection }.filter { !$0.isEmpty })).sorted(), id: \.self) { value in
+                            ForEach(["Todos", "Leyendo", "Sin leer", "Terminados", "Favoritos", "Recientes", "Marcadores", "Con notas", "En Drive", "Solo aquí", "EPUB", "PDF", "AUDIO", "IMAGEN"], id: \.self) { value in
                                 Button(LocalizedStringKey(value)) { filter = value }
                                     .font(.subheadline.weight(.medium))
                                     .padding(.horizontal, 13).padding(.vertical, 9)
                                     .background(filter == value ? CREAStyle.blue : Color.primary.opacity(0.07), in: Capsule())
                                     .foregroundStyle(filter == value ? Color.white : Color.primary)
+                            }
+                        }
+                    }
+                    if !library.collections.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack {
+                                Button("Todas las colecciones") { selectedCollection = nil }
+                                ForEach(library.collections, id: \.self) { name in
+                                    Button(name) { selectedCollection = name }.buttonStyle(.bordered)
+                                        .tint(selectedCollection == name ? CREAStyle.blue : Color.secondary)
+                                }
                             }
                         }
                     }
@@ -416,23 +483,12 @@ struct ReaderHomeView: View {
                 }
             }
             .searchable(text: $search, prompt: "Buscar en mi biblioteca")
-            .alert("Colección", isPresented: Binding(
-                get: { collectionTarget != nil },
-                set: { if !$0 { collectionTarget = nil } }
-            )) {
-                TextField("Nombre de la colección", text: $collectionName)
-                Button("Guardar") {
-                    if let book = collectionTarget {
-                        let cleaned = String(collectionName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
-                        library.update(book) { $0.collection = cleaned }
-                    }
-                    collectionTarget = nil
-                }
-                Button("Cancelar", role: .cancel) { collectionTarget = nil }
-            } message: {
-                Text("Escribe un nombre o déjalo vacío para quitar la colección.")
-            }
+            .sheet(item: $collectionTarget) { book in CREACollectionsSheet(library: library, book: book) }
+            .sheet(isPresented: $showCollectionManager) { CREACollectionsSheet(library: library, book: nil) }
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showCollectionManager = true } label: { Label("Gestionar colecciones", systemImage: "folder.badge.gearshape") }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { importing = true } label: { Image(systemName: "plus.circle.fill").font(.title3) }
                         .accessibilityLabel("Importar libros")
@@ -484,7 +540,12 @@ struct ReaderHomeView: View {
                             $0.progressUpdatedAt = Date()
                             $0.lastOpened = Date()
                         }
-                    }, initialProgress: book.progress)
+                    }, initialProgress: book.progress, onLocator: { json in
+                        library.update(book) { $0.readingLocatorJSON = json; $0.progressUpdatedAt = Date() }
+                    })
+                    .onDisappear {
+                        if googleAuth.progressAuthorized { Task { await progressSync.push(catalog: driveCatalog, library: library) } }
+                    }
                 }
             }
         }

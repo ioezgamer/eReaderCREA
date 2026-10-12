@@ -1,0 +1,4 @@
+ios/CREAReaderTests/Fixtures/*.pdf binary
+ios/CREAReaderTests/Fixtures/*.epub binary
+ios/CREAReaderTests/Fixtures/*.cbz binary
+ios/CREAReaderTests/Fixtures/*.wav binary

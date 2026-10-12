@@ -10,6 +10,7 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
     private var locationObserver: CREALocationObserver?
     private var publication: Publication?
     private var preservedSelection: (text: String, context: String)?
+    private var annotationSelection: Locator?
     @Published var contents: [ReadiumShared.Link] = []
     @Published var results: [Locator] = []
     @Published var searching = false
@@ -22,6 +23,7 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
     private var speech: PublicationSpeechSynthesizer?
     private let voiceDelegate = CREAVoiceEngineDelegate()
     private var searchGeneration = UUID()
+    private var spokenLocator: String?
 
     func go(_ locator: Locator) async { _ = await navigator?.go(to: locator) }
     func go(_ link: ReadiumShared.Link) async { _ = await navigator?.go(to: link) }
@@ -53,13 +55,15 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
             title: location.title ?? "Posición \(Int((location.locations.totalProgression ?? 0) * 100))%")
     }
     func highlight(note: String, color: String, underline: Bool) -> Bool {
-        guard let selection = navigator?.currentSelection?.locator,
+        guard let selection = navigator?.currentSelection?.locator ?? annotationSelection,
               let text = selection.text.highlight, !text.isEmpty,
               let json = selection.jsonString else { return false }
         CREAAnnotationStore.shared.add(hash: bookHash, kind: underline ? "underline" : "highlight",
             locator: json, title: text, note: note, color: color)
+        annotationSelection = nil
         refreshDecorations(); return true
     }
+    func preserveAnnotationSelection() { annotationSelection = navigator?.currentSelection?.locator }
     func refreshDecorations() {
         let decorations: [Decoration] = CREAAnnotationStore.shared.items(for: bookHash).compactMap { item in
             guard item.kind != "bookmark", let locator = try? Locator(jsonString: item.locatorJSON) else { return nil }
@@ -79,13 +83,16 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
     func previousSpeech() { speech?.previous() }
     func publicationSpeechSynthesizer(_ synthesizer: PublicationSpeechSynthesizer, stateDidChange state: PublicationSpeechSynthesizer.State) {
         switch state {
-        case .stopped: speaking = false; speechStarted = false; navigator?.apply(decorations: [], in: "tts")
+        case .stopped: speaking = false; speechStarted = false; spokenLocator = nil; navigator?.apply(decorations: [], in: "tts")
         case .paused: speaking = false; speechStarted = true
         case .playing(let utterance, let range):
             speaking = true; speechStarted = true
             let locator = range ?? utterance.locator
             navigator?.apply(decorations: [Decoration(id: "voice", locator: locator, style: .underline(tint: .systemBlue))], in: "tts")
-            Task { await go(utterance.locator) }
+            if spokenLocator != utterance.locator.jsonString {
+                spokenLocator = utterance.locator.jsonString
+                Task { await go(utterance.locator) }
+            }
         }
     }
     func publicationSpeechSynthesizer(_ synthesizer: PublicationSpeechSynthesizer, utterance: PublicationSpeechSynthesizer.Utterance, didFailWithError error: PublicationSpeechSynthesizer.Error) {
@@ -275,7 +282,7 @@ struct EPUBBookScreen: View {
             .alert("CREA Reader", isPresented: Binding(get: { feedback != nil }, set: { if !$0 { feedback = nil } })) {
                 Button("Aceptar") { feedback = nil }
             } message: { Text(feedback ?? "") }
-            .onReceive(annotations.$records) { _ in model.refreshDecorations() }
+            .onChange(of: annotations.records) { _, _ in model.refreshDecorations() }
             .onDisappear { model.stopSpeech() }
             .safeAreaInset(edge: .bottom) {
                 if model.speechStarted {
@@ -292,7 +299,7 @@ struct EPUBBookScreen: View {
                     Menu {
                         Button("Índice, búsqueda y anotaciones", systemImage: "list.bullet") { showTools = true }
                         Button("Guardar marcador", systemImage: "bookmark") { model.bookmark(); feedback = "Marcador guardado" }
-                        Button("Resaltar selección / añadir nota", systemImage: "highlighter") { showHighlight = true }
+                        Button("Resaltar selección / añadir nota", systemImage: "highlighter") { model.preserveAnnotationSelection(); showHighlight = true }
                         Button("Leer en voz alta", systemImage: "speaker.wave.2") { model.toggleSpeech() }
                     } label: { Label("Herramientas del libro", systemImage: "ellipsis.circle") }
                     .disabled(model.navigator == nil)
@@ -336,6 +343,9 @@ struct EPUBBookScreen: View {
             .onChange(of: font) { _, _ in applyPreferences() }
             .onChange(of: lineHeight) { _, _ in applyPreferences() }
             .onChange(of: margins) { _, _ in applyPreferences() }
+            .onChange(of: model.message) { _, value in
+                if model.navigator != nil, let value { feedback = value; model.message = nil }
+            }
     }
     private var annotationColorPicker: some View {
         Picker("Color", selection: $annotationColor) {

@@ -27,6 +27,23 @@ targets:
         UIBackgroundModes:
           - fetch
           - audio
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Publicaciones y audio
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - org.idpf.epub-container
+              - com.adobe.pdf
+              - public.audio
+              - public.image
+              - org.crea.reader.cbz
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: org.crea.reader.cbz
+            UTTypeDescription: Comic Book ZIP
+            UTTypeConformsTo: [public.data, public.zip-archive]
+            UTTypeTagSpecification:
+              public.filename-extension: [cbz]
+              public.mime-type: application/vnd.comicbook+zip
     sources:
       - path: CREAReader
     dependencies:

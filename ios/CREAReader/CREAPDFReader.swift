@@ -15,8 +15,10 @@ import AVFoundation
     private var observer: NSObjectProtocol?
     private var rendered: [PDFAnnotation] = []
     private var onProgress: ((Double) -> Void)?
-    func load(_ url: URL, progress: Double, onProgress: @escaping (Double) -> Void) async {
+    private var onLocator: ((String) -> Void)?
+    func load(_ url: URL, progress: Double, onProgress: @escaping (Double) -> Void, onLocator: ((String) -> Void)? = nil) async {
         self.onProgress = onProgress
+        self.onLocator = onLocator
         hash = (try? await Task.detached { try CREABookIdentity.hash(url) }.value) ?? ""
         guard let document = PDFDocument(url: url), !document.isLocked, document.pageCount > 0 else {
             failure = "No se pudo abrir el PDF. Verifica que el archivo sea válido y no esté cifrado."; return
@@ -32,6 +34,8 @@ import AVFoundation
                 guard let self, let current = self.view.currentPage, let document = self.view.document else { return }
                 self.page = document.index(for: current) + 1
                 self.onProgress?(Double(self.page) / Double(document.pageCount))
+                let locator: [String: Any] = ["href": url.lastPathComponent, "type": "application/pdf", "locations": ["position": self.page, "totalProgression": Double(self.page) / Double(document.pageCount)]]
+                if let data = try? JSONSerialization.data(withJSONObject: locator), let json = String(data: data, encoding: .utf8) { self.onLocator?(json) }
             }
         }
         ready = true; refreshAnnotations()
@@ -108,6 +112,7 @@ struct PDFReaderScreen: View {
     let title: String
     let onProgress: (Double) -> Void
     var initialProgress: Double = 0
+    var onLocator: ((String) -> Void)? = nil
     @StateObject private var model = CREAPDFModel()
     @ObservedObject private var annotations = CREAAnnotationStore.shared
     @State private var tools = false
@@ -122,9 +127,12 @@ struct PDFReaderScreen: View {
             else if let issue = model.failure { ContentUnavailableView("No se pudo abrir el PDF", systemImage: "doc", description: Text(issue)) }
             else { ProgressView("Abriendo PDF…") }
         }.navigationTitle(title).navigationBarTitleDisplayMode(.inline)
-            .task(id: url) { await model.load(url, progress: initialProgress, onProgress: onProgress) }
+            .task(id: url) { await model.load(url, progress: initialProgress, onProgress: onProgress, onLocator: onLocator) }
             .onDisappear { model.close() }
-            .onReceive(annotations.$records) { _ in model.refreshAnnotations() }
+            .onChange(of: model.failure) { _, value in
+                if model.ready, let value { message = value; model.failure = nil }
+            }
+            .onChange(of: annotations.records) { _, _ in model.refreshAnnotations() }
             .toolbar {
                 Menu {
                     Button("Buscar, páginas y notas", systemImage: "list.bullet") { tools = true }
