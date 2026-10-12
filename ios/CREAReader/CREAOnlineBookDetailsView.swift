@@ -50,6 +50,29 @@ struct CREAOnlineBookDetailsView: View {
         return downloaded
     }
 
+    private func capturePDFInformation(_ pdf: PDFDocument) {
+        pdfPageCount = pdf.pageCount
+        let attributes = pdf.documentAttributes ?? [:]
+        var details = metadata ?? CREABookMetadata(
+            title: nil, author: nil, summary: book.description,
+            publisher: nil, language: nil, published: nil,
+            editionPages: nil, excerpt: nil
+        )
+        if details.title == nil, let value = attributes[.titleAttribute] as? String,
+           !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            details.title = value
+        }
+        if details.author == nil, let value = attributes[.authorAttribute] as? String,
+           !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            details.author = value
+        }
+        if details.summary == nil, let value = attributes[.subjectAttribute] as? String,
+           !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            details.summary = value
+        }
+        metadata = details
+    }
+
     private func preview() {
         if book.isEPUB {
             previewOpen.toggle()
@@ -65,7 +88,7 @@ struct CREAOnlineBookDetailsView: View {
                         NSLocalizedDescriptionKey: "El archivo PDF no pudo abrirse."
                     ])
                 }
-                pdfPageCount = pdf.pageCount
+                capturePDFInformation(pdf)
                 if pdfSamples.isEmpty {
                     var images: [UIImage] = []
                     for index in 0..<min(pdf.pageCount, 3) {
@@ -252,7 +275,7 @@ struct CREAOnlineBookDetailsView: View {
                length <= 15 * 1024 * 1024 {
                 do {
                     let url = try await temporaryFile()
-                    if let pdf = PDFDocument(url: url) { pdfPageCount = pdf.pageCount }
+                    if let pdf = PDFDocument(url: url) { capturePDFInformation(pdf) }
                 } catch { /* The explicit preview action offers a retry. */ }
             }
         }
