@@ -1,4 +1,4 @@
-# CREA Reader iOS 0.9.4 beta
+# CREA Reader iOS 0.9.5 beta
 
 Aplicación nativa para iPhone y iPad (iOS 17 o superior). Código Android intacto. La aplicación iOS se compila mediante GitHub Actions en macOS y se distribuye como **IPA sin firmar** para instalar después con un firmador compatible como FlareStore.
 
@@ -55,7 +55,7 @@ Si no existe manifiesto de Android, iOS **no crea una copia vacía** que pueda o
 
 GitHub Actions: [iOS unsigned IPA (FlareStore)](https://github.com/ioezgamer/eReaderCREA/actions/workflows/ios-unsigned-ipa.yml). Cada push a esta rama ejecuta la compilación en macOS. Ejecuciones obsoletas se cancelan para evitar gastar minutos en versiones viejas.
 
-En una ejecución correcta, el archivo `CREA-Reader-iOS-0.9.4-unsigned.ipa` se publica automáticamente como prerelease en [GitHub Releases](https://github.com/ioezgamer/eReaderCREA/releases). **No se instala sin una firma válida**.
+En una ejecución correcta, el archivo `CREA-Reader-iOS-0.9.5-unsigned.ipa` se publica automáticamente como prerelease en [GitHub Releases](https://github.com/ioezgamer/eReaderCREA/releases). **No se instala sin una firma válida**.
 
 Una X roja significa que ese commit no generó una IPA válida. Los logs de compilación también se adjuntan como `ios-build-errors` al fallar el compilador.
 
@@ -85,7 +85,7 @@ Al tocar la portada o **Vista previa y ficha** desde Catálogo, se abre una fich
 - Botón **Descargar**: usa el flujo existente para guardar una copia permanente en Mi biblioteca.
 - Un archivo EPUB remoto con ZIP64, metadatos ausentes o extracción no compatible puede carecer de muestra o sinopsis aunque la lectura temporal continúe funcionando. Los PDF cifrados también pueden impedir la muestra. Los detalles tienen un límite de tamaño de 250 MB para lectura temporal y deben probarse en dispositivos físicos.
 
-**Alcance:** esta lectura temporal no guarda automáticamente progreso de lectura ni posición en la biblioteca, y no reemplaza la sincronización entre Android e iOS para los libros descargados. La compilación correcta tampoco demuestra que cada EPUB/PDF se pueda abrir; se necesita validar con archivos reales.
+**Desde 0.9.5:** la lectura en línea guarda el porcentaje y, para EPUB, la posición exacta (locator) por cuenta Google e ID de Drive. Al descargar, se recupera esa posición salvo que haya una lectura local más reciente. La sincronización con Android requiere autorizar `drive.appdata` en Ajustes y probarla en dispositivos físicos.
 
 ## 0.9.4 beta: integración Claude de Android en iOS
 
@@ -110,3 +110,18 @@ Limitaciones y pruebas pendientes:
 - Los EPUB cifrados, las imágenes y los PDF escaneados no garantizan extracción de texto del capítulo.
 - La navegación de capítulos utiliza el recurso XHTML actual, no adivina divisiones literarias en libros mal estructurados.
 - Una compilación iOS exitosa no prueba que el servidor esté desplegado, que los permisos OAuth sean correctos ni que queden créditos de Claude. Validar con una cuenta real de CREA y el servidor configurado.
+
+## 0.9.5 beta: continuidad de la lectura
+
+- Los EPUB temporales guardan su locator Readium por ID del libro Drive, sin depender del nombre temporal.
+- Los PDF conservan el porcentaje y recuperan aproximadamente la página.
+- Tras descargar un libro leído en línea, se promueve el avance y el locator a Mi biblioteca, respetando una posición offline más reciente.
+- Los avances se persisten en el dispositivo. Con permiso de Google Drive App Data pueden sincronizarse con el manifiesto Android, sin borrar los demás registros.
+- La fuente FlareStore es `https://ioezgamer.github.io/eReaderCREA/source.json`.
+
+### Prueba en dispositivo
+
+1. Abre un EPUB de Catálogo sin descargar, avanza, cierra y vuelve a entrar: debe conservar la posición.
+2. Descarga el mismo libro, ábrelo desde Mi biblioteca y verifica que continúa donde lo dejaste.
+3. En Ajustes, autoriza la sincronización de progreso y comprueba el avance en Android con la misma cuenta Google.
+4. Repite con PDF y verifica las opciones de Claude. La compilación no sustituye estas pruebas.
