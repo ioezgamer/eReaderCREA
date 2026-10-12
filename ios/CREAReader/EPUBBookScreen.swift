@@ -152,7 +152,7 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
     func applyPreferences(fontSize: Double, scroll: Bool, darkMode: Bool, sepia: Bool = false, lineHeight: Double = 1.5, margins: Double = 1, font: String = "Serif") {
         navigator?.submitPreferences(EPUBPreferences(
             fontFamily: font == "Sans" ? .sansSerif : .serif,
-            fontSize: 100 * fontSize,
+            fontSize: fontSize,
             lineHeight: lineHeight,
             pageMargins: margins,
             publisherStyles: false,
