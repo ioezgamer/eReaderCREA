@@ -63,7 +63,9 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
         annotationSelection = nil
         refreshDecorations(); return true
     }
-    func preserveAnnotationSelection() { annotationSelection = navigator?.currentSelection?.locator }
+    func preserveAnnotationSelection() {
+        if let selection = navigator?.currentSelection?.locator { annotationSelection = selection }
+    }
     func refreshDecorations() {
         let decorations: [Decoration] = CREAAnnotationStore.shared.items(for: bookHash).compactMap { item in
             guard item.kind != "bookmark", let locator = try? Locator(jsonString: item.locatorJSON) else { return nil }
@@ -191,7 +193,8 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
                     let lastLocation = initialLocatorJSON ?? (persistFileLocator ? UserDefaults.standard.string(forKey: "crea.epub.locator." + url.lastPathComponent) : nil)
                     let initial = lastLocation.flatMap { try? Locator(jsonString: $0) }
                     let reader = try EPUBNavigatorViewController(publication: publication, initialLocation: initial)
-                    let observer = CREALocationObserver(url: url, onProgress: onProgress, onLocator: onLocator, persistFileLocator: persistFileLocator)
+                    let observer = CREALocationObserver(url: url, onProgress: onProgress, onLocator: onLocator, persistFileLocator: persistFileLocator,
+                        onSelection: { [weak self] locator in self?.annotationSelection = locator })
                     locationObserver = observer
                     reader.delegate = observer
                     navigator = reader
@@ -473,11 +476,16 @@ final class CREALocationObserver: EPUBNavigatorDelegate {
     let onProgress: (Double) -> Void
     let onLocator: (String) -> Void
     let persistFileLocator: Bool
-    init(url: URL, onProgress: @escaping (Double) -> Void, onLocator: @escaping (String) -> Void, persistFileLocator: Bool) {
+    let onSelection: (Locator) -> Void
+    init(url: URL, onProgress: @escaping (Double) -> Void, onLocator: @escaping (String) -> Void, persistFileLocator: Bool, onSelection: @escaping (Locator) -> Void = { _ in }) {
         self.url = url
         self.onProgress = onProgress
         self.onLocator = onLocator
         self.persistFileLocator = persistFileLocator
+        self.onSelection = onSelection
+    }
+    func navigator(_ navigator: SelectableNavigator, shouldShowMenuForSelection selection: Selection) -> Bool {
+        onSelection(selection.locator); return true
     }
     func navigator(_ navigator: Navigator, presentError error: NavigatorError) {
         NSLog("CREA Reader: Readium navigation error: %@", String(describing: error))
