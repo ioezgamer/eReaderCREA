@@ -1,0 +1,50 @@
+# CREA Reader iOS 0.10.0: paridad con Android
+
+Referencia: Android `origin/main`, iOS basada en `feature/ios-flarestore` commit `59b29cf`. Esta tabla distingue implementación de validación física.
+
+| Función Android | Implementación iOS | Verificación necesaria |
+| --- | --- | --- |
+| Biblioteca EPUB/PDF, búsqueda, filtros, favoritos, colecciones, orden y continuar | SwiftUI, persistencia local y locator Readium | Reinicio, modo avión, iPad |
+| Importar desde Archivos / compartir | Importación múltiple, iCloud, hash SHA-256 para evitar duplicados, exportación con ShareLink | Archivos iCloud y documentos grandes |
+| EPUB | Readium 3.8, posición exacta, índice jerárquico y salto porcentual | EPUB reflow y fixed layout |
+| Buscar en el libro | Servicio de búsqueda Readium; resultados navegables; PDFKit en PDF | Acentos, errores, EPUB grande |
+| Marcadores | Locator EPUB o página PDF persistente por hash del contenido | Reimportación y reinicio |
+| Resaltados, subrayados y notas | Decoraciones Readium; selección PDF guardada como rectángulos por línea; edición y eliminación | Selección y rotación, accesibilidad |
+| Lectura en voz alta | Sintetizador Readium con seguimiento y controles anterior/pausa/siguiente; PDFKit + AVSpeech para página o selección | Voces instaladas, interrupciones y pronunciación |
+| Preferencias EPUB | Tamaño, fuente serif/sans, interlineado, márgenes, sepia, oscuro, scroll | Dark mode y distintas pantallas |
+| PDF | PDFKit, zoom, índice, búsqueda, salto, progreso, modos continuo/individual | PDF cifrado y escaneado |
+| Catálogo Drive | Categorías, filtros, portadas, descarga explícita, ficha, muestra y lectura temporal | Cuenta Workspace, red y permisos |
+| Subida de libros importados | Subida resumable explícita, carpeta CREA Reader, hash y enlace al catálogo | Permiso Drive completo, red interrumpida |
+| Progreso entre dispositivos | Manifiesto Android v2, registro de libros subidos, EPUB/PDF y lista de dispositivos | Android + iPhone con la misma cuenta |
+| Conflictos de progreso | If-Match con ETag cuando Google lo proporciona; conflicto conserva avance local | Drive real; Android todavía escribe sin esta protección |
+| Explorar OPDS | Fuentes y temas/autores Android, navegación, paginación, ficha textual y descarga directa EPUB/PDF | Disponibilidad y variantes reales de feeds |
+| Comunidad | Lectura, popularidad, publicación voluntaria y revocación existentes | Permisos y cuenta real |
+| Claude | Selección, resumen, guía docente y ficha inteligente existentes | Servidor CREA y cuotas reales |
+| Ajustes y apariencia | Tema sistema/claro/oscuro y organización de biblioteca | Dynamic Type y VoiceOver |
+
+## Límites que impiden declarar paridad total
+
+- La rama Android incorpora catálogo compartido de fichas IA `crea-ai-catalog.json`; todavía requiere integración iOS.
+- Las anotaciones son locales. Android actualmente guarda marcadores, resaltados y colecciones en Room y no los transporta en el manifiesto v2. Añadir campos iOS a ese manifiesto no habilitaría intercambio con Android: requiere un contrato común y cambios en ambos clientes.
+- El lector Android incluye formatos audio/imagen y soporte de gestión LCP; esta versión iOS admite EPUB/PDF sin DRM. Implementar audio/imagen y LCP requiere un flujo dedicado y, para LCP, la dependencia/licencia correspondiente.
+- El TTS EPUB recorre la publicación; el PDF lee página o selección. No se implementa OCR. La selección de voz/velocidad completa está pendiente.
+- OPDS implementa Atom/OPDS 1 sin autenticación; OPDS 2 y gestión persistente de catálogos personalizados están pendientes.
+- La creación simultánea del primer manifiesto no es atómica entre clientes. Se vuelve a consultar antes de crear; no constituye una transacción distribuida.
+- Las notificaciones y tareas periódicas de Android no son equivalentes en iOS; la sincronización actual se realiza desde la aplicación abierta.
+
+## Validación automatizada
+
+`ios-parity-validation.yml` ejecuta sintaxis Swift, generación XcodeGen, XCTest en simulador iPhone y compilación Release para dispositivo; produce logs, `.xcresult` e IPA sin firmar. Las pruebas cubren SHA-256 con múltiples bloques, OPDS y URLs relativas, feeds malformados, deduplicación que conserva progreso/favoritos/colección y conflictos de anotaciones.
+
+## Validación física
+
+1. Importar EPUB/PDF dos veces y comprobar una sola copia y conservación del avance.
+2. EPUB: guardar marcador, buscar, abrir resultado, resaltar con nota, reiniciar y comprobar índice/resaltado/nota.
+3. EPUB: iniciar voz desde una posición intermedia; pausar, continuar, anterior, siguiente y salir.
+4. PDF: buscar, ir a página, seleccionar varias líneas, guardar nota, reiniciar y comprobar rectángulos y progreso.
+5. Descargar desde textos.info y Gutenberg sin abrir el navegador; comprobar paginación y funcionamiento offline del archivo guardado.
+6. Autorizar subida, subir un libro iOS y sincronizar en Android. Confirmar aparición en catálogo y posición en ambos sentidos para EPUB/PDF.
+7. Cambiar cuenta, revocar permisos y desconectar red. Comprobar errores, conservación local y ausencia de publicación automática.
+8. Probar modo oscuro, texto grande, VoiceOver, horizontal e iPad.
+
+Una compilación correcta no sustituye estas pruebas ni demuestra paridad completa.

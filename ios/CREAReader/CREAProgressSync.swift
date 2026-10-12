@@ -105,8 +105,7 @@ final class CREAProgressSync: ObservableObject {
     }
 
     private func sha256(for file: URL) -> String? {
-        guard let data = try? Data(contentsOf: file, options: [.mappedIfSafe]) else { return nil }
-        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        try? CREABookIdentity.hash(file)
     }
 
     private func matchedEntry(_ local: LocalBook, in entries: [[String: Any]], library: LocalLibrary) -> [String: Any]? {
@@ -211,11 +210,8 @@ final class CREAProgressSync: ObservableObject {
         busy = true
         defer { busy = false }
         do {
-            guard let remote = try await catalog.loadPrivateProgressManifest() else {
-                status = "Primero sincroniza la biblioteca desde Android."
-                return
-            }
-            var document = remote.document
+            let remote = try await catalog.loadPrivateProgressManifest()
+            var document = remote?.document ?? ["schemaVersion": 1, "books": [[String: Any]](), "tombstones": [[String: Any]](), "devices": [[String: Any]]()]
             var entries = document["books"] as? [[String: Any]] ?? []
             var changed = 0
             var readings: [String: (percent: Int, stamp: Int64)] = [:]
@@ -240,6 +236,17 @@ final class CREAProgressSync: ObservableObject {
             }
 
             for book in library.books {
+                if let account = book.driveAccount, account != GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() { continue }
+                if let id = book.driveFileID, let hash = book.contentHash ?? sha256(for: library.url(for: book)),
+                   !entries.contains(where: { $0["contentHash"] as? String == hash || $0["driveFileId"] as? String == id }) {
+                    entries.append([
+                        "contentHash": hash, "driveFileId": id, "fileName": book.name + "." + book.kind.lowercased(),
+                        "mediaType": book.kind == "PDF" ? "application/pdf" : "application/epub+zip",
+                        "title": book.name, "identifier": "", "fileSize": (try? library.url(for: book).resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0,
+                        "createdAt": now, "updatedAt": now, "progression": "{}", "progressUpdatedAt": 0
+                    ])
+                    changed += 1
+                }
                 let matched = matchedEntry(book, in: entries, library: library)
                 let id = book.driveFileID ?? (matched?["driveFileId"] as? String)
                 let stamp = Int64((book.progressUpdatedAt ?? .distantPast).timeIntervalSince1970 * 1000)
@@ -247,6 +254,11 @@ final class CREAProgressSync: ObservableObject {
                 if book.kind == "EPUB" {
                     updateEntry(id: id, hash: matched?["contentHash"] as? String,
                                 locator: book.readingLocatorJSON, stamp: stamp)
+                }
+                if book.kind == "PDF", let id, stamp > 0,
+                   let data = try? JSONSerialization.data(withJSONObject: ["href": book.name + ".pdf", "type": "application/pdf", "locations": ["totalProgression": book.progress]]),
+                   let locator = String(data: data, encoding: .utf8) {
+                    updateEntry(id: id, hash: matched?["contentHash"] as? String, locator: locator, stamp: stamp)
                 }
             }
             for online in onlineReadingsForThisAccount() {
@@ -291,7 +303,7 @@ final class CREAProgressSync: ObservableObject {
             document["devices"] = devices
             document["generatedAt"] = now
             document["deviceId"] = deviceID
-            try await catalog.savePrivateProgressManifest(document, fileID: remote.fileID)
+            try await catalog.savePrivateProgressManifest(document, fileID: remote?.fileID)
             status = "Progreso enviado a Drive: \(changed) posiciones y \(list.count) lecturas registradas"
         } catch {
             status = "No se pudo enviar el progreso: " + error.localizedDescription

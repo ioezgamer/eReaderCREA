@@ -29,6 +29,8 @@ struct LocalBook: Identifiable, Codable, Hashable {
     var driveFileID: String?
     var readingLocatorJSON: String?
     var progressUpdatedAt: Date?
+    var contentHash: String?
+    var driveAccount: String?
 }
 
 @MainActor final class LocalLibrary: ObservableObject {
@@ -70,8 +72,17 @@ struct LocalBook: Identifiable, Codable, Hashable {
               ((try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 0 else {
             throw NSError(domain: "CREAReader", code: 2, userInfo: [NSLocalizedDescriptionKey: "No se pudo copiar el libro. Descárgalo desde iCloud primero."])
         }
+        let hash = try CREABookIdentity.hash(destination)
+        if let existing = books.first(where: { $0.contentHash == hash || (try? CREABookIdentity.hash(url(for: $0))) == hash }) {
+            try? FileManager.default.removeItem(at: destination)
+            if let driveFileID {
+                update(existing) { $0.driveFileID = driveFileID; $0.driveAccount = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() }
+            }
+            return
+        }
         books.insert(LocalBook(id: UUID(), name: displayName ?? source.deletingPathExtension().lastPathComponent,
-                               filename: name, kind: ext.uppercased(), driveFileID: driveFileID), at: 0)
+                               filename: name, kind: ext.uppercased(), driveFileID: driveFileID, contentHash: hash,
+                               driveAccount: driveFileID == nil ? nil : GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased()), at: 0)
         persist()
     }
     func update(_ book: LocalBook, mutate: (inout LocalBook) -> Void) {
@@ -501,6 +512,12 @@ struct ReaderHomeView: View {
     }
 
     @ViewBuilder private func bookActions(_ book: LocalBook) -> some View {
+        ShareLink(item: library.url(for: book)) { Label("Compartir archivo", systemImage: "square.and.arrow.up") }
+        if googleAuth.communityAuthorized {
+            Button("Subir a Google Drive", systemImage: "icloud.and.arrow.up") {
+                Task { await driveCatalog.upload(book, library: library) }
+            }.disabled(driveCatalog.uploading.contains(book.id))
+        }
         Button(book.favorite ? "Quitar favorito" : "Añadir a favoritos", systemImage: book.favorite ? "heart.slash" : "heart") {
             library.update(book) { $0.favorite.toggle() }
         }
@@ -691,22 +708,7 @@ struct ReaderHomeView: View {
     }
 
     private var exploreScreen: some View {
-        NavigationStack {
-            List {
-                Section("Bibliotecas gratuitas en español") {
-                    Link(destination: URL(string: "https://www.textos.info")!) {
-                        Label("textos.info", systemImage: "book.closed")
-                    }
-                    Link(destination: URL(string: "https://www.gutenberg.org/browse/languages/es")!) {
-                        Label("Proyecto Gutenberg · Español", systemImage: "globe")
-                    }
-                }
-                Section {
-                    Text("Puedes descargar EPUB o PDF desde estos sitios e importarlos en Mi biblioteca mediante Archivos.")
-                        .foregroundStyle(.secondary)
-                }
-            }.scrollContentBackground(.hidden).background(CREAStyle.gradient).navigationTitle("Explorar")
-        }
+        CREAExploreScreen(library: library)
     }
 
     private var communityScreen: some View {
@@ -922,6 +924,22 @@ struct ReaderHomeView: View {
                 }
                 Section("Sincronización") {
                     CREAGoogleAccountView(auth: googleAuth)
+                    if googleAuth.accountEmail != nil {
+                        if !googleAuth.communityAuthorized {
+                            Button("Autorizar subida de libros a Drive") { googleAuth.requestCommunityAccess() }
+                            Text("La subida requiere permiso de escritura en Drive. Los archivos se suben solo al pulsar Subir.").font(.footnote)
+                        } else {
+                            Button("Subir libros locales a Drive") {
+                                Task {
+                                    for book in library.books where book.driveFileID == nil {
+                                        await driveCatalog.upload(book, library: library)
+                                    }
+                                    await progressSync.push(catalog: driveCatalog, library: library)
+                                }
+                            }.disabled(!driveCatalog.uploading.isEmpty)
+                        }
+                        if let issue = driveCatalog.errorMessage { Text(issue).font(.footnote).foregroundStyle(.red) }
+                    }
                     if googleAuth.progressAuthorized {
                         Button {
                             Task {
@@ -948,56 +966,6 @@ struct ReaderHomeView: View {
             }
             .navigationTitle("Ajustes")
         }
-    }
-}
-
-struct PDFReaderScreen: View {
-    let url: URL
-    let title: String
-    let onProgress: (Double) -> Void
-    var initialProgress: Double = 0
-
-    var body: some View {
-        PDFReaderView(url: url, onProgress: onProgress, initialProgress: initialProgress)
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-struct PDFReaderView: UIViewRepresentable {
-    let url: URL
-    let onProgress: (Double) -> Void
-    var initialProgress: Double = 0
-
-    func makeCoordinator() -> Coordinator { Coordinator(onProgress: onProgress) }
-    func makeUIView(context: Context) -> PDFView {
-        let view = PDFView()
-        view.autoScales = true
-        view.displayMode = .singlePageContinuous
-        if let document = PDFDocument(url: url) {
-            view.document = document
-            if initialProgress.isFinite && initialProgress > 0 && document.pageCount > 0 {
-                let pageIndex = max(0, min(document.pageCount - 1,
-                    Int(ceil(max(0, min(1, initialProgress)) * Double(document.pageCount))) - 1))
-                if let page = document.page(at: pageIndex) { view.go(to: page) }
-            }
-        }
-        context.coordinator.observe(view)
-        return view
-    }
-    func updateUIView(_ view: PDFView, context: Context) {}
-    final class Coordinator {
-        let onProgress: (Double) -> Void
-        var observer: NSObjectProtocol?
-        init(onProgress: @escaping (Double) -> Void) { self.onProgress = onProgress }
-        func observe(_ view: PDFView) {
-            observer = NotificationCenter.default.addObserver(forName: Notification.Name.PDFViewPageChanged, object: view, queue: .main) { [weak view] _ in
-                guard let view, let page = view.currentPage, let document = view.document, document.pageCount > 0 else { return }
-                let position = document.index(for: page) + 1
-                self.onProgress(Double(position) / Double(document.pageCount))
-            }
-        }
-        deinit { if let observer { NotificationCenter.default.removeObserver(observer) } }
     }
 }
 

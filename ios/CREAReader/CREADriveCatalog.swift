@@ -39,6 +39,7 @@ final class CREADriveCatalog: ObservableObject {
     @Published private(set) var community: [CREACommunityProfile] = []
     @Published private(set) var isLoading = false
     @Published private(set) var downloading: Set<String> = []
+    @Published private(set) var uploading: Set<UUID> = []
     @Published var errorMessage: String?
     @Published private(set) var communityPublishing = false
     @Published private(set) var communityStatus = ""
@@ -47,6 +48,7 @@ final class CREADriveCatalog: ObservableObject {
     private let folderName = "CREA Reader"
     private var folderID: String?
     private var metadataCache: [String: CREABookMetadata] = [:]
+    private var manifestETags: [String: String] = [:]
     private let api = "https://www.googleapis.com/drive/v3/files"
 
     init() {
@@ -86,6 +88,63 @@ final class CREADriveCatalog: ObservableObject {
             throw failure("Google Drive devolvió un error. Verifica los permisos de la cuenta.")
         }
         return data
+    }
+
+    /// Resumable binary upload; the original book stays local if any step fails.
+    func upload(_ book: LocalBook, library: LocalLibrary) async {
+        guard uploading.insert(book.id).inserted else { return }
+        defer { uploading.remove(book.id) }
+        do {
+            guard GIDSignIn.sharedInstance.currentUser?.grantedScopes?.contains("https://www.googleapis.com/auth/drive") == true else {
+                throw failure("Autoriza la subida a Drive desde Ajustes primero.")
+            }
+            let access = try await token()
+            let source = library.url(for: book)
+            let hash = try await Task.detached { try CREABookIdentity.hash(source) }.value
+            let existing = try await list(query: "trashed = false and appProperties has { key='sha256' and value='\(hash)' }",
+                                          fields: "id,name,mimeType", token: access)
+            if let linked = existing.first {
+                library.update(book) { $0.driveFileID = linked.id; $0.contentHash = hash; $0.driveAccount = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() }
+                await synchronize(); return
+            }
+            if folderID == nil {
+                let folders = try await list(query: "name = 'CREA Reader' and mimeType = 'application/vnd.google-apps.folder' and trashed = false", fields: "id,name,mimeType", token: access)
+                folderID = folders.first?.id
+                if folderID == nil {
+                    var call = URLRequest(url: URL(string: api)!)
+                    call.httpMethod = "POST"; call.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
+                    call.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    call.httpBody = try JSONSerialization.data(withJSONObject: ["name": folderName, "mimeType": "application/vnd.google-apps.folder"])
+                    let (data, response) = try await URLSession.shared.data(for: call)
+                    guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+                          let object = try JSONSerialization.jsonObject(with: data) as? [String: Any], let id = object["id"] as? String else { throw failure("No se pudo crear la carpeta de biblioteca.") }
+                    folderID = id
+                }
+            }
+            guard let folderID else { throw failure("No se encontró la carpeta de biblioteca.") }
+            let mime = book.kind == "PDF" ? "application/pdf" : "application/epub+zip"
+            let size = try source.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+            let clean = book.name.components(separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>|").union(.controlCharacters)).joined(separator: " ")
+            var start = URLRequest(url: URL(string: "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id")!)
+            start.httpMethod = "POST"
+            start.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
+            start.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            start.setValue(mime, forHTTPHeaderField: "X-Upload-Content-Type")
+            start.setValue(String(size), forHTTPHeaderField: "X-Upload-Content-Length")
+            start.httpBody = try JSONSerialization.data(withJSONObject: ["name": String(clean.prefix(120)) + "." + book.kind.lowercased(), "parents": [folderID], "appProperties": ["kind": "book", "sha256": hash]])
+            let (_, response) = try await URLSession.shared.data(for: start)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+                  let location = http.value(forHTTPHeaderField: "Location"), let session = URL(string: location),
+                  session.scheme == "https", session.host == "www.googleapis.com" else { throw failure("Drive no inició la subida.") }
+            var put = URLRequest(url: session)
+            put.httpMethod = "PUT"; put.setValue(mime, forHTTPHeaderField: "Content-Type")
+            put.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
+            let (data, result) = try await URLSession.shared.upload(for: put, fromFile: source)
+            guard let uploaded = result as? HTTPURLResponse, (200...299).contains(uploaded.statusCode),
+                  let object = try JSONSerialization.jsonObject(with: data) as? [String: Any], let id = object["id"] as? String else { throw failure("No se completó la subida. Tu libro local está guardado.") }
+            library.update(book) { $0.driveFileID = id; $0.contentHash = hash; $0.driveAccount = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() }
+            await synchronize()
+        } catch { errorMessage = error.localizedDescription }
     }
 
     private func list(query: String, fields: String, token: String) async throws -> [CREARemoteBook] {
@@ -407,7 +466,11 @@ final class CREADriveCatalog: ObservableObject {
               let fileID = files.first?["id"] as? String else { return nil }
         var media = URLComponents(string: api + "/" + fileID)!
         media.queryItems = [URLQueryItem(name: "alt", value: "media")]
-        let bytes = try await request(media.url!, token: access)
+        var read = URLRequest(url: media.url!)
+        read.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
+        let (bytes, mediaResponse) = try await URLSession.shared.data(for: read)
+        guard let mediaHTTP = mediaResponse as? HTTPURLResponse, (200...299).contains(mediaHTTP.statusCode) else { throw failure("No se pudo leer el progreso privado.") }
+        manifestETags[fileID] = mediaHTTP.value(forHTTPHeaderField: "ETag")
         guard let document = try JSONSerialization.jsonObject(with: bytes) as? [String: Any],
               document["books"] is [[String: Any]] else {
             throw failure("El manifiesto privado de Android no contiene una lista válida de libros.")
@@ -417,7 +480,7 @@ final class CREADriveCatalog: ObservableObject {
 
     /// Update only the existing private Android manifest. Never create an empty
     /// replacement which could hide books when Android has not synchronized yet.
-    func savePrivateProgressManifest(_ document: [String: Any], fileID: String) async throws {
+    func savePrivateProgressManifest(_ document: [String: Any], fileID: String?) async throws {
         guard let user = GIDSignIn.sharedInstance.currentUser,
               user.grantedScopes?.contains("https://www.googleapis.com/auth/drive.appdata") == true else {
             throw failure("Falta el permiso privado de Drive. Habilítalo desde Ajustes.")
@@ -427,15 +490,32 @@ final class CREADriveCatalog: ObservableObject {
         }
         let access = try await token()
         let body = try JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
+        guard let fileID else {
+            // Recheck before first creation; never replace a manifest another device created.
+            if try await loadPrivateProgressManifest() != nil { throw failure("Otro dispositivo creó el manifiesto. Vuelve a sincronizar para combinarlo.") }
+            let boundary = UUID().uuidString
+            var bytes = Data("--\(boundary)\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n".utf8)
+            bytes.append(try JSONSerialization.data(withJSONObject: ["name": "crea-reader-library-v2.json", "parents": ["appDataFolder"]]))
+            bytes.append(Data("\r\n--\(boundary)\r\nContent-Type: application/json\r\n\r\n".utf8)); bytes.append(body)
+            bytes.append(Data("\r\n--\(boundary)--\r\n".utf8))
+            var create = URLRequest(url: URL(string: "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart")!)
+            create.httpMethod = "POST"; create.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
+            create.setValue("multipart/related; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            let (_, response) = try await URLSession.shared.upload(for: create, from: bytes)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw failure("No se pudo crear el manifiesto privado.") }
+            return
+        }
         var target = URLComponents(string: "https://www.googleapis.com/upload/drive/v3/files/" + fileID)!
         target.queryItems = [URLQueryItem(name: "uploadType", value: "media")]
         var call = URLRequest(url: target.url!)
         call.httpMethod = "PATCH"
         call.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
         call.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        if let etag = manifestETags[fileID] { call.setValue(etag, forHTTPHeaderField: "If-Match") }
         let (_, response) = try await URLSession.shared.upload(for: call, from: body)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            if code == 412 { throw failure("El progreso cambió en otro dispositivo. Sincroniza de nuevo; se conserva tu avance local.") }
             throw failure("Drive rechazó la escritura del progreso (HTTP \(code)).")
         }
     }
