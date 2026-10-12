@@ -158,7 +158,7 @@ enum CREARemoteEPUBCover {
             if name == "metadata" { insideMetadata = true }
             if name == "itemref", let id = attributes["idref"] { spineIDs.append(id) }
             if insideMetadata {
-                if ["title", "creator", "description", "publisher", "language", "date", "extent"].contains(name) {
+                if ["title", "creator", "description", "publisher", "language", "date"].contains(name) {
                     activeField = name
                     textBuffer = ""
                 } else if name == "meta" {
@@ -201,7 +201,7 @@ enum CREARemoteEPUBCover {
                     case "publisher": publisher = publisher ?? value
                     case "language": language = language ?? value
                     case "date": published = published ?? value
-                    case "extent", "pages":
+                    case "pages":
                         let number = value.components(separatedBy: CharacterSet.decimalDigits.inverted).first {
                             !$0.isEmpty
                         }.flatMap(Int.init)
