@@ -383,8 +383,8 @@ struct ReaderHomeView: View {
                                 $0.readingLocatorJSON = serialized
                                 $0.progressUpdatedAt = Date()
                             }
-                        }
-                        , ai: readerAI
+                        },
+                        ai: readerAI
                     )
                     .onDisappear {
                         if googleAuth.progressAuthorized || (communityShareEnabled && communityShareAccount == (googleAuth.accountEmail ?? "") && googleAuth.communityAuthorized) {
