@@ -136,6 +136,17 @@ struct LocalBook: Identifiable, Codable, Hashable {
         mutate(&books[index])
         persist()
     }
+    func markFinished(_ book: LocalBook) {
+        update(book) { local in
+            local.progress = 1; local.progressUpdatedAt = Date()
+            if let json = local.readingLocatorJSON, let data = json.data(using: .utf8),
+               var locator = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                var locations = locator["locations"] as? [String: Any] ?? [:]
+                locations["totalProgression"] = 1.0; locator["locations"] = locations
+                if let encoded = try? JSONSerialization.data(withJSONObject: locator), let value = String(data: encoded, encoding: .utf8) { local.readingLocatorJSON = value }
+            }
+        }
+    }
     func setGrid(_ value: Bool) { layoutGrid = value; UserDefaults.standard.set(value, forKey: layoutKey) }
     var collections: [String] { Array(Set(collectionNames + books.flatMap { memberships($0) })).sorted() }
     func memberships(_ book: LocalBook) -> [String] { Array(Set((book.collections ?? []) + (book.collection.isEmpty ? [] : [book.collection]))).sorted() }
@@ -631,10 +642,7 @@ struct ReaderHomeView: View {
             library.update(book) { $0.favorite.toggle() }
         }
         Button("Marcar como terminado", systemImage: "checkmark.circle") {
-            library.update(book) {
-                $0.progress = 1
-                $0.progressUpdatedAt = Date()
-            }
+            library.markFinished(book)
         }
         Button("Añadir a colección", systemImage: "folder") {
             collectionName = book.collection

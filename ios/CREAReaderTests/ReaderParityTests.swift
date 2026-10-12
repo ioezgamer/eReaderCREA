@@ -1,5 +1,6 @@
 import XCTest
 import CryptoKit
+import ReadiumShared
 @testable import CREAReader
 
 final class ReaderParityTests: XCTestCase {
@@ -175,5 +176,22 @@ final class ReaderParityTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: empty) }
         XCTAssertThrowsError(try library.add(url: empty))
         XCTAssertEqual(Set(try FileManager.default.contentsOfDirectory(atPath: directory.path)), before)
+    }
+    @MainActor func testMarkFinishedUpdatesTheSyncedLocatorWithoutLosingText() throws {
+        let library = LocalLibrary()
+        let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "reader", withExtension: "epub"))
+        try library.add(url: fixture)
+        let book = try XCTUnwrap(library.books.first)
+        defer { library.remove(book) }
+        let json = #"{"href":"chapter.xhtml","type":"application/xhtml+xml","locations":{"totalProgression":0.4,"progression":0.2},"text":{"highlight":"lectura"}}"#
+        library.update(book) { $0.progress = 0.4; $0.readingLocatorJSON = json }
+        library.markFinished(book)
+        let current = try XCTUnwrap(library.books.first { $0.id == book.id })
+        let locator = try Locator(jsonString: XCTUnwrap(current.readingLocatorJSON))
+        XCTAssertEqual(current.progress, 1)
+        XCTAssertEqual(locator.locations.totalProgression, 1)
+        XCTAssertEqual(locator.text.highlight, "lectura")
+        XCTAssertEqual(locator.href.string, "chapter.xhtml")
+        XCTAssertNotNil(current.progressUpdatedAt)
     }
 }

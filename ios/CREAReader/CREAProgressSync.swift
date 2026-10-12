@@ -177,13 +177,23 @@ final class CREAProgressSync: ObservableObject {
                         guard let id = reading["driveFileId"] as? String,
                               let percent = reading["percent"] as? NSNumber else { continue }
                         let stamp = (reading["updatedAt"] as? NSNumber)?.int64Value ?? 0
-                        if stamp > (latest[id]?.stamp ?? Int64.min) {
+                        if stamp >= (latest[id]?.stamp ?? Int64.min) {
                             latest[id] = (max(0, min(100, percent.intValue)), stamp)
                         }
                     }
                 }
             }
             remotePercents = latest.mapValues { $0.percent }
+            // Device-only readings cover PDFs and books marked finished before
+            // opening; an older locator must not erase their newer percentage.
+            for (id, point) in latest {
+                guard let key = accountKey(id), point.stamp > 0,
+                      point.stamp > Int64((onlineCheckpoints[key]?.updatedAt ?? .distantPast).timeIntervalSince1970 * 1000) else { continue }
+                onlineCheckpoints[key] = CREAOnlineReadingCheckpoint(progress: Double(point.percent) / 100,
+                    locatorJSON: onlineCheckpoints[key]?.locatorJSON,
+                    updatedAt: Date(timeIntervalSince1970: Double(point.stamp) / 1000))
+                onlineUpdated += 1
+            }
             if onlineUpdated > 0 { persistOnline() }
 
             var applied = 0
