@@ -12,6 +12,7 @@ struct CREARemoteBook: Codable, Identifiable, Hashable {
     let md5Checksum: String?
     let thumbnailLink: String?
     var category: String?
+    var description: String?
     var isEPUB: Bool { name.lowercased().hasSuffix(".epub") }
     var displayName: String { (name as NSString).deletingPathExtension }
 }
@@ -45,6 +46,7 @@ final class CREADriveCatalog: ObservableObject {
     private let cacheKey = "crea.ios.drive.catalog.v1"
     private let folderName = "CREA Reader"
     private var folderID: String?
+    private var metadataCache: [String: CREABookMetadata] = [:]
     private let api = "https://www.googleapis.com/drive/v3/files"
 
     init() {
@@ -122,7 +124,7 @@ final class CREADriveCatalog: ObservableObject {
                 let parent = pending.removeFirst()
                 guard visited.insert(parent.id).inserted else { continue }
                 let children = try await list(query: "'\(parent.id)' in parents and trashed = false",
-                                              fields: "id,name,mimeType,size,modifiedTime,md5Checksum,thumbnailLink", token: access)
+                                              fields: "id,name,mimeType,size,modifiedTime,md5Checksum,thumbnailLink,description", token: access)
                 for file in children {
                     if file.mimeType == "application/vnd.google-apps.folder" {
                         pending.append((file.id, parent.category ?? file.name))
@@ -318,6 +320,66 @@ final class CREADriveCatalog: ObservableObject {
             try? candidate.write(to: cache, options: .atomic)
             return candidate
         } catch { return nil }
+    }
+
+    /// Authentic book metadata from the EPUB package; nothing is inferred from its filename.
+    /// Missing synopsis and page counts remain missing instead of being invented.
+    func inspect(_ book: CREARemoteBook) async -> CREABookMetadata {
+        let cacheKey = book.id + ":" + (book.modifiedTime ?? "") + ":" + (book.md5Checksum ?? "")
+        if let previous = metadataCache[cacheKey] { return previous }
+        var details = CREABookMetadata(
+            title: nil, author: nil, summary: book.description, publisher: nil,
+            language: nil, published: nil, editionPages: nil, excerpt: nil
+        )
+        if book.isEPUB, let size = book.size.flatMap(Int64.init),
+           size > 50, size <= 300_000_000 {
+            do {
+                let access = try await token()
+                if let found = await CREARemoteEPUBCover.inspect(size: size, readRange: { start, end in
+                    await self.range(book: book, start: start, end: end, token: access)
+                }) {
+                    details = found
+                    if (details.summary ?? "").isEmpty { details.summary = book.description }
+                }
+            } catch {
+                // The basic Google Drive description is still usable without EPUB metadata.
+            }
+        }
+        metadataCache[cacheKey] = details
+        return details
+    }
+
+    /// Fetch a temporary, authenticated reading copy. It never enters My Library.
+    /// The caller must delete this file when the reader or preview closes.
+    func temporaryReadingCopy(_ book: CREARemoteBook) async throws -> URL {
+        let upperLimit: Int64 = 250 * 1024 * 1024
+        if let size = book.size.flatMap(Int64.init), size > upperLimit {
+            throw failure("El archivo supera 250 MB y no puede abrirse temporalmente.")
+        }
+        let access = try await token()
+        var endpoint = URLComponents(string: api + "/" + book.id)!
+        endpoint.queryItems = [URLQueryItem(name: "alt", value: "media")]
+        guard let url = endpoint.url else { throw failure("Enlace del libro no válido.") }
+        var call = URLRequest(url: url)
+        call.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
+        call.timeoutInterval = 120
+        let (download, response) = try await URLSession.shared.download(for: call)
+        guard let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode) else {
+            throw failure("No se pudo abrir el libro desde Google Drive. Revisa la conexión.")
+        }
+        let attributes = try FileManager.default.attributesOfItem(atPath: download.path)
+        let bytes = (attributes[.size] as? NSNumber)?.int64Value ?? 0
+        guard bytes > 0, bytes <= upperLimit else {
+            throw failure("El archivo está vacío o supera el límite de lectura temporal.")
+        }
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CREAReaderOnline", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let destination = root.appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension(book.isEPUB ? "epub" : "pdf")
+        try FileManager.default.moveItem(at: download, to: destination)
+        return destination
     }
 
     /// Read the existing Android manifest from the app-private Drive folder.
