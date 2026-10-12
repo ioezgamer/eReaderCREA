@@ -2,9 +2,12 @@ import SwiftUI
 import PDFKit
 import UniformTypeIdentifiers
 import GoogleSignIn
+import ReadiumShared
+import ReadiumStreamer
 
 @main
 struct CREAReaderApp: App {
+    init() { CREABackgroundSync.register() }
     var body: some Scene { WindowGroup { ReaderHomeView().onOpenURL { _ = GIDSignIn.sharedInstance.handle($0) } } }
 }
 
@@ -18,7 +21,7 @@ enum CREAStyle {
 
 struct LocalBook: Identifiable, Codable, Hashable {
     let id: UUID
-    let name: String
+    var name: String
     let filename: String
     let kind: String
     var favorite: Bool = false
@@ -31,9 +34,11 @@ struct LocalBook: Identifiable, Codable, Hashable {
     var progressUpdatedAt: Date?
     var contentHash: String?
     var driveAccount: String?
+    var author: String?
 }
 
 @MainActor final class LocalLibrary: ObservableObject {
+    static let shared = LocalLibrary()
     @Published private(set) var books: [LocalBook] = []
     @Published var layoutGrid = true
     private let storeKey = "crea.reader.localBooks"
@@ -86,6 +91,26 @@ struct LocalBook: Identifiable, Codable, Hashable {
                                filename: name, kind: audioFormats.contains(ext) ? "AUDIO" : imageFormats.contains(ext) ? "IMAGEN" : ext.uppercased(), driveFileID: driveFileID, contentHash: hash,
                                driveAccount: driveFileID == nil ? nil : GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased()), at: 0)
         persist()
+        if let added = books.first { Task { await enrich(added, preserveTitle: displayName != nil) } }
+    }
+    private func enrich(_ book: LocalBook, preserveTitle: Bool) async {
+        let source = url(for: book)
+        if book.kind == "PDF", let document = PDFDocument(url: source) {
+            let title = document.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String
+            let author = document.documentAttributes?[PDFDocumentAttribute.authorAttribute] as? String
+            update(book) { if !preserveTitle, let title, !title.isEmpty { $0.name = title }; $0.author = author }
+            return
+        }
+        guard ["EPUB", "AUDIO", "IMAGEN"].contains(book.kind) else { return }
+        let http = DefaultHTTPClient(), retriever = AssetRetriever(httpClient: DefaultHTTPClient())
+        let opener = PublicationOpener(parser: DefaultPublicationParser(httpClient: http, assetRetriever: retriever, pdfFactory: DefaultPDFDocumentFactory()))
+        guard let absolute = source.anyURL.absoluteURL,
+              case let .success(asset) = await retriever.retrieve(url: absolute),
+              case let .success(publication) = await opener.open(asset: asset, allowUserInteraction: false) else { return }
+        update(book) {
+            if !preserveTitle, let title = publication.metadata.title, !title.isEmpty { $0.name = title }
+            $0.author = publication.metadata.authors.map { $0.name }.joined(separator: ", ")
+        }
     }
     func update(_ book: LocalBook, mutate: (inout LocalBook) -> Void) {
         guard let index = books.firstIndex(where: { $0.id == book.id }) else { return }
@@ -137,7 +162,7 @@ private enum ReaderTab: Int, CaseIterable {
 }
 
 struct ReaderHomeView: View {
-    @StateObject private var library = LocalLibrary()
+    @StateObject private var library = LocalLibrary.shared
     @StateObject private var googleAuth = CREAAuthSession()
     @StateObject private var driveCatalog = CREADriveCatalog()
     @StateObject private var progressSync = CREAProgressSync()
@@ -164,11 +189,14 @@ struct ReaderHomeView: View {
     @State private var collectionTarget: LocalBook?
     @State private var collectionName = ""
     @AppStorage("crea.reader.theme") private var theme = "Sistema"
+    @AppStorage("crea.reader.language") private var language = "es"
+    @AppStorage("crea.reader.autoSync") private var autoSync = false
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
 
     private var visibleBooks: [LocalBook] {
         let matching = library.books.filter { book in
-            let text = search.isEmpty || book.name.localizedStandardContains(search)
+            let text = search.isEmpty || (book.name + " " + (book.author ?? "")).localizedStandardContains(search)
             let kind = filter == "Todos" || (filter == "Favoritos" && book.favorite) ||
                 (filter == "Leyendo" && book.progress > 0 && book.progress < 1) ||
                 (filter == "Sin leer" && book.progress == 0) ||
@@ -178,6 +206,7 @@ struct ReaderHomeView: View {
         }
         switch sort {
         case "Título": return matching.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        case "Autor": return matching.sorted { ($0.author ?? "").localizedStandardCompare($1.author ?? "") == .orderedAscending }
         case "Progreso": return matching.sorted { $0.progress > $1.progress }
         default: return matching.sorted { ($0.lastOpened ?? .distantPast) > ($1.lastOpened ?? .distantPast) }
         }
@@ -195,10 +224,19 @@ struct ReaderHomeView: View {
             }
             .tint(CREAStyle.blue)
             .task(id: googleAuth.accountEmail) {
+                driveCatalog.resetForCurrentAccount()
+                progressSync.resetAccount()
                 await readerAI.refresh(force: true)
             }
         }
         .preferredColorScheme(theme == "Oscuro" ? .dark : theme == "Claro" ? .light : nil)
+        .environment(\.locale, Locale(identifier: language))
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { CREABackgroundSync.schedule() }
+            if phase == .active && autoSync && googleAuth.progressAuthorized {
+                Task { await driveCatalog.synchronize(); await progressSync.pull(catalog: driveCatalog, library: library); await progressSync.push(catalog: driveCatalog, library: library) }
+            }
+        }
         .sheet(item: $selectedRemoteBook, onDismiss: {
             if let pending = pendingOnlineReading {
                 pendingOnlineReading = nil
@@ -329,8 +367,8 @@ struct ReaderHomeView: View {
                             Button("Lista", systemImage: "list.bullet") { library.setGrid(false) }
                         } label: { Image(systemName: library.layoutGrid ? "square.grid.2x2" : "list.bullet").font(.title3) }
                         Menu {
-                            ForEach(["Últimos", "Título", "Progreso"], id: \.self) { value in
-                                Button(value) { sort = value }
+                            ForEach(["Últimos", "Título", "Autor", "Progreso"], id: \.self) { value in
+                                Button(LocalizedStringKey(value)) { sort = value }
                             }
                         } label: { Image(systemName: "arrow.up.arrow.down").font(.title3) }
                     }
@@ -338,7 +376,7 @@ struct ReaderHomeView: View {
                         HStack {
                             ForEach(["Todos", "Leyendo", "Sin leer", "Terminados", "Favoritos", "EPUB", "PDF", "AUDIO", "IMAGEN"] +
                                 Array(Set(library.books.map { $0.collection }.filter { !$0.isEmpty })).sorted(), id: \.self) { value in
-                                Button(value) { filter = value }
+                                Button(LocalizedStringKey(value)) { filter = value }
                                     .font(.subheadline.weight(.medium))
                                     .padding(.horizontal, 13).padding(.vertical, 9)
                                     .background(filter == value ? CREAStyle.blue : Color.primary.opacity(0.07), in: Capsule())
@@ -914,6 +952,7 @@ struct ReaderHomeView: View {
         NavigationStack {
             Form {
                 Section("Apariencia") {
+                    Picker("Idioma", selection: $language) { Text("Español").tag("es"); Text("English").tag("en") }
                     NavigationLink("Lectura en voz alta") { CREAVoiceSettings() }
                     Picker("Tema", selection: $theme) {
                         Text("Sistema").tag("Sistema")
@@ -931,6 +970,8 @@ struct ReaderHomeView: View {
                     LabeledContent("Formato PDF", value: "\(library.books.filter { $0.kind == "PDF" }.count)")
                 }
                 Section("Sincronización") {
+                    Toggle("Sincronización automática", isOn: $autoSync).onChange(of: autoSync) { _, _ in CREABackgroundSync.schedule() }
+                    Text("iOS decide cuándo permite actualizar en segundo plano. También se sincroniza al volver a la aplicación.").font(.footnote)
                     CREAGoogleAccountView(auth: googleAuth)
                     if googleAuth.accountEmail != nil {
                         if !googleAuth.communityAuthorized {
@@ -961,6 +1002,16 @@ struct ReaderHomeView: View {
                         .disabled(progressSync.busy)
                     }
                     Text(progressSync.status).font(.footnote).foregroundStyle(.secondary)
+                    NavigationLink("Lecturas por dispositivo") {
+                        List(progressSync.devices) { device in
+                            Section(device.name) {
+                                Text(Date(timeIntervalSince1970: Double(device.updatedAt) / 1000), style: .date).font(.caption)
+                                ForEach(device.readings) { reading in
+                                    LabeledContent(driveCatalog.books.first { $0.id == reading.driveFileId }?.displayName ?? "Libro no disponible en catálogo", value: "\(reading.percent)%")
+                                }
+                            }
+                        }.navigationTitle("Mis dispositivos")
+                    }
                     Text("Se conserva el progreso más reciente y los datos de los demás dispositivos.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }

@@ -141,6 +141,11 @@ struct CREAExploreScreen: View {
     ]
     private let topics = [("Novelas y cuentos", "s.fiction"), ("Poesía", "s.poetry"), ("Teatro", "s.drama"), ("Aventuras", "s.adventure"), ("Historia", "s.history"), ("Filosofía", "s.philosophy"), ("Viajes", "s.travel"), ("Infantil y juvenil", "s.children"), ("Miguel de Cervantes", "cervantes"), ("Rubén Darío", "a.darío"), ("Benito Pérez Galdós", "a.galdós")]
     @State private var custom = ""
+    @AppStorage("crea.reader.opds.custom") private var savedJSON = "[]"
+    private var saved: [String] { (savedJSON.data(using: .utf8).flatMap { try? JSONDecoder().decode([String].self, from: $0) }) ?? [] }
+    private func save(_ urls: [String]) {
+        if let data = try? JSONEncoder().encode(urls), let json = String(data: data, encoding: .utf8) { savedJSON = json }
+    }
     var body: some View {
         NavigationStack {
             List {
@@ -159,7 +164,11 @@ struct CREAExploreScreen: View {
                     TextField("Dirección HTTPS del catálogo", text: $custom).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                     if let url = URL(string: custom), url.scheme == "https", url.host != nil {
                         NavigationLink("Abrir catálogo") { CREAOPDSFeedScreen(title: "Catálogo OPDS", url: url, library: library) }
+                        Button("Guardar catálogo") { if !saved.contains(custom) { save(saved + [custom]); custom = "" } }
                     }
+                    ForEach(saved, id: \.self) { href in
+                        if let url = URL(string: href) { NavigationLink(href) { CREAOPDSFeedScreen(title: url.host ?? "Catálogo", url: url, library: library) } }
+                    }.onDelete { offsets in var urls = saved; urls.remove(atOffsets: offsets); save(urls) }
                 }
             }.navigationTitle("Explorar")
         }

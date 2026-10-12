@@ -65,6 +65,8 @@ final class CREADriveCatalog: ObservableObject {
     private var folderID: String?
     private var metadataCache: [String: CREABookMetadata] = [:]
     private var manifestETags: [String: String] = [:]
+    private var accountID: String?
+    private var scopedCacheKey: String { cacheKey + "." + (accountID ?? "signed-out") }
     private let api = "https://www.googleapis.com/drive/v3/files"
 
     init() {
@@ -72,20 +74,27 @@ final class CREADriveCatalog: ObservableObject {
         let leftovers = FileManager.default.temporaryDirectory
             .appendingPathComponent("CREAReaderOnline", isDirectory: true)
         try? FileManager.default.removeItem(at: leftovers)
-        if let data = UserDefaults.standard.data(forKey: cacheKey),
-           let cached = try? JSONDecoder().decode([CREARemoteBook].self, from: data) {
-            books = cached
-        }
+    }
+
+    func resetForCurrentAccount() {
+        let current = GIDSignIn.sharedInstance.currentUser?.userID
+        guard current != accountID else { return }
+        accountID = current; folderID = nil; metadataCache = [:]; manifestETags = [:]
+        books = []; community = []; sharedInsights = [:]; lastSynced = nil
+        errorMessage = nil; communityStatus = ""
+        if current != nil, let data = UserDefaults.standard.data(forKey: scopedCacheKey),
+           let cached = try? JSONDecoder().decode([CREARemoteBook].self, from: data) { books = cached }
     }
 
     private func token() async throws -> String {
+        resetForCurrentAccount()
         guard let user = GIDSignIn.sharedInstance.currentUser else {
             throw failure("Primero inicia sesión con Google desde Ajustes.")
         }
         return try await withCheckedThrowingContinuation { continuation in
             user.refreshTokensIfNeeded { refreshed, error in
                 if let error { continuation.resume(throwing: error) }
-                else if let token = refreshed?.accessToken.tokenString {
+                else if let token = refreshed?.accessToken.tokenString, refreshed?.userID == GIDSignIn.sharedInstance.currentUser?.userID {
                     continuation.resume(returning: token)
                 } else { continuation.resume(throwing: self.failure("No se obtuvo el token de Google.")) }
             }
@@ -97,9 +106,11 @@ final class CREADriveCatalog: ObservableObject {
     }
 
     private func request(_ url: URL, token: String) async throws -> Data {
+        let owner = GIDSignIn.sharedInstance.currentUser?.userID
         var request = URLRequest(url: url)
         request.setValue("Bearer " + token, forHTTPHeaderField: "Authorization")
         let (data, response) = try await URLSession.shared.data(for: request)
+        guard owner != nil, owner == GIDSignIn.sharedInstance.currentUser?.userID else { throw failure("La cuenta cambió durante la operación. Reintenta con la cuenta actual.") }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw failure("Google Drive devolvió un error. Verifica los permisos de la cuenta.")
         }
@@ -115,11 +126,13 @@ final class CREADriveCatalog: ObservableObject {
                 throw failure("Autoriza la subida a Drive desde Ajustes primero.")
             }
             let access = try await token()
+            let owner = GIDSignIn.sharedInstance.currentUser?.userID
             let source = library.url(for: book)
             let hash = try await Task.detached { try CREABookIdentity.hash(source) }.value
             let existing = try await list(query: "trashed = false and appProperties has { key='sha256' and value='\(hash)' }",
                                           fields: "id,name,mimeType", token: access)
             if let linked = existing.first {
+                guard owner == GIDSignIn.sharedInstance.currentUser?.userID else { throw failure("La cuenta cambió durante la subida.") }
                 library.update(book) { $0.driveFileID = linked.id; $0.contentHash = hash; $0.driveAccount = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() }
                 await synchronize(); return
             }
@@ -156,6 +169,7 @@ final class CREADriveCatalog: ObservableObject {
             put.httpMethod = "PUT"; put.setValue(mime, forHTTPHeaderField: "Content-Type")
             put.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
             let (data, result) = try await URLSession.shared.upload(for: put, fromFile: source)
+            guard owner == GIDSignIn.sharedInstance.currentUser?.userID else { throw failure("La cuenta cambió durante la subida; actualiza el catálogo de la cuenta original.") }
             guard let uploaded = result as? HTTPURLResponse, (200...299).contains(uploaded.statusCode),
                   let object = try JSONSerialization.jsonObject(with: data) as? [String: Any], let id = object["id"] as? String else { throw failure("No se completó la subida. Tu libro local está guardado.") }
             library.update(book) { $0.driveFileID = id; $0.contentHash = hash; $0.driveAccount = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() }
@@ -215,7 +229,7 @@ final class CREADriveCatalog: ObservableObject {
                 }
             }
             books = found.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-            UserDefaults.standard.set(try JSONEncoder().encode(books), forKey: cacheKey)
+            UserDefaults.standard.set(try JSONEncoder().encode(books), forKey: scopedCacheKey)
             lastSynced = Date()
             errorMessage = nil
             await loadSharedInsights()

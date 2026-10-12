@@ -175,7 +175,7 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
                 message = "No se pudo abrir la publicación: \(issue)"
             case .success(let publication):
                 self.publication = publication
-                contents = publication.tableOfContents
+                contents = (try? await publication.tableOfContents().get()) ?? []
                 metadata = "\(publication.metadata.title ?? url.lastPathComponent)\n\(publication.metadata.authors.map { $0.name }.joined(separator: ", "))"
                 let delegate = voiceDelegate
                 speech = PublicationSpeechSynthesizer(publication: publication, engineFactory: { AVTTSEngine(delegate: delegate) })

@@ -61,7 +61,8 @@ final class ReaderParityTests: XCTestCase {
     @MainActor func testLibraryImportDeduplicatesAndPreservesReadingData() throws {
         let library = LocalLibrary()
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".epub")
-        try Data(UUID().uuidString.utf8).write(to: file)
+        let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "reader", withExtension: "epub"))
+        try FileManager.default.copyItem(at: fixture, to: file)
         defer { try? FileManager.default.removeItem(at: file) }
         let count = library.books.count
         try library.add(url: file)
@@ -74,5 +75,39 @@ final class ReaderParityTests: XCTestCase {
         XCTAssertEqual(restored?.progress, 0.6)
         XCTAssertEqual(restored?.collection, "Curso")
         XCTAssertEqual(restored?.favorite, true)
+    }
+    @MainActor func testRealEPUBOpensHasContentsAndSearchLocators() async throws {
+        let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "reader", withExtension: "epub"))
+        let model = EPUBBookModel()
+        await model.load(url: fixture, initialLocatorJSON: nil, onProgress: { _ in }, onLocator: { _ in })
+        XCTAssertNil(model.message)
+        XCTAssertNotNil(model.navigator)
+        XCTAssertFalse(model.contents.isEmpty)
+        await model.search("lectura")
+        XCTAssertNil(model.searchError)
+        XCTAssertFalse(model.results.isEmpty)
+        XCTAssertNotNil(model.results.first?.jsonString)
+        model.stopSpeech()
+    }
+    @MainActor func testRealPDFOpensAndSearchesBothPages() async throws {
+        let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "reader", withExtension: "pdf"))
+        let model = CREAPDFModel()
+        await model.load(fixture, progress: 1, onProgress: { _ in })
+        defer { model.close() }
+        XCTAssertTrue(model.ready)
+        XCTAssertEqual(model.pageCount, 2)
+        model.search("lectura")
+        XCTAssertEqual(model.matches.count, 2)
+        XCTAssertEqual(model.page, 2)
+    }
+    func testOPDS2NavigationAndAcquisition() throws {
+        let feed = #"{"metadata":{"title":"CREA"},"publications":[{"metadata":{"title":"Libro","author":[{"name":"Autora"}]},"links":[{"href":"a.epub","type":"application/epub+zip","rel":["http://opds-spec.org/acquisition/open-access"]}]}],"navigation":[{"title":"Temas","href":"topics.json","type":"application/opds+json"}],"links":[{"href":"?page=2","rel":"next"}]}"#
+        let parser = CREAOPDSParser(base: URL(string: "https://example.org/feed.json")!)
+        try parser.parse(Data(feed.utf8))
+        XCTAssertEqual(parser.entries.count, 2)
+        XCTAssertEqual(parser.entries[0].author, "Autora")
+        XCTAssertNotNil(parser.entries[0].acquisition)
+        XCTAssertNotNil(parser.entries[1].navigation)
+        XCTAssertNotNil(parser.next)
     }
 }

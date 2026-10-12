@@ -9,6 +9,19 @@ struct CREAOnlineReadingCheckpoint: Codable {
     var locatorJSON: String?
     var updatedAt: Date
 }
+struct CREADeviceSnapshot: Decodable, Identifiable {
+    struct Reading: Decodable, Identifiable {
+        let driveFileId: String
+        let percent: Int
+        let updatedAt: Int64
+        var id: String { driveFileId }
+    }
+    let deviceId: String
+    let name: String
+    let updatedAt: Int64
+    let readings: [Reading]
+    var id: String { deviceId }
+}
 
 /// Android v2 private manifest sync plus persistent online-only reading positions.
 @MainActor
@@ -17,6 +30,7 @@ final class CREAProgressSync: ObservableObject {
     @Published private(set) var busy = false
     @Published private(set) var remotePercents: [String: Int] = [:]
     @Published private(set) var onlineCheckpoints: [String: CREAOnlineReadingCheckpoint] = [:]
+    @Published private(set) var devices: [CREADeviceSnapshot] = []
     private let storeKey = "crea.reader.onlineCheckpoints.v1"
 
     init() {
@@ -25,6 +39,7 @@ final class CREAProgressSync: ObservableObject {
             onlineCheckpoints = saved
         }
     }
+    func resetAccount() { remotePercents = [:]; devices = []; status = "Progreso pendiente de sincronización" }
 
     private func accountKey(_ id: String) -> String? {
         guard !id.isEmpty,
@@ -131,6 +146,8 @@ final class CREAProgressSync: ObservableObject {
                 return
             }
             let entries = remote.document["books"] as? [[String: Any]] ?? []
+            if let data = try? JSONSerialization.data(withJSONObject: remote.document["devices"] ?? []),
+               let decoded = try? JSONDecoder().decode([CREADeviceSnapshot].self, from: data) { devices = decoded }
             var latest: [String: (percent: Int, stamp: Int64)] = [:]
             var onlineUpdated = 0
 
@@ -172,12 +189,13 @@ final class CREAProgressSync: ObservableObject {
             var applied = 0
             var linked = 0
             for book in library.books {
+                if let account = book.driveAccount, account != GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() { continue }
                 guard let entry = matchedEntry(book, in: entries, library: library) else {
                     if let id = book.driveFileID { promoteDownloadedBook(id, library: library) }
                     continue
                 }
                 if book.driveFileID == nil, let id = entry["driveFileId"] as? String {
-                    library.update(book) { $0.driveFileID = id }
+                    library.update(book) { $0.driveFileID = id; $0.driveAccount = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() }
                     linked += 1
                 }
                 if let locator = entry["progression"] as? String,
