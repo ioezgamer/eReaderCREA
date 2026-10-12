@@ -109,7 +109,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "CREA Reader iOS ${{ steps.ipa.outputs.version }} beta - prueba ${GITHUB_RUN_NUMBER}" \
-            --notes "IPA iOS 0.9.3 sin firmar para FlareStore. Incluye ficha de libro, sinopsis y metadatos reales, muestra EPUB/PDF, lectura temporal en línea y descarga opcional. Mantiene Google Drive y el icono oficial. Requiere firma con FlareStore." \
+            --notes "IPA iOS 0.9.4 sin firmar para FlareStore. Incluye Claude IA opcional mediante servidor de CREA: explicación, traducción, simplificación y definiciones, resumen de capítulos, guías para docentes y sinopsis inteligentes. Mantiene catálogo, Google Drive y lector Readium. Requiere firma con FlareStore." \
             --prerelease
 
       - name: Build public FlareStore source
@@ -124,7 +124,7 @@ jobs:
             --ipa "${{ steps.ipa.outputs.name }}" \
             --output "$SITE/source.json" \
             --base-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" \
-            --notes "CREA Reader iOS ${{ steps.ipa.outputs.version }}: versión actualizada con catálogo Google Drive, lectura EPUB y PDF."
+            --notes "CREA Reader iOS ${{ steps.ipa.outputs.version }}: IA con Claude opcional mediante servidor seguro de CREA, catálogo Drive, lectura EPUB y PDF."
           python3 - <<'PY'
           import json
           from pathlib import Path
