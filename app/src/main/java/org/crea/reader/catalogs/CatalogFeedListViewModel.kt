@@ -43,6 +43,16 @@ class CatalogFeedListViewModel(application: Application) : AndroidViewModel(appl
         repository.deleteCatalog(id)
     }
 
+    /** Adds an OPDS repository from the directory (OPDS 1). */
+    fun addRepository(title: String, href: String) = viewModelScope.launch {
+        repository.deleteByHref(href)
+        repository.insertCatalog(Catalog(title = title, href = href, type = 1))
+    }
+
+    fun removeRepository(href: String) = viewModelScope.launch {
+        repository.deleteByHref(href)
+    }
+
     /** Replaces the English sample feeds with the Spanish catalogs, keeping the user's own. */
     fun installDefaultCatalogs() = viewModelScope.launch {
         DefaultCatalogs.retiredHrefs.forEach { repository.deleteByHref(it) }

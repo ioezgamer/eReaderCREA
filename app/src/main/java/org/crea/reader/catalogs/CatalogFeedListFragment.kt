@@ -81,31 +81,45 @@ class CatalogFeedListFragment : Fragment() {
             catalogFeedListViewModel.installDefaultCatalogs()
         }
 
-        binding.catalogFeedAddCatalogFab.setOnClickListener {
-            val alertDialog = MaterialAlertDialogBuilder(requireContext())
-                .setTitle(getString(R.string.add_catalog))
-                .setView(R.layout.add_catalog_dialog)
-                .setNegativeButton(getString(R.string.cancel)) { dialog, _ ->
-                    dialog.cancel()
-                }
-                .setPositiveButton(getString(R.string.save), null)
-                .show()
-            alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val title = alertDialog.findViewById<EditText>(R.id.catalogTitle)
-                val url = alertDialog.findViewById<EditText>(R.id.catalogUrl)
-                if (TextUtils.isEmpty(title?.text)) {
-                    title?.error = getString(R.string.invalid_title)
-                } else if (TextUtils.isEmpty(url?.text)) {
-                    url?.error = getString(R.string.invalid_url)
-                } else if (!URLUtil.isValidUrl(url?.text.toString())) {
-                    url?.error = getString(R.string.invalid_url)
-                } else {
-                    catalogFeedListViewModel.parseCatalog(
-                        url?.text.toString(),
-                        title?.text.toString()
-                    )
-                    alertDialog.dismiss()
-                }
+        binding.catalogFeedAddCatalogFab.setOnClickListener { showRepositories() }
+    }
+
+    private fun showRepositories() {
+        val installed = catalogFeedListViewModel.catalogs.value.orEmpty().map { it.href }.toSet()
+        RepositoriesSheet.show(
+            context = requireContext(),
+            inflater = layoutInflater,
+            added = installed,
+            add = { title, href -> catalogFeedListViewModel.addRepository(title, href) },
+            remove = { href -> catalogFeedListViewModel.removeRepository(href) },
+            custom = { showCustomCatalogDialog() },
+        )
+    }
+
+    private fun showCustomCatalogDialog() {
+        val alertDialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.add_catalog))
+            .setView(R.layout.add_catalog_dialog)
+            .setNegativeButton(getString(R.string.cancel)) { dialog, _ ->
+                dialog.cancel()
+            }
+            .setPositiveButton(getString(R.string.save), null)
+            .show()
+        alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val title = alertDialog.findViewById<EditText>(R.id.catalogTitle)
+            val url = alertDialog.findViewById<EditText>(R.id.catalogUrl)
+            if (TextUtils.isEmpty(title?.text)) {
+                title?.error = getString(R.string.invalid_title)
+            } else if (TextUtils.isEmpty(url?.text)) {
+                url?.error = getString(R.string.invalid_url)
+            } else if (!URLUtil.isValidUrl(url?.text.toString())) {
+                url?.error = getString(R.string.invalid_url)
+            } else {
+                catalogFeedListViewModel.parseCatalog(
+                    url?.text.toString(),
+                    title?.text.toString()
+                )
+                alertDialog.dismiss()
             }
         }
     }

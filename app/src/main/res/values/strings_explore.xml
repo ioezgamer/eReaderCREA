@@ -5,4 +5,10 @@
     <string name="catalog_custom_subtitle">Custom catalog</string>
     <string name="catalog_sub_textos">textos.info · Open virtual library</string>
     <string name="catalog_sub_gutenberg">Project Gutenberg · In Spanish</string>
+    <string name="repos_title">Add repositories</string>
+    <string name="repos_detail">Free EPUB sources. Add a catalog to browse it here, or visit the site to download an EPUB and import it.</string>
+    <string name="repos_add">Add</string>
+    <string name="repos_added">Added</string>
+    <string name="repos_visit">Visit</string>
+    <string name="repos_custom">Add by address (OPDS)</string>
 </resources>

@@ -139,4 +139,10 @@
     <string name="copyright_label">Derechos de autor</string>
     <string name="bsd_license_label">[Licencia BSD-3]</string>
     <string name="bsd_license_label_accessible">[Licencia B S D 3]</string>
+    <string name="repos_title">Agregar repositorios</string>
+    <string name="repos_detail">Fuentes gratuitas de EPUB. Agrega un catálogo para explorarlo aquí, o visita el sitio para descargar un EPUB e importarlo.</string>
+    <string name="repos_add">Agregar</string>
+    <string name="repos_added">Agregado</string>
+    <string name="repos_visit">Visitar</string>
+    <string name="repos_custom">Agregar por dirección (OPDS)</string>
 </resources>
