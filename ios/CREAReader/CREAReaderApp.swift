@@ -2,10 +2,13 @@ import SwiftUI
 import PDFKit
 import UniformTypeIdentifiers
 import GoogleSignIn
+import ReadiumShared
+import ReadiumStreamer
 
 @main
 struct CREAReaderApp: App {
-    var body: some Scene { WindowGroup { ReaderHomeView().onOpenURL { _ = GIDSignIn.sharedInstance.handle($0) } } }
+    init() { CREABackgroundSync.register() }
+    var body: some Scene { WindowGroup { ReaderHomeView() } }
 }
 
 enum CREAStyle {
@@ -18,7 +21,7 @@ enum CREAStyle {
 
 struct LocalBook: Identifiable, Codable, Hashable {
     let id: UUID
-    let name: String
+    var name: String
     let filename: String
     let kind: String
     var favorite: Bool = false
@@ -29,19 +32,38 @@ struct LocalBook: Identifiable, Codable, Hashable {
     var driveFileID: String?
     var readingLocatorJSON: String?
     var progressUpdatedAt: Date?
+    var contentHash: String?
+    var driveAccount: String?
+    var author: String?
+    var collections: [String]?
+    var importedAt: Date?
+    var fileSize: Int?
 }
 
 @MainActor final class LocalLibrary: ObservableObject {
+    static let shared = LocalLibrary()
     @Published private(set) var books: [LocalBook] = []
     @Published var layoutGrid = true
+    @Published private var collectionNames: [String] = []
     private let storeKey = "crea.reader.localBooks"
     private let layoutKey = "crea.reader.layoutGrid"
 
     init() {
+        collectionNames = UserDefaults.standard.stringArray(forKey: "crea.reader.collections") ?? []
         layoutGrid = UserDefaults.standard.object(forKey: layoutKey) as? Bool ?? true
         if let data = UserDefaults.standard.data(forKey: storeKey),
            let saved = try? JSONDecoder().decode([LocalBook].self, from: data) {
             books = saved.filter { FileManager.default.fileExists(atPath: url(for: $0).path) }
+        }
+        Task {
+            for book in books where book.contentHash == nil || book.importedAt == nil || book.fileSize == nil {
+                let source = url(for: book)
+                let hash: String?
+                if let stored = book.contentHash { hash = stored }
+                else { hash = try? await Task.detached { try CREABookIdentity.hash(source) }.value }
+                let values = try? source.resourceValues(forKeys: [.creationDateKey, .fileSizeKey])
+                update(book) { $0.contentHash = hash; $0.importedAt = $0.importedAt ?? values?.creationDate; $0.fileSize = values?.fileSize }
+            }
         }
     }
 
@@ -49,13 +71,17 @@ struct LocalBook: Identifiable, Codable, Hashable {
     func url(for book: LocalBook) -> URL { documents.appendingPathComponent(book.filename) }
     func add(url source: URL, displayName: String? = nil, driveFileID: String? = nil) throws {
         let ext = source.pathExtension.lowercased()
-        guard ["epub", "pdf"].contains(ext) else {
-            throw NSError(domain: "CREAReader", code: 1, userInfo: [NSLocalizedDescriptionKey: "Solo se admiten EPUB y PDF."])
+        let audioFormats = ["mp3", "m4a", "m4b", "aac", "wav", "audiobook"]
+        let imageFormats = ["cbz", "jpg", "jpeg", "png", "gif", "webp"]
+        guard (["epub", "pdf"] + audioFormats + imageFormats).contains(ext) else {
+            throw NSError(domain: "CREAReader", code: 1, userInfo: [NSLocalizedDescriptionKey: "Formato no compatible. Importa EPUB, PDF, audio o imágenes/CBZ."])
         }
         let hasAccess = source.startAccessingSecurityScopedResource()
         defer { if hasAccess { source.stopAccessingSecurityScopedResource() } }
         let name = UUID().uuidString + "." + ext
         let destination = documents.appendingPathComponent(name)
+        var committed = false
+        defer { if !committed { try? FileManager.default.removeItem(at: destination) } }
         var coordinationError: NSError?
         var copyError: Error?
         NSFileCoordinator(filePresenter: nil).coordinate(readingItemAt: source, options: [], error: &coordinationError) { coordinatedURL in
@@ -70,16 +96,84 @@ struct LocalBook: Identifiable, Codable, Hashable {
               ((try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 0 else {
             throw NSError(domain: "CREAReader", code: 2, userInfo: [NSLocalizedDescriptionKey: "No se pudo copiar el libro. Descárgalo desde iCloud primero."])
         }
+        let hash = try CREABookIdentity.hash(destination)
+        if let existing = books.first(where: { $0.contentHash == hash || (try? CREABookIdentity.hash(url(for: $0))) == hash }) {
+            try? FileManager.default.removeItem(at: destination)
+            if let driveFileID {
+                update(existing) { $0.driveFileID = driveFileID; $0.driveAccount = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() }
+            }
+            return
+        }
         books.insert(LocalBook(id: UUID(), name: displayName ?? source.deletingPathExtension().lastPathComponent,
-                               filename: name, kind: ext.uppercased(), driveFileID: driveFileID), at: 0)
+                               filename: name, kind: audioFormats.contains(ext) ? "AUDIO" : imageFormats.contains(ext) ? "IMAGEN" : ext.uppercased(), driveFileID: driveFileID, contentHash: hash,
+                               driveAccount: driveFileID == nil ? nil : GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased(),
+                               importedAt: Date(), fileSize: try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize), at: 0)
         persist()
+        committed = true
+        if let added = books.first { Task { await enrich(added, preserveTitle: displayName != nil) } }
+    }
+    private func enrich(_ book: LocalBook, preserveTitle: Bool) async {
+        let source = url(for: book)
+        if book.kind == "PDF", let document = PDFDocument(url: source) {
+            let title = document.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String
+            let author = document.documentAttributes?[PDFDocumentAttribute.authorAttribute] as? String
+            update(book) { if !preserveTitle, let title, !title.isEmpty { $0.name = title }; $0.author = author }
+            return
+        }
+        guard ["EPUB", "AUDIO", "IMAGEN"].contains(book.kind) else { return }
+        let http = DefaultHTTPClient(), retriever = AssetRetriever(httpClient: DefaultHTTPClient())
+        let opener = PublicationOpener(parser: DefaultPublicationParser(httpClient: http, assetRetriever: retriever, pdfFactory: DefaultPDFDocumentFactory()))
+        guard let absolute = source.anyURL.absoluteURL,
+              case let .success(asset) = await retriever.retrieve(url: absolute),
+              case let .success(publication) = await opener.open(asset: asset, allowUserInteraction: false) else { return }
+        update(book) {
+            if !preserveTitle, let title = publication.metadata.title, !title.isEmpty { $0.name = title }
+            $0.author = publication.metadata.authors.map { $0.name }.joined(separator: ", ")
+        }
     }
     func update(_ book: LocalBook, mutate: (inout LocalBook) -> Void) {
         guard let index = books.firstIndex(where: { $0.id == book.id }) else { return }
         mutate(&books[index])
         persist()
     }
+    func markFinished(_ book: LocalBook) {
+        update(book) { local in
+            local.progress = 1; local.progressUpdatedAt = Date()
+            if let json = local.readingLocatorJSON, let data = json.data(using: .utf8),
+               var locator = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                var locations = locator["locations"] as? [String: Any] ?? [:]
+                locations["totalProgression"] = 1.0; locator["locations"] = locations
+                if let encoded = try? JSONSerialization.data(withJSONObject: locator), let value = String(data: encoded, encoding: .utf8) { local.readingLocatorJSON = value }
+            }
+        }
+    }
     func setGrid(_ value: Bool) { layoutGrid = value; UserDefaults.standard.set(value, forKey: layoutKey) }
+    var collections: [String] { Array(Set(collectionNames + books.flatMap { memberships($0) })).sorted() }
+    func memberships(_ book: LocalBook) -> [String] { Array(Set((book.collections ?? []) + (book.collection.isEmpty ? [] : [book.collection]))).sorted() }
+    func setMembership(_ book: LocalBook, collection: String, included: Bool) {
+        guard let current = books.first(where: { $0.id == book.id }) else { return }
+        var names = Set(memberships(current)); if included { names.insert(collection) } else { names.remove(collection) }
+        update(book) { $0.collection = ""; $0.collections = names.sorted() }
+    }
+    func createCollection(_ raw: String) throws {
+        let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name.count <= 40, !collections.contains(where: { $0.localizedCaseInsensitiveCompare(name) == .orderedSame }) else {
+            throw NSError(domain: "CREAReader", code: 4, userInfo: [NSLocalizedDescriptionKey: "Usa un nombre único de 1 a 40 caracteres."])
+        }
+        collectionNames.append(name); UserDefaults.standard.set(collectionNames, forKey: "crea.reader.collections")
+    }
+    func deleteCollection(_ name: String) {
+        collectionNames.removeAll { $0 == name }
+        for book in books where memberships(book).contains(name) { setMembership(book, collection: name, included: false) }
+        UserDefaults.standard.set(collectionNames, forKey: "crea.reader.collections")
+    }
+    func renameCollection(_ old: String, to new: String) throws {
+        if old == new.trimmingCharacters(in: .whitespacesAndNewlines) { return }
+        try createCollection(new)
+        let name = new.trimmingCharacters(in: .whitespacesAndNewlines)
+        for book in books where memberships(book).contains(old) { setMembership(book, collection: name, included: true) }
+        deleteCollection(old)
+    }
     func remove(_ book: LocalBook) {
         try? FileManager.default.removeItem(at: url(for: book))
         books.removeAll { $0.id == book.id }
@@ -124,7 +218,7 @@ private enum ReaderTab: Int, CaseIterable {
 }
 
 struct ReaderHomeView: View {
-    @StateObject private var library = LocalLibrary()
+    @StateObject private var library = LocalLibrary.shared
     @StateObject private var googleAuth = CREAAuthSession()
     @StateObject private var driveCatalog = CREADriveCatalog()
     @StateObject private var progressSync = CREAProgressSync()
@@ -136,7 +230,7 @@ struct ReaderHomeView: View {
     @State private var notice: String?
     @State private var search = ""
     @State private var filter = "Todos"
-    @State private var sort = "Últimos"
+    @AppStorage("crea.reader.library.sort") private var sort = "Últimos"
     @AppStorage("crea.reader.communityShareEnabled") private var communityShareEnabled = false
     @AppStorage("crea.reader.communityShareAccount") private var communityShareAccount = ""
     @AppStorage("crea.reader.communityNickname") private var communityNickname = ""
@@ -150,22 +244,35 @@ struct ReaderHomeView: View {
     @State private var pendingLocalRead: LocalBook?
     @State private var collectionTarget: LocalBook?
     @State private var collectionName = ""
+    @State private var selectedCollection: String?
+    @State private var showCollectionManager = false
+    @ObservedObject private var annotations = CREAAnnotationStore.shared
     @AppStorage("crea.reader.theme") private var theme = "Sistema"
+    @AppStorage("crea.reader.language") private var language = "es"
+    @AppStorage("crea.reader.autoSync") private var autoSync = false
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
 
     private var visibleBooks: [LocalBook] {
         let matching = library.books.filter { book in
-            let text = search.isEmpty || book.name.localizedStandardContains(search)
+            let text = search.isEmpty || (book.name + " " + (book.author ?? "")).localizedStandardContains(search)
             let kind = filter == "Todos" || (filter == "Favoritos" && book.favorite) ||
-                (filter == "Leyendo" && book.progress > 0 && book.progress < 1) ||
+                (filter == "Leyendo" && book.progress > 0 && book.progress < 0.98) ||
                 (filter == "Sin leer" && book.progress == 0) ||
-                (filter == "Terminados" && book.progress >= 1) || filter == book.kind ||
-                (!book.collection.isEmpty && filter == book.collection)
-            return text && kind
+                (filter == "Terminados" && book.progress >= 0.98) || filter == book.kind ||
+                (filter == "En Drive" && book.driveFileID != nil) ||
+                (filter == "Solo aquí" && book.driveFileID == nil) ||
+                (filter == "Recientes" && (book.importedAt ?? .distantPast) > Date().addingTimeInterval(-14 * 86400)) ||
+                (filter == "Marcadores" && annotations.items(for: book.contentHash ?? "").contains { $0.kind == "bookmark" }) ||
+                (filter == "Con notas" && annotations.items(for: book.contentHash ?? "").contains { !$0.note.isEmpty })
+            return text && kind && (selectedCollection.map { library.memberships(book).contains($0) } ?? true)
         }
         switch sort {
         case "Título": return matching.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        case "Autor": return matching.sorted { ($0.author ?? "").localizedStandardCompare($1.author ?? "") == .orderedAscending }
         case "Progreso": return matching.sorted { $0.progress > $1.progress }
+        case "Descarga": return matching.sorted { ($0.importedAt ?? .distantPast) > ($1.importedAt ?? .distantPast) }
+        case "Tamaño": return matching.sorted { ($0.fileSize ?? 0) > ($1.fileSize ?? 0) }
         default: return matching.sorted { ($0.lastOpened ?? .distantPast) > ($1.lastOpened ?? .distantPast) }
         }
     }
@@ -182,10 +289,25 @@ struct ReaderHomeView: View {
             }
             .tint(CREAStyle.blue)
             .task(id: googleAuth.accountEmail) {
+                driveCatalog.resetForCurrentAccount()
+                progressSync.resetAccount()
                 await readerAI.refresh(force: true)
             }
         }
         .preferredColorScheme(theme == "Oscuro" ? .dark : theme == "Claro" ? .light : nil)
+        .environment(\.locale, Locale(identifier: language))
+        .onOpenURL { url in
+            if GIDSignIn.sharedInstance.handle(url) { return }
+            guard url.isFileURL else { return }
+            do { try library.add(url: url); tab = .library; notice = "Libro importado a Mi biblioteca" }
+            catch { self.error = error.localizedDescription }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { CREABackgroundSync.schedule() }
+            if phase == .active && autoSync && googleAuth.progressAuthorized {
+                Task { await driveCatalog.synchronize(); await progressSync.pull(catalog: driveCatalog, library: library); await progressSync.push(catalog: driveCatalog, library: library) }
+            }
+        }
         .sheet(item: $selectedRemoteBook, onDismiss: {
             if let pending = pendingOnlineReading {
                 pendingOnlineReading = nil
@@ -316,20 +438,30 @@ struct ReaderHomeView: View {
                             Button("Lista", systemImage: "list.bullet") { library.setGrid(false) }
                         } label: { Image(systemName: library.layoutGrid ? "square.grid.2x2" : "list.bullet").font(.title3) }
                         Menu {
-                            ForEach(["Últimos", "Título", "Progreso"], id: \.self) { value in
-                                Button(value) { sort = value }
+                            ForEach(["Últimos", "Descarga", "Título", "Autor", "Progreso", "Tamaño"], id: \.self) { value in
+                                Button(LocalizedStringKey(value)) { sort = value }
                             }
                         } label: { Image(systemName: "arrow.up.arrow.down").font(.title3) }
                     }
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
-                            ForEach(["Todos", "Leyendo", "Sin leer", "Terminados", "Favoritos", "EPUB", "PDF"] +
-                                Array(Set(library.books.map { $0.collection }.filter { !$0.isEmpty })).sorted(), id: \.self) { value in
-                                Button(value) { filter = value }
+                            ForEach(["Todos", "Leyendo", "Sin leer", "Terminados", "Favoritos", "Recientes", "Marcadores", "Con notas", "En Drive", "Solo aquí", "EPUB", "PDF", "AUDIO", "IMAGEN"], id: \.self) { value in
+                                Button(LocalizedStringKey(value)) { filter = value }
                                     .font(.subheadline.weight(.medium))
                                     .padding(.horizontal, 13).padding(.vertical, 9)
                                     .background(filter == value ? CREAStyle.blue : Color.primary.opacity(0.07), in: Capsule())
                                     .foregroundStyle(filter == value ? Color.white : Color.primary)
+                            }
+                        }
+                    }
+                    if !library.collections.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack {
+                                Button("Todas las colecciones") { selectedCollection = nil }
+                                ForEach(library.collections, id: \.self) { name in
+                                    Button(name) { selectedCollection = name }.buttonStyle(.bordered)
+                                        .tint(selectedCollection == name ? CREAStyle.blue : Color.secondary)
+                                }
                             }
                         }
                     }
@@ -365,23 +497,12 @@ struct ReaderHomeView: View {
                 }
             }
             .searchable(text: $search, prompt: "Buscar en mi biblioteca")
-            .alert("Colección", isPresented: Binding(
-                get: { collectionTarget != nil },
-                set: { if !$0 { collectionTarget = nil } }
-            )) {
-                TextField("Nombre de la colección", text: $collectionName)
-                Button("Guardar") {
-                    if let book = collectionTarget {
-                        let cleaned = String(collectionName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
-                        library.update(book) { $0.collection = cleaned }
-                    }
-                    collectionTarget = nil
-                }
-                Button("Cancelar", role: .cancel) { collectionTarget = nil }
-            } message: {
-                Text("Escribe un nombre o déjalo vacío para quitar la colección.")
-            }
+            .sheet(item: $collectionTarget) { book in CREACollectionsSheet(library: library, book: book) }
+            .sheet(isPresented: $showCollectionManager) { CREACollectionsSheet(library: library, book: nil) }
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showCollectionManager = true } label: { Label("Gestionar colecciones", systemImage: "folder.badge.gearshape") }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { importing = true } label: { Image(systemName: "plus.circle.fill").font(.title3) }
                         .accessibilityLabel("Importar libros")
@@ -421,6 +542,11 @@ struct ReaderHomeView: View {
                             }
                         }
                     }
+                } else if book.kind == "AUDIO" || book.kind == "IMAGEN" {
+                    CREAMediaScreen(url: library.url(for: book), title: book.name, audioMode: book.kind == "AUDIO",
+                        initialProgress: book.progress, locator: book.readingLocatorJSON,
+                        onProgress: { amount in library.update(book) { $0.progress = amount; $0.progressUpdatedAt = Date(); $0.lastOpened = Date() } },
+                        onLocator: { json in library.update(book) { $0.readingLocatorJSON = json; $0.progressUpdatedAt = Date() } })
                 } else {
                     PDFReaderScreen(url: library.url(for: book), title: book.name, onProgress: { amount in
                         library.update(book) {
@@ -428,7 +554,12 @@ struct ReaderHomeView: View {
                             $0.progressUpdatedAt = Date()
                             $0.lastOpened = Date()
                         }
-                    }, initialProgress: book.progress)
+                    }, initialProgress: book.progress, onLocator: { json in
+                        library.update(book) { $0.readingLocatorJSON = json; $0.progressUpdatedAt = Date() }
+                    })
+                    .onDisappear {
+                        if googleAuth.progressAuthorized { Task { await progressSync.push(catalog: driveCatalog, library: library) } }
+                    }
                 }
             }
         }
@@ -501,14 +632,17 @@ struct ReaderHomeView: View {
     }
 
     @ViewBuilder private func bookActions(_ book: LocalBook) -> some View {
+        ShareLink(item: library.url(for: book)) { Label("Compartir archivo", systemImage: "square.and.arrow.up") }
+        if googleAuth.communityAuthorized && ["EPUB", "PDF"].contains(book.kind) {
+            Button("Subir a Google Drive", systemImage: "icloud.and.arrow.up") {
+                Task { await driveCatalog.upload(book, library: library) }
+            }.disabled(driveCatalog.uploading.contains(book.id))
+        }
         Button(book.favorite ? "Quitar favorito" : "Añadir a favoritos", systemImage: book.favorite ? "heart.slash" : "heart") {
             library.update(book) { $0.favorite.toggle() }
         }
         Button("Marcar como terminado", systemImage: "checkmark.circle") {
-            library.update(book) {
-                $0.progress = 1
-                $0.progressUpdatedAt = Date()
-            }
+            library.markFinished(book)
         }
         Button("Añadir a colección", systemImage: "folder") {
             collectionName = book.collection
@@ -691,22 +825,7 @@ struct ReaderHomeView: View {
     }
 
     private var exploreScreen: some View {
-        NavigationStack {
-            List {
-                Section("Bibliotecas gratuitas en español") {
-                    Link(destination: URL(string: "https://www.textos.info")!) {
-                        Label("textos.info", systemImage: "book.closed")
-                    }
-                    Link(destination: URL(string: "https://www.gutenberg.org/browse/languages/es")!) {
-                        Label("Proyecto Gutenberg · Español", systemImage: "globe")
-                    }
-                }
-                Section {
-                    Text("Puedes descargar EPUB o PDF desde estos sitios e importarlos en Mi biblioteca mediante Archivos.")
-                        .foregroundStyle(.secondary)
-                }
-            }.scrollContentBackground(.hidden).background(CREAStyle.gradient).navigationTitle("Explorar")
-        }
+        CREAExploreScreen(library: library)
     }
 
     private var communityScreen: some View {
@@ -905,6 +1024,8 @@ struct ReaderHomeView: View {
         NavigationStack {
             Form {
                 Section("Apariencia") {
+                    Picker("Idioma", selection: $language) { Text("Español").tag("es"); Text("English").tag("en") }
+                    NavigationLink("Lectura en voz alta") { CREAVoiceSettings() }
                     Picker("Tema", selection: $theme) {
                         Text("Sistema").tag("Sistema")
                         Text("Claro").tag("Claro")
@@ -921,7 +1042,25 @@ struct ReaderHomeView: View {
                     LabeledContent("Formato PDF", value: "\(library.books.filter { $0.kind == "PDF" }.count)")
                 }
                 Section("Sincronización") {
+                    Toggle("Sincronización automática", isOn: $autoSync).onChange(of: autoSync) { _, _ in CREABackgroundSync.schedule() }
+                    Text("iOS decide cuándo permite actualizar en segundo plano. También se sincroniza al volver a la aplicación.").font(.footnote)
                     CREAGoogleAccountView(auth: googleAuth)
+                    if googleAuth.accountEmail != nil {
+                        if !googleAuth.communityAuthorized {
+                            Button("Autorizar subida de libros a Drive") { googleAuth.requestCommunityAccess() }
+                            Text("La subida requiere permiso de escritura en Drive. Los archivos se suben solo al pulsar Subir.").font(.footnote)
+                        } else {
+                            Button("Subir libros locales a Drive") {
+                                Task {
+                                    for book in library.books where book.driveFileID == nil && ["EPUB", "PDF"].contains(book.kind) {
+                                        await driveCatalog.upload(book, library: library)
+                                    }
+                                    await progressSync.push(catalog: driveCatalog, library: library)
+                                }
+                            }.disabled(!driveCatalog.uploading.isEmpty)
+                        }
+                        if let issue = driveCatalog.errorMessage { Text(issue).font(.footnote).foregroundStyle(.red) }
+                    }
                     if googleAuth.progressAuthorized {
                         Button {
                             Task {
@@ -935,6 +1074,16 @@ struct ReaderHomeView: View {
                         .disabled(progressSync.busy)
                     }
                     Text(progressSync.status).font(.footnote).foregroundStyle(.secondary)
+                    NavigationLink("Lecturas por dispositivo") {
+                        List(progressSync.devices) { device in
+                            Section(device.name) {
+                                Text(Date(timeIntervalSince1970: Double(device.updatedAt) / 1000), style: .date).font(.caption)
+                                ForEach(device.readings) { reading in
+                                    LabeledContent(driveCatalog.books.first { $0.id == reading.driveFileId }?.displayName ?? "Libro no disponible en catálogo", value: "\(reading.percent)%")
+                                }
+                            }
+                        }.navigationTitle("Mis dispositivos")
+                    }
                     Text("Se conserva el progreso más reciente y los datos de los demás dispositivos.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
@@ -951,62 +1100,12 @@ struct ReaderHomeView: View {
     }
 }
 
-struct PDFReaderScreen: View {
-    let url: URL
-    let title: String
-    let onProgress: (Double) -> Void
-    var initialProgress: Double = 0
-
-    var body: some View {
-        PDFReaderView(url: url, onProgress: onProgress, initialProgress: initialProgress)
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-struct PDFReaderView: UIViewRepresentable {
-    let url: URL
-    let onProgress: (Double) -> Void
-    var initialProgress: Double = 0
-
-    func makeCoordinator() -> Coordinator { Coordinator(onProgress: onProgress) }
-    func makeUIView(context: Context) -> PDFView {
-        let view = PDFView()
-        view.autoScales = true
-        view.displayMode = .singlePageContinuous
-        if let document = PDFDocument(url: url) {
-            view.document = document
-            if initialProgress.isFinite && initialProgress > 0 && document.pageCount > 0 {
-                let pageIndex = max(0, min(document.pageCount - 1,
-                    Int(ceil(max(0, min(1, initialProgress)) * Double(document.pageCount))) - 1))
-                if let page = document.page(at: pageIndex) { view.go(to: page) }
-            }
-        }
-        context.coordinator.observe(view)
-        return view
-    }
-    func updateUIView(_ view: PDFView, context: Context) {}
-    final class Coordinator {
-        let onProgress: (Double) -> Void
-        var observer: NSObjectProtocol?
-        init(onProgress: @escaping (Double) -> Void) { self.onProgress = onProgress }
-        func observe(_ view: PDFView) {
-            observer = NotificationCenter.default.addObserver(forName: Notification.Name.PDFViewPageChanged, object: view, queue: .main) { [weak view] _ in
-                guard let view, let page = view.currentPage, let document = view.document, document.pageCount > 0 else { return }
-                let position = document.index(for: page) + 1
-                self.onProgress(Double(position) / Double(document.pageCount))
-            }
-        }
-        deinit { if let observer { NotificationCenter.default.removeObserver(observer) } }
-    }
-}
-
 struct BookFilePicker: UIViewControllerRepresentable {
     let onPick: ([URL]) -> Void
     func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         let epub = UTType(filenameExtension: "epub") ?? UTType(importedAs: "org.idpf.epub-container")
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.pdf, epub], asCopy: true)
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.pdf, epub, .audio, .image, UTType(filenameExtension: "cbz") ?? .zip, UTType(filenameExtension: "audiobook") ?? .json], asCopy: true)
         picker.allowsMultipleSelection = true
         picker.delegate = context.coordinator
         return picker

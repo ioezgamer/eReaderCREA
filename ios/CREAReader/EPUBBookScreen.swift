@@ -4,12 +4,102 @@ import ReadiumStreamer
 import ReadiumNavigator
 
 @MainActor
-final class EPUBBookModel: ObservableObject {
+final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegate {
     @Published var navigator: EPUBNavigatorViewController?
     @Published var message: String?
     private var locationObserver: CREALocationObserver?
     private var publication: Publication?
     private var preservedSelection: (text: String, context: String)?
+    private var annotationSelection: Locator?
+    @Published var contents: [ReadiumShared.Link] = []
+    @Published var results: [Locator] = []
+    @Published var searching = false
+    @Published var searchError: String?
+    @Published var speaking = false
+    @Published var speechStarted = false
+    @Published var bookHash = ""
+    @Published var selectedAnnotation: CREAAnnotation?
+    @Published var metadata = ""
+    private var speech: PublicationSpeechSynthesizer?
+    private let voiceDelegate = CREAVoiceEngineDelegate()
+    private var searchGeneration = UUID()
+    private var spokenLocator: String?
+
+    func go(_ locator: Locator) async { _ = await navigator?.go(to: locator) }
+    func go(_ link: ReadiumShared.Link) async { _ = await navigator?.go(to: link) }
+    func goToPercent(_ fraction: Double) async {
+        guard let publication, let positions = try? await publication.positions().get(), !positions.isEmpty else { return }
+        let index = min(positions.count - 1, max(0, Int(fraction * Double(positions.count - 1))))
+        await go(positions[index])
+    }
+    func search(_ query: String) async {
+        let generation = UUID(); searchGeneration = generation
+        results = []; searchError = nil
+        guard let publication, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        searching = true
+        defer { if searchGeneration == generation { searching = false } }
+        do {
+            let iterator = try await publication.search(query: query).get()
+            defer { iterator.close() }
+            while !Task.isCancelled && searchGeneration == generation {
+                guard let page = try await iterator.next().get() else { break }
+                guard searchGeneration == generation else { return }
+                results.append(contentsOf: page.locators)
+                if results.count >= 500 { break }
+            }
+        } catch { if searchGeneration == generation { searchError = "No se pudo buscar: \(error.localizedDescription)" } }
+    }
+    func bookmark() {
+        guard let location = navigator?.currentLocation, let json = location.jsonString else { return }
+        CREAAnnotationStore.shared.add(hash: bookHash, kind: "bookmark", locator: json,
+            title: location.title ?? "Posición \(Int((location.locations.totalProgression ?? 0) * 100))%")
+    }
+    func highlight(note: String, color: String, underline: Bool) -> Bool {
+        guard let selection = navigator?.currentSelection?.locator ?? annotationSelection,
+              let text = selection.text.highlight, !text.isEmpty,
+              let json = selection.jsonString else { return false }
+        CREAAnnotationStore.shared.add(hash: bookHash, kind: underline ? "underline" : "highlight",
+            locator: json, title: text, note: note, color: color)
+        annotationSelection = nil
+        refreshDecorations(); return true
+    }
+    func preserveAnnotationSelection() {
+        if let selection = navigator?.currentSelection?.locator { annotationSelection = selection }
+    }
+    func refreshDecorations() {
+        let decorations: [Decoration] = CREAAnnotationStore.shared.items(for: bookHash).compactMap { item in
+            guard item.kind != "bookmark", let locator = try? Locator(jsonString: item.locatorJSON) else { return nil }
+            let tint: UIColor = item.color == "green" ? .systemGreen : item.color == "pink" ? .systemPink : .systemYellow
+            return Decoration(id: item.id.uuidString, locator: locator,
+                style: item.kind == "underline" ? .underline(tint: tint) : .highlight(tint: tint))
+        }
+        navigator?.apply(decorations: decorations, in: "annotations")
+    }
+    func toggleSpeech() {
+        guard let speech else { message = "Este libro no contiene texto compatible con lectura en voz alta."; return }
+        if !speechStarted { speech.start(from: navigator?.currentLocation) }
+        else { speech.pauseOrResume() }
+    }
+    func stopSpeech() { speech?.stop() }
+    func nextSpeech() { speech?.next() }
+    func previousSpeech() { speech?.previous() }
+    func publicationSpeechSynthesizer(_ synthesizer: PublicationSpeechSynthesizer, stateDidChange state: PublicationSpeechSynthesizer.State) {
+        switch state {
+        case .stopped: speaking = false; speechStarted = false; spokenLocator = nil; navigator?.apply(decorations: [], in: "tts")
+        case .paused: speaking = false; speechStarted = true
+        case .playing(let utterance, let range):
+            speaking = true; speechStarted = true
+            let locator = range ?? utterance.locator
+            navigator?.apply(decorations: [Decoration(id: "voice", locator: locator, style: .underline(tint: .systemBlue))], in: "tts")
+            if spokenLocator != utterance.locator.jsonString {
+                spokenLocator = utterance.locator.jsonString
+                Task { await go(utterance.locator) }
+            }
+        }
+    }
+    func publicationSpeechSynthesizer(_ synthesizer: PublicationSpeechSynthesizer, utterance: PublicationSpeechSynthesizer.Utterance, didFailWithError error: PublicationSpeechSynthesizer.Error) {
+        message = "No se pudo reproducir la voz: \(error)"
+    }
 
     struct AIChapter {
         let text: String
@@ -59,15 +149,19 @@ final class EPUBBookModel: ObservableObject {
         return AIChapter(text: String(plain.prefix(30_000)), title: location.title)
     }
 
-    func applyPreferences(fontSize: Double, scroll: Bool, darkMode: Bool) {
+    func applyPreferences(fontSize: Double, scroll: Bool, darkMode: Bool, sepia: Bool = false, lineHeight: Double = 1.5, margins: Double = 1, font: String = "Serif") {
         navigator?.submitPreferences(EPUBPreferences(
-            fontSize: fontSize,
+            fontFamily: font == "Sans" ? .sansSerif : .serif,
+            fontSize: 100 * fontSize,
+            lineHeight: lineHeight,
+            pageMargins: margins,
             publisherStyles: false,
             scroll: scroll,
-            theme: darkMode ? .dark : .light
+            theme: darkMode ? .dark : sepia ? .sepia : .light
         ))
     }
     func load(url: URL, initialLocatorJSON: String?, onProgress: @escaping (Double) -> Void, onLocator: @escaping (String) -> Void, persistFileLocator: Bool = true) async {
+        bookHash = (try? await Task.detached { try CREABookIdentity.hash(url) }.value) ?? ""
         let http = DefaultHTTPClient()
         let retriever = AssetRetriever(httpClient: http)
         let opener = PublicationOpener(
@@ -90,14 +184,24 @@ final class EPUBBookModel: ObservableObject {
                 message = "No se pudo abrir la publicación: \(issue)"
             case .success(let publication):
                 self.publication = publication
+                contents = (try? await publication.tableOfContents().get()) ?? []
+                metadata = "\(publication.metadata.title ?? url.lastPathComponent)\n\(publication.metadata.authors.map { $0.name }.joined(separator: ", "))"
+                let delegate = voiceDelegate
+                speech = PublicationSpeechSynthesizer(publication: publication, engineFactory: { AVTTSEngine(delegate: delegate) })
+                speech?.delegate = self
                 do {
                     let lastLocation = initialLocatorJSON ?? (persistFileLocator ? UserDefaults.standard.string(forKey: "crea.epub.locator." + url.lastPathComponent) : nil)
                     let initial = lastLocation.flatMap { try? Locator(jsonString: $0) }
                     let reader = try EPUBNavigatorViewController(publication: publication, initialLocation: initial)
-                    let observer = CREALocationObserver(url: url, onProgress: onProgress, onLocator: onLocator, persistFileLocator: persistFileLocator)
+                    let observer = CREALocationObserver(url: url, onProgress: onProgress, onLocator: onLocator, persistFileLocator: persistFileLocator,
+                        onSelection: { [weak self] locator in self?.annotationSelection = locator })
                     locationObserver = observer
                     reader.delegate = observer
                     navigator = reader
+                    reader.observeDecorationInteractions(inGroup: "annotations") { [weak self] event in
+                        self?.selectedAnnotation = CREAAnnotationStore.shared.records.first { $0.id.uuidString == event.decoration.id }
+                    }
+                    refreshDecorations()
                 } catch {
                     message = error.localizedDescription
                 }
@@ -116,12 +220,23 @@ struct EPUBBookScreen: View {
     var isTemporaryOnline: Bool = false
     @State private var showAI = false
     @StateObject private var model = EPUBBookModel()
+    @ObservedObject private var annotations = CREAAnnotationStore.shared
+    @State private var showTools = false
+    @State private var showHighlight = false
+    @State private var annotationNote = ""
+    @State private var annotationColor = "yellow"
+    @State private var underline = false
+    @State private var feedback: String?
     @AppStorage("crea.reader.epub.fontScale") private var fontSize = 1.1
     @AppStorage("crea.reader.epub.scroll") private var scroll = false
     @AppStorage("crea.reader.epub.dark") private var darkMode = false
+    @AppStorage("crea.reader.epub.sepia") private var sepia = false
+    @AppStorage("crea.reader.epub.lineHeight") private var lineHeight = 1.5
+    @AppStorage("crea.reader.epub.margins") private var margins = 1.0
+    @AppStorage("crea.reader.epub.font") private var font = "Serif"
 
     private func applyPreferences() {
-        model.applyPreferences(fontSize: fontSize, scroll: scroll, darkMode: darkMode)
+        model.applyPreferences(fontSize: fontSize, scroll: scroll, darkMode: darkMode, sepia: sepia, lineHeight: lineHeight, margins: margins, font: font)
     }
     var body: some View {
         Group {
@@ -142,7 +257,56 @@ struct EPUBBookScreen: View {
             .sheet(isPresented: $showAI) {
                 CREAAIReaderSheet(ai: ai, reader: model, bookTitle: title)
             }
+            .sheet(isPresented: $showTools) { EPUBToolsSheet(model: model) }
+            .sheet(isPresented: $showHighlight) {
+                NavigationStack {
+                    Form {
+                        Text("Selecciona texto en el libro antes de guardar un resaltado.")
+                        TextField("Nota opcional", text: $annotationNote, axis: .vertical)
+                        annotationColorPicker
+                        Toggle("Subrayar", isOn: $underline)
+                    }
+                    .navigationTitle("Resaltado y nota")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { showHighlight = false } }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Guardar") {
+                                if model.highlight(note: annotationNote, color: annotationColor, underline: underline) {
+                                    showHighlight = false; annotationNote = ""
+                                } else { feedback = "Selecciona un fragmento de texto en el EPUB primero."; showHighlight = false }
+                            }
+                        }
+                    }
+                }
+            }
+            .sheet(item: $model.selectedAnnotation) { item in
+                CREAAnnotationEditor(item: item) { model.refreshDecorations() }
+            }
+            .alert("CREA Reader", isPresented: Binding(get: { feedback != nil }, set: { if !$0 { feedback = nil } })) {
+                Button("Aceptar") { feedback = nil }
+            } message: { Text(feedback ?? "") }
+            .onChange(of: annotations.records) { _, _ in model.refreshDecorations() }
+            .onDisappear { model.stopSpeech() }
+            .safeAreaInset(edge: .bottom) {
+                if model.speechStarted {
+                    HStack(spacing: 24) {
+                        Button { model.previousSpeech() } label: { Label("Anterior", systemImage: "backward.end") }
+                        Button { model.toggleSpeech() } label: { Label(model.speaking ? "Pausar" : "Continuar", systemImage: model.speaking ? "pause.fill" : "play.fill") }
+                        Button { model.nextSpeech() } label: { Label("Siguiente", systemImage: "forward.end") }
+                        Button { model.stopSpeech() } label: { Label("Detener", systemImage: "stop.fill") }
+                    }.labelStyle(.iconOnly).frame(minHeight: 44).padding().background(.regularMaterial)
+                }
+            }
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button("Índice, búsqueda y anotaciones", systemImage: "list.bullet") { showTools = true }
+                        Button("Guardar marcador", systemImage: "bookmark") { model.bookmark(); feedback = "Marcador guardado" }
+                        Button("Resaltar selección / añadir nota", systemImage: "highlighter") { model.preserveAnnotationSelection(); showHighlight = true }
+                        Button("Leer en voz alta", systemImage: "speaker.wave.2") { model.toggleSpeech() }
+                    } label: { Label("Herramientas del libro", systemImage: "ellipsis.circle") }
+                    .disabled(model.navigator == nil)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     if ai.canUse {
                         Button {
@@ -164,6 +328,12 @@ struct EPUBBookScreen: View {
                         }
                         Toggle("Desplazamiento vertical", isOn: $scroll)
                         Toggle("Modo oscuro del libro", isOn: $darkMode)
+                        Toggle("Fondo sepia", isOn: $sepia)
+                        Picker("Fuente", selection: $font) { Text("Serif").tag("Serif"); Text("Sans").tag("Sans") }
+                        Button("Aumentar interlineado") { lineHeight = min(2.5, lineHeight + 0.2) }
+                        Button("Reducir interlineado") { lineHeight = max(1, lineHeight - 0.2) }
+                        Button("Aumentar márgenes") { margins = min(3, margins + 0.25) }
+                        Button("Reducir márgenes") { margins = max(0.25, margins - 0.25) }
                     } label: {
                         Image(systemName: "textformat.size")
                     }
@@ -172,6 +342,125 @@ struct EPUBBookScreen: View {
             .onChange(of: fontSize) { _, _ in applyPreferences() }
             .onChange(of: scroll) { _, _ in applyPreferences() }
             .onChange(of: darkMode) { _, _ in applyPreferences() }
+            .onChange(of: sepia) { _, _ in applyPreferences() }
+            .onChange(of: font) { _, _ in applyPreferences() }
+            .onChange(of: lineHeight) { _, _ in applyPreferences() }
+            .onChange(of: margins) { _, _ in applyPreferences() }
+            .onChange(of: model.message) { _, value in
+                if model.navigator != nil, let value { feedback = value; model.message = nil }
+            }
+    }
+    private var annotationColorPicker: some View {
+        Picker("Color", selection: $annotationColor) {
+            Text("Amarillo").tag("yellow"); Text("Verde").tag("green"); Text("Rosa").tag("pink")
+        }
+    }
+}
+
+struct CREAAnnotationEditor: View {
+    let item: CREAAnnotation
+    let onSave: () -> Void
+    @State private var note: String
+    @State private var color: String
+    @Environment(\.dismiss) private var dismiss
+    init(item: CREAAnnotation, onSave: @escaping () -> Void) {
+        self.item = item; self.onSave = onSave
+        _note = State(initialValue: item.note); _color = State(initialValue: item.color)
+    }
+    var body: some View {
+        NavigationStack {
+            Form {
+                Text(item.title)
+                TextField("Nota", text: $note, axis: .vertical)
+                Picker("Color", selection: $color) {
+                    Text("Amarillo").tag("yellow"); Text("Verde").tag("green"); Text("Rosa").tag("pink")
+                }
+                Button("Eliminar anotación", role: .destructive) {
+                    CREAAnnotationStore.shared.remove(item); onSave(); dismiss()
+                }
+            }.navigationTitle("Editar anotación")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Guardar") { CREAAnnotationStore.shared.edit(item, note: note, color: color); onSave(); dismiss() }
+                    }
+                }
+        }
+    }
+}
+
+struct EPUBToolsSheet: View {
+    @ObservedObject var model: EPUBBookModel
+    @ObservedObject private var annotations = CREAAnnotationStore.shared
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var tab = "Índice"
+    @State private var percent = 0.0
+    @State private var edit: CREAAnnotation?
+    var body: some View {
+        NavigationStack {
+            VStack {
+                Picker("Herramienta", selection: $tab) {
+                    ForEach(["Índice", "Buscar", "Notas", "Ficha"], id: \.self) { Text($0) }
+                }.pickerStyle(.segmented).padding(.horizontal)
+                if tab == "Índice" {
+                    List {
+                        Section("Ir a una posición") {
+                            Slider(value: $percent, in: 0...1)
+                            Button("Ir al \(Int(percent * 100))%") { Task { await model.goToPercent(percent); dismiss() } }
+                        }
+                        EPUBContentsRows(links: model.contents) { link in Task { await model.go(link); dismiss() } }
+                    }
+                } else if tab == "Buscar" {
+                    List {
+                        TextField("Buscar texto en el libro", text: $query).onSubmit { Task { await model.search(query) } }
+                        Button("Buscar") { Task { await model.search(query) } }.disabled(model.searching)
+                        if model.searching { ProgressView("Buscando…") }
+                        if let error = model.searchError { Text(error).foregroundStyle(.red) }
+                        if !model.searching && model.results.isEmpty { Text("No hay resultados") }
+                        ForEach(Array(model.results.enumerated()), id: \.offset) { _, locator in
+                            Button { Task { await model.go(locator); dismiss() } } label: {
+                                VStack(alignment: .leading) {
+                                    Text(locator.title ?? "Resultado")
+                                    Text((locator.text.before ?? "") + (locator.text.highlight ?? "") + (locator.text.after ?? "")).font(.caption).lineLimit(4)
+                                }
+                            }
+                        }
+                        if model.results.count >= 500 { Text("Se muestran los primeros 500 resultados. Usa un texto más específico.") }
+                    }
+                } else if tab == "Notas" {
+                    List {
+                        ForEach(annotations.items(for: model.bookHash)) { item in
+                            VStack(alignment: .leading) {
+                                Button {
+                                    if let locator = try? Locator(jsonString: item.locatorJSON) { Task { await model.go(locator); dismiss() } }
+                                } label: { Label(item.title, systemImage: item.kind == "bookmark" ? "bookmark" : "highlighter").lineLimit(3) }
+                                if !item.note.isEmpty { Text(item.note).font(.caption) }
+                                Button("Editar nota") { edit = item }.font(.caption)
+                            }.swipeActions { Button("Eliminar", role: .destructive) { annotations.remove(item) } }
+                        }
+                        if annotations.items(for: model.bookHash).isEmpty { Text("Todavía no hay marcadores ni notas") }
+                    }
+                } else {
+                    ScrollView { Text(model.metadata).frame(maxWidth: .infinity, alignment: .leading).padding() }
+                }
+            }.navigationTitle("Herramientas de lectura")
+                .toolbar { Button("Cerrar") { dismiss() } }
+                .sheet(item: $edit) { item in CREAAnnotationEditor(item: item) { model.refreshDecorations() } }
+        }
+    }
+}
+
+struct EPUBContentsRows: View {
+    let links: [ReadiumShared.Link]
+    let onSelect: (ReadiumShared.Link) -> Void
+    var body: some View {
+        ForEach(Array(links.enumerated()), id: \.offset) { _, link in
+            Button(link.title ?? "Sección") { onSelect(link) }
+            if !link.children.isEmpty {
+                AnyView(EPUBContentsRows(links: link.children, onSelect: onSelect)).padding(.leading, 12)
+            }
+        }
     }
 }
 
@@ -187,11 +476,16 @@ final class CREALocationObserver: EPUBNavigatorDelegate {
     let onProgress: (Double) -> Void
     let onLocator: (String) -> Void
     let persistFileLocator: Bool
-    init(url: URL, onProgress: @escaping (Double) -> Void, onLocator: @escaping (String) -> Void, persistFileLocator: Bool) {
+    let onSelection: (Locator) -> Void
+    init(url: URL, onProgress: @escaping (Double) -> Void, onLocator: @escaping (String) -> Void, persistFileLocator: Bool, onSelection: @escaping (Locator) -> Void = { _ in }) {
         self.url = url
         self.onProgress = onProgress
         self.onLocator = onLocator
         self.persistFileLocator = persistFileLocator
+        self.onSelection = onSelection
+    }
+    func navigator(_ navigator: SelectableNavigator, shouldShowMenuForSelection selection: Selection) -> Bool {
+        onSelection(selection.locator); return true
     }
     func navigator(_ navigator: Navigator, presentError error: NavigatorError) {
         NSLog("CREA Reader: Readium navigation error: %@", String(describing: error))

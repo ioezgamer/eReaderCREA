@@ -1,0 +1,66 @@
+name: iOS parity validation
+on:
+  workflow_dispatch:
+  push:
+    branches: ['codex/ios-android-parity']
+    paths: ['ios/**', '.github/workflows/ios-parity-validation.yml']
+  pull_request:
+    branches: ['feature/ios-flarestore']
+    paths: ['ios/**', '.github/workflows/ios-parity-validation.yml']
+concurrency:
+  group: ios-parity-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: macos-15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+      - run: brew install xcodegen
+      - name: Swift syntax
+        run: xcrun swiftc -frontend -parse ios/CREAReader/*.swift ios/CREAReaderTests/*.swift
+      - name: Generate iOS AppIcon assets
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          import subprocess
+          root = Path("ios/CREAReader/Assets.xcassets/AppIcon.appiconset")
+          source = Path("ios/IconSource.png")
+          assert source.is_file(), "Missing official CREA Reader icon"
+          records = json.loads((root / "Contents.json").read_text())["images"]
+          for icon in records:
+              size = int(round(float(icon["size"].split("x")[0]) * float(icon["scale"].rstrip("x"))))
+              subprocess.run(
+                  ["sips", "-s", "format", "png", "-z", str(size), str(size),
+                   str(source), "--out", str(root / icon["filename"])],
+                  stdout=subprocess.DEVNULL, check=True
+              )
+          print(f"Created {len(records)} AppIcon PNG images for iPhone and iPad")
+          PY
+      - name: Generate project
+        run: cd ios && xcodegen generate
+      - name: Build and test on iPhone simulator
+        run: |
+          set -euo pipefail
+          DEVICE=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; data=json.load(sys.stdin); print(next(d["udid"] for group in data["devices"].values() for d in group if "iPhone" in d["name"]))')
+          xcodebuild test -project ios/CREAReader.xcodeproj -scheme CREAReader -destination "platform=iOS Simulator,id=$DEVICE" -resultBundlePath "$RUNNER_TEMP/parity-tests.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/parity-build.log"
+      - name: Build installable unsigned app
+        run: |
+          set -euo pipefail
+          xcodebuild build -project ios/CREAReader.xcodeproj -scheme CREAReader -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/parity-device" CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/parity-device.log"
+          mkdir -p "$RUNNER_TEMP/package/Payload"
+          cp -R "$RUNNER_TEMP/parity-device/Build/Products/Release-iphoneos/CREAReader.app" "$RUNNER_TEMP/package/Payload/"
+          cd "$RUNNER_TEMP/package"
+          zip -qr "$GITHUB_WORKSPACE/CREA-Reader-iOS-0.10.0-unsigned.ipa" Payload
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-parity-validation
+          path: |
+            ${{ runner.temp }}/parity-*.log
+            ${{ runner.temp }}/parity-tests.xcresult
+            CREA-Reader-iOS-0.10.0-unsigned.ipa

@@ -1,5 +1,15 @@
 # Historial de cambios
 
+## iOS 0.10.0 - 2026-10-12
+
+- Herramientas EPUB/PDF: índice, búsqueda real, marcadores, resaltados/subrayados, notas y navegación; anotaciones identificadas por SHA-256.
+- Voz EPUB con seguimiento y controles; página/selección PDF; voz, velocidad y tono. Preferencias EPUB ampliadas y escala de fuente corregida.
+- Lectores audio e imagen/CBZ, progreso por dispositivo, interfaz español/inglés y sincronización automática opcional de iOS.
+- Explorar OPDS 1/2 dentro de la app con descarga directa, paginación y catálogos personalizados persistentes.
+- Subida resumable explícita de EPUB/PDF a Drive, deduplicación que conserva datos y registro de libros iOS en el manifiesto Android; protección condicional ETag y aislamiento de caché por cuenta.
+- Lectura de las fichas compartidas de IA de Android. Conserva los flujos existentes de comunidad, lectura temporal y Claude.
+- XCTest con publicaciones reales y workflow macOS dedicado; ver `ios/PARITY.md` para alcance, pruebas físicas y dependencias de LCP.
+
 ## 0.8.3 - 2026-10-09
 
 - **La comunidad funciona por dispositivo**: cada instalación comparte con su propio apodo (por defecto, el nombre del dispositivo en Android) y su propio archivo, así que varias tablets con la misma cuenta de Google se ven entre sí como lectores distintos. Antes compartían un solo archivo por cuenta y se pisaban. Con otra cuenta funciona igual: el apodo siempre es del dispositivo.

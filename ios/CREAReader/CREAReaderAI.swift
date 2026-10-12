@@ -8,7 +8,7 @@ struct CREAAIStatus: Decodable {
     let remaining: [String: Int]?
 }
 
-struct CREAAIBookInfo: Decodable {
+struct CREAAIBookInfo: Codable {
     let title: String
     let author: String?
     let summary: String
