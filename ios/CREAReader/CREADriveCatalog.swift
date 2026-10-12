@@ -50,6 +50,10 @@ final class CREADriveCatalog: ObservableObject {
     private let api = "https://www.googleapis.com/drive/v3/files"
 
     init() {
+        // Remove any orphaned reading copies left by an app crash or forced quit.
+        let leftovers = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CREAReaderOnline", isDirectory: true)
+        try? FileManager.default.removeItem(at: leftovers)
         if let data = UserDefaults.standard.data(forKey: cacheKey),
            let cached = try? JSONDecoder().decode([CREARemoteBook].self, from: data) {
             books = cached
