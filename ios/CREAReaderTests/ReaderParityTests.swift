@@ -118,8 +118,13 @@ final class ReaderParityTests: XCTestCase {
         XCTAssertNil(model.error)
         XCTAssertEqual(model.links.count, 2)
         XCTAssertNotNil(model.image)
+        await model.bookmark()
+        let marker = try XCTUnwrap(CREAAnnotationStore.shared.items(for: model.hash).first)
+        defer { CREAAnnotationStore.shared.remove(marker) }
         await model.showImage(1)
         XCTAssertEqual(progress, 1)
+        await model.openBookmark(marker)
+        XCTAssertEqual(model.index, 0)
     }
     @MainActor func testRealAudioCreatesNavigatorAndReadingOrder() async throws {
         let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "reader", withExtension: "wav"))

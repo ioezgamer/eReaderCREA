@@ -13,11 +13,14 @@ import ReadiumNavigator
     @Published var playing = false
     @Published var error: String?
     @Published var ready = false
+    @Published var hash = ""
+    private var lastLocator: String?
     private var publication: Publication?
     private var onProgress: ((Double) -> Void)?
     private var onLocator: ((String) -> Void)?
     func load(url: URL, audioMode: Bool, initialProgress: Double, locator: String?, onProgress: @escaping (Double) -> Void, onLocator: @escaping (String) -> Void) async {
         self.onProgress = onProgress; self.onLocator = onLocator
+        hash = (try? await Task.detached { try CREABookIdentity.hash(url) }.value) ?? ""
         if !audioMode, let bitmap = UIImage(contentsOfFile: url.path) {
             image = bitmap; ready = true; onProgress(1); return
         }
@@ -48,14 +51,26 @@ import ReadiumNavigator
             guard data.count <= 50_000_000, let bitmap = UIImage(data: data) else { throw URLError(.cannotDecodeContentData) }
             image = bitmap; index = target
             onProgress?(Double(target + 1) / Double(links.count))
-            if let locator = await publication.locate(links[target]), let json = locator.jsonString { onLocator?(json) }
+            if let locator = await publication.locate(links[target]), let json = locator.jsonString { lastLocator = json; onLocator?(json) }
         } catch { self.error = "No se pudo leer esta imagen: " + error.localizedDescription }
+    }
+    func bookmark() async {
+        var json = audio?.currentLocation?.jsonString ?? lastLocator
+        if json == nil, let publication, links.indices.contains(index), let locator = await publication.locate(links[index]) { json = locator.jsonString }
+        guard let json else { error = "Inicia la lectura antes de guardar el marcador."; return }
+        CREAAnnotationStore.shared.add(hash: hash, kind: "bookmark", locator: json,
+            title: audio == nil ? "Página \(index + 1)" : (links.indices.contains(index) ? links[index].title ?? "Posición" : "Posición") + " · \(Int(time)) s")
+    }
+    func openBookmark(_ item: CREAAnnotation) async {
+        guard let locator = try? Locator(jsonString: item.locatorJSON) else { error = "Marcador no compatible con esta publicación."; return }
+        if let audio { _ = await audio.go(to: locator) }
+        else if let target = links.firstIndex(where: { $0.href == locator.href.string }) { await showImage(target) }
     }
     func navigator(_ navigator: AudioNavigator, playbackDidChange info: MediaPlaybackInfo) {
         index = info.resourceIndex; time = info.time; duration = info.duration ?? 0; playing = info.state == .playing
     }
     func navigator(_ navigator: Navigator, locationDidChange locator: Locator) {
-        if let json = locator.jsonString { onLocator?(json) }
+        if let json = locator.jsonString { lastLocator = json; onLocator?(json) }
         if let fraction = locator.locations.totalProgression { onProgress?(fraction) }
     }
     func navigator(_ navigator: Navigator, presentError error: NavigatorError) { self.error = "Error de reproducción: \(error)" }
@@ -72,6 +87,8 @@ struct CREAMediaScreen: View {
     @StateObject private var model = CREAMediaModel()
     @State private var scale = 1.0
     @State private var speed = 1.0
+    @State private var showBookmarks = false
+    @ObservedObject private var annotations = CREAAnnotationStore.shared
     var body: some View {
         VStack(spacing: 20) {
             if let error = model.error { Text(error).foregroundStyle(.red).padding() }
@@ -105,6 +122,20 @@ struct CREAMediaScreen: View {
                 }
             }
         }.navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                Menu {
+                    Button("Guardar marcador", systemImage: "bookmark") { Task { await model.bookmark() } }
+                    Button("Marcadores", systemImage: "list.bullet") { showBookmarks = true }
+                } label: { Label("Marcadores", systemImage: "bookmark") }.disabled(!model.ready)
+            }
+            .sheet(isPresented: $showBookmarks) {
+                NavigationStack {
+                    List(annotations.items(for: model.hash)) { item in
+                        Button(item.title) { Task { await model.openBookmark(item); showBookmarks = false } }
+                            .swipeActions { Button("Eliminar", role: .destructive) { annotations.remove(item) } }
+                    }.navigationTitle("Marcadores").toolbar { Button("Cerrar") { showBookmarks = false } }
+                }
+            }
             .task(id: url) { await model.load(url: url, audioMode: audioMode, initialProgress: initialProgress, locator: locator, onProgress: onProgress, onLocator: onLocator) }
             .onDisappear { model.audio?.pause() }
     }
