@@ -84,16 +84,18 @@ class PageTurnLayout @JvmOverloads constructor(
 
     private fun startTurn(bitmap: Bitmap, forward: Boolean) {
         val w = width.toFloat()
+        val h = height
+        val pw = width
         val page = ImageView(context).apply {
             setImageBitmap(bitmap)
-            layoutParams = LayoutParams(width, height)
+            layoutParams = LayoutParams(pw, h)
             cameraDistance = 14000f * density
             pivotX = if (forward) 0f else w
-            pivotY = height / 2f
+            pivotY = h / 2f
         }
         val shadowWidth = (36 * density).toInt()
         val shadow = View(context).apply {
-            layoutParams = LayoutParams(shadowWidth, height)
+            layoutParams = LayoutParams(shadowWidth, h)
             background = GradientDrawable(
                 if (forward) GradientDrawable.Orientation.LEFT_RIGHT else GradientDrawable.Orientation.RIGHT_LEFT,
                 intArrayOf(Color.argb(110, 0, 0, 0), Color.TRANSPARENT)
@@ -109,14 +111,14 @@ class PageTurnLayout @JvmOverloads constructor(
             return
         }
         ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 380
+            duration = 420
             interpolator = DecelerateInterpolator(1.4f)
             addUpdateListener {
                 val t = it.animatedValue as Float
                 val angle = 90f * t
                 page.rotationY = if (forward) -angle else angle
                 page.colorFilter = PorterDuffColorFilter(
-                    Color.argb((90 * t).toInt(), 0, 0, 0), PorterDuff.Mode.SRC_ATOP
+                    Color.argb((60 * t).toInt(), 0, 0, 0), PorterDuff.Mode.SRC_ATOP
                 )
                 val edge = w * cos(Math.toRadians(angle.toDouble())).toFloat()
                 shadow.translationX = if (forward) edge else w - edge - shadowWidth

@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.9.7 - 2026-10-13
+
+- **Corrige la animación de pasar página**: en 0.9.6 la hoja no se veía (saltaba de golpe a la página siguiente). Ahora la hoja se pliega con sombra al tocar el borde o deslizar el dedo.
+
 ## 0.9.6 - 2026-10-13
 
 - **Pasar la página como una hoja de papel**: al tocar el borde izquierdo o derecho, o al deslizar el dedo, la página se pliega como una hoja de papel con sombra sobre la página que aparece debajo (estilo Kindle/Kobo). Solo en EPUB con paginación; no se aplica en modo de desplazamiento ni mientras se lee en voz alta.
