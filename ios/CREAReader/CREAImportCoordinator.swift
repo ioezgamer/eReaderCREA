@@ -17,7 +17,7 @@ struct CREAImportDecision: Identifiable {
     let existing: LocalBook
     var id: UUID { candidate.id }
 }
-enum CREAImportResult { case completed, omitted, busy, failed(String) }
+enum CREAImportResult { case completed, omitted, busy, approvalInForeground, failed(String) }
 
 /// File metadata is inspected before committing; a similar edition never replaces a book silently.
 @MainActor final class CREAImportCoordinator: ObservableObject {
@@ -58,6 +58,10 @@ enum CREAImportResult { case completed, omitted, busy, failed(String) }
                 else {
                     var accepted = true
                     if let existing = library.books.first(where: { CREADuplicateRules.similar(title: candidate.title, author: candidate.author, identifier: candidate.identifier, kind: candidate.kind, to: $0) }) {
+                        if remote != nil && UIApplication.shared.applicationState != .active {
+                            try? FileManager.default.removeItem(at: file)
+                            return .approvalInForeground
+                        }
                         decision = false
                         approval?(true)
                         accepted = await withCheckedContinuation { callback in continuation = callback; pending = CREAImportDecision(candidate: candidate, existing: existing) }

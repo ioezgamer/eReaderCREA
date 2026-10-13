@@ -128,6 +128,7 @@ final class CREAOPDSParser: NSObject, XMLParserDelegate {
             case .completed: message = "Importación revisada; consulta Mi biblioteca"
             case .omitted: message = "Se omitió la copia parecida por tu decisión"
             case .busy: message = "Termina la importación actual y vuelve a descargar"
+            case .approvalInForeground: message = "Abre la aplicación para revisar la copia parecida"
             case .failed(let problem): self.error = problem
             }
         } catch { self.error = "No se pudo descargar el libro: " + error.localizedDescription }

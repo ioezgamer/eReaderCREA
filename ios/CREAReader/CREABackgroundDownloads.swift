@@ -127,9 +127,6 @@ enum CREATransferValidation {
         guard record.ownerID == GIDSignIn.sharedInstance.currentUser?.userID else {
             records[id]?.state = "ready"; persist(); release(id); return
         }
-        if UIApplication.shared.applicationState != .active && !LocalLibrary.shared.books.contains(where: { $0.driveFileID == record.book.id }) {
-            records[id]?.state = "ready"; persist(); release(id); return
-        }
         if CREAImportCoordinator.shared.processing { records[id]?.state = "ready"; persist(); release(id); return }
         records[id]?.state = "processing"; persist()
         let file = Self.staging.appendingPathComponent(filename)
@@ -144,6 +141,7 @@ enum CREATransferValidation {
                 }
                 if case .failed(let message) = outcome { throw CREATransferValidation.issue(message) }
                 if case .busy = outcome { records[id]?.state = "ready"; persist(); release(id); return }
+                if case .approvalInForeground = outcome { records[id]?.state = "ready"; persist(); release(id); return }
                 if case .omitted = outcome {
                     records[id]?.state = "cancelled"; records[id]?.stagedFile = nil
                     try? FileManager.default.removeItem(at: file); persist(); release(id); return
