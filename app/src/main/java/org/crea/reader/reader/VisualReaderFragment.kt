@@ -34,7 +34,24 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets as ComposeWindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
+import org.readium.r2.shared.publication.services.positions
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -208,7 +225,68 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
     }
 
     @Composable
+    private fun BoxScope.PageIndicator() {
+        val positions by produceState<List<Locator>>(emptyList(), publication) {
+            value = publication.positions()
+        }
+        if (positions.isEmpty()) return
+
+        val locator by navigator.currentLocator.collectAsState()
+        val total = positions.size
+        val current = (
+            locator.locations.position
+                ?: locator.locations.totalProgression?.let { (it * total).toInt() + 1 }
+                ?: 1
+            ).coerceIn(1, total)
+
+        val barsVisible = ComposeWindowInsets.statusBars.getTop(LocalDensity.current) > 0
+        var dragging by remember { mutableStateOf<Float?>(null) }
+        val shown = dragging?.roundToInt()?.coerceIn(1, total) ?: current
+        val label = stringResource(R.string.page_indicator, shown, total)
+
+        if (barsVisible) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(ComposeColor.Black.copy(alpha = 0.55f))
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(label, color = ComposeColor.White, fontSize = 13.sp)
+                if (total > 1) {
+                    Slider(
+                        value = dragging ?: current.toFloat(),
+                        onValueChange = { dragging = it },
+                        onValueChangeFinished = {
+                            dragging?.let {
+                                val index = it.roundToInt().coerceIn(1, total) - 1
+                                navigator.go(positions[index], animated = false)
+                            }
+                            dragging = null
+                        },
+                        valueRange = 1f..total.toFloat(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        } else {
+            Text(
+                label,
+                color = ComposeColor.White,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+                    .background(ComposeColor.Black.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+        }
+    }
+
+    @Composable
     private fun BoxScope.Overlay() {
+        PageIndicator()
         model.tts?.let { tts ->
             TtsControls(
                 model = tts,

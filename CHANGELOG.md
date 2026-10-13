@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.9.5 - 2026-10-13
+
+- **Números de página en el lector**: ahora se ve «Página 3 de 120» en una esquina mientras lees. Al tocar la pantalla (cuando aparece la barra superior) sale abajo una barra deslizante para saltar a cualquier página, como en ReadEra. En PDF son las páginas reales; en EPUB son páginas calculadas (cada ~1000 caracteres), así que el total no cambia al cambiar el tamaño de la letra.
+
 ## 0.9.4 - 2026-10-12
 
 - **Títulos limpios para libros subidos a mano a Drive**: un archivo llamado «_libros_epub_La-leyenda-de-Sleepy-Hollow-y-otros-cuentos-de-fantasmas.epub» ahora se muestra como «La leyenda de Sleepy Hollow y otros cuentos de fantasmas»: se quita el prefijo «libros epub» de las descargas web y los guiones se leen como espacios cuando el nombre es de ese tipo («Spider-Man» conserva su guion). Los libros subidos desde la app ya se nombraban bien.
