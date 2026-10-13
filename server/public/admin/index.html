@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Panel CREA Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap">
+<link rel="icon" href="assets/crea-casa.png">
+<style>
+:root {
+  --blue: #0972ce; --cyan: #00add8; --pink: #e84481; --lime: #c3d600; --red: #f52233; --orange: #fe8204; --green: #3baf2a; --yellow: #f7e342;
+  --bg: #ffffff; --soft: #f4f6fa; --line: #e3e7ee; --ink: #10223e; --muted: #5b6b83; --link: #0a5cab; --gray: #c9d0dc;
+  --display: "Bricolage Grotesque", "Atkinson Hyperlegible", system-ui, sans-serif;
+  --text: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0d1424; --soft: #151e33; --line: #243049; --ink: #eef2fa; --muted: #a3afc4; --link: #7db8f2; --gray: #3a4764; }
+}
+:root[data-theme="dark"] { --bg: #0d1424; --soft: #151e33; --line: #243049; --ink: #eef2fa; --muted: #a3afc4; --link: #7db8f2; --gray: #3a4764; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 400 16px/1.55 var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 700; letter-spacing: -.02em; line-height: 1.12; }
+a { color: var(--link); }
+.hidden { display: none !important; }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
+.wrap { width: min(1120px, 100% - 48px); margin-inline: auto; }
+
+/* ---------- botones ---------- */
+.btn { border: 1.5px solid var(--ink); background: transparent; border-radius: 999px; padding: 9px 20px; font-weight: 700; }
+.btn:hover { background: var(--ink); color: var(--bg); }
+.btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.btn.primary:hover { background: #0a5cab; border-color: #0a5cab; }
+.btn.big { padding: 14px 26px; font-size: 17px; }
+.linkbtn { border: 0; background: none; padding: 6px 4px; color: var(--muted); font-weight: 700; }
+.linkbtn:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+
+/* ---------- acceso ---------- */
+.login { min-height: 100vh; display: grid; grid-template-columns: minmax(320px, 5fr) 7fr; }
+.login-copy { padding: clamp(28px, 6vw, 72px); display: flex; flex-direction: column; justify-content: center; gap: 22px; max-width: 560px; }
+.login-copy img { width: 150px; height: auto; }
+.login-copy h1 { font-size: clamp(34px, 4.6vw, 52px); }
+.login-copy p { margin: 0; color: var(--muted); font-size: 18px; max-width: 42ch; }
+.login-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.error { color: var(--red); font-weight: 700; margin: 0; }
+.login-art { background: var(--soft); display: grid; place-items: center; padding: 28px; }
+.login-art svg { width: 100%; height: auto; max-height: 86vh; }
+
+/* ---------- cabecera ---------- */
+.top { border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 5; }
+.top .wrap { display: flex; align-items: center; gap: 28px; min-height: 68px; flex-wrap: wrap; }
+.top img { width: 84px; height: auto; display: block; }
+.tabs { display: flex; gap: 6px; flex: 1; }
+.tab { border: 0; background: none; padding: 22px 12px 19px; font-weight: 700; color: var(--muted); border-bottom: 3px solid transparent; }
+.tab:hover { color: var(--ink); }
+.tab[aria-current="page"] { color: var(--ink); border-bottom-color: var(--blue); }
+.tools-top { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.tools-top .sep { width: 1px; height: 20px; background: var(--line); margin: 0 6px; }
+
+main { padding: 44px 0 90px; }
+.note { color: var(--muted); font-size: 14.5px; max-width: 78ch; margin: 0 0 36px; padding-left: 14px; border-left: 3px solid var(--cyan); }
+.note.demo { border-left-color: var(--orange); color: var(--ink); }
+.note b { color: var(--ink); }
+.updated { color: var(--muted); font-size: 14px; }
+
+/* ---------- resumen ---------- */
+.hero { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; align-items: end; margin-bottom: 36px; }
+.lede { font-size: clamp(30px, 4.1vw, 46px); font-weight: 700; max-width: 20ch; }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 28px; margin: 0; }
+.facts div { padding: 10px 0 12px; border-top: 1px solid var(--line); }
+.facts dt { color: var(--muted); font-size: 14.5px; }
+.facts dd { margin: 0; font: 700 34px/1.15 var(--display); letter-spacing: -.02em; }
+
+.mosaic-wrap { margin-bottom: 64px; }
+svg.mosaic { width: 100%; height: auto; display: block; }
+.tile { stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; vector-effect: non-scaling-stroke; cursor: pointer; transition: filter .15s; }
+.login-art .tile { stroke: var(--soft); cursor: default; }
+.tile:hover, .tile:focus-visible { filter: brightness(.9) saturate(1.15); outline: none; }
+.tile.off { opacity: .4; }
+.tile-text { font: 800 20px var(--display); fill: #10223e; pointer-events: none; text-anchor: middle; dominant-baseline: central; }
+.mosaic.enter .tile, .mosaic.enter .tile-text { animation: pop .5s both; animation-delay: calc(var(--i) * 22ms); }
+@keyframes pop { from { opacity: 0; transform: scale(.9); } }
+.mosaic.enter .tile { transform-box: fill-box; transform-origin: center; }
+.caption { min-height: 28px; margin: 14px 0 0; font-size: 16px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 6px 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 14px; }
+.legend li { display: flex; align-items: center; gap: 8px; }
+.legend i { width: 14px; height: 14px; border-radius: 3px 5px 3px 6px; display: inline-block; }
+
+.split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px; margin-bottom: 56px; }
+.sec { border-top: 2px solid var(--ink); padding-top: 14px; min-width: 0; }
+.sec h2 { font-size: 22px; margin-bottom: 4px; }
+.sec .sub { color: var(--muted); font-size: 14.5px; margin: 0 0 22px; }
+svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+svg.chart text { fill: var(--muted); font: 400 12px var(--text); }
+
+.segbar { display: flex; gap: 3px; height: 34px; margin-bottom: 18px; }
+.segbar i { display: block; min-width: 4px; border-radius: 4px 8px 4px 8px; background: var(--c); }
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows li { display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; align-items: baseline; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.rows li:last-child { border-bottom: 0; }
+.rows .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 10px; }
+.rows .num { color: var(--muted); font-variant-numeric: tabular-nums; }
+.rows .bar { grid-column: 1 / -1; height: 6px; background: var(--soft); border-radius: 3px; overflow: hidden; }
+.rows .bar i { display: block; height: 100%; background: var(--c, var(--blue)); border-radius: 3px; }
+.rows li[data-reader] { cursor: pointer; }
+.rows li[data-reader]:hover .name { text-decoration: underline; text-underline-offset: 3px; }
+.sw { width: 12px; height: 12px; border-radius: 2px 4px 2px 5px; background: var(--c); flex: none; }
+
+/* ---------- tablas ---------- */
+.tools { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.tools input, .tools select { background: var(--bg); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.tools input { flex: 1; min-width: 220px; }
+.tools input:focus, .tools select:focus { border-color: var(--blue); outline: none; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 13px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 700; font-size: 14px; cursor: pointer; user-select: none; border-bottom: 2px solid var(--ink); }
+th[aria-sort="ascending"]::after { content: " ↑"; color: var(--blue); }
+th[aria-sort="descending"]::after { content: " ↓"; color: var(--blue); }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--soft); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.person { display: flex; align-items: center; gap: 12px; font-weight: 700; }
+.piece { width: 34px; height: 34px; display: grid; place-items: center; font: 800 15px var(--display); color: #10223e; background: var(--c); clip-path: polygon(6% 4%, 96% 0, 100% 90%, 0 100%); flex: none; }
+.piece.v1 { clip-path: polygon(0 8%, 92% 0, 100% 96%, 10% 100%); }
+.piece.v2 { clip-path: polygon(10% 0, 100% 10%, 90% 100%, 0 92%); }
+.status { display: inline-flex; align-items: center; gap: 8px; }
+.status::before { content: ""; width: 10px; height: 10px; border-radius: 2px 4px 2px 4px; background: var(--c); }
+.mini { display: inline-block; width: 90px; height: 7px; background: var(--soft); border-radius: 3px; overflow: hidden; vertical-align: middle; margin-right: 10px; }
+.mini i { display: block; height: 100%; background: var(--c); }
+.empty { padding: 48px 8px; color: var(--muted); }
+
+/* ---------- detalle ---------- */
+.scrim { position: fixed; inset: 0; background: rgba(8,14,30,.5); z-index: 20; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 100%); background: var(--bg); z-index: 21; padding: 28px; overflow-y: auto; border-left: 1px solid var(--line); animation: slide .22s ease-out; }
+@keyframes slide { from { transform: translateX(24px); opacity: 0; } }
+.drawer header { display: flex; align-items: center; gap: 16px; margin-bottom: 26px; }
+.drawer .piece { width: 58px; height: 58px; font-size: 24px; }
+.drawer h2 { font-size: 28px; }
+.drawer .close { margin-left: auto; border: 1.5px solid var(--line); background: none; width: 38px; height: 38px; border-radius: 50%; font-size: 20px; line-height: 1; }
+.drawer .close:hover { border-color: var(--ink); }
+.dstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin: 0 0 28px; border-top: 2px solid var(--ink); }
+.dstats div { padding: 12px 0; }
+.dstats dd { margin: 0; font: 700 30px/1.1 var(--display); }
+.dstats dt { color: var(--muted); font-size: 14px; }
+.drawer h3 { font-size: 18px; margin-bottom: 8px; }
+.drawer .rows .bar { height: 8px; }
+.loading { padding: 100px 0; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) { .mosaic.enter .tile, .mosaic.enter .tile-text, .drawer { animation: none; } }
+@media (max-width: 900px) {
+  .login { grid-template-columns: 1fr; }
+  .login-art { order: -1; padding: 16px; } .login-art svg { max-height: 220px; }
+  .hero, .split { grid-template-columns: 1fr; gap: 32px; }
+  .top { position: static; }
+  .top .wrap { gap: 8px; min-height: 0; padding-block: 10px; } .tabs { order: 3; flex-basis: 100%; margin-inline: -12px; } .tab { padding: 10px 14px 9px; }
+  .tools-top { margin-left: auto; }
+  .wrap { width: min(1120px, 100% - 32px); } main { padding-top: 28px; }
+}
+</style>
+</head>
+<body>
+
+<section id="login" class="login">
+  <div class="login-copy">
+    <img src="assets/crea-wordmark.png" alt="CREA">
+    <h1>Cómo leen las personas de CREA</h1>
+    <p>El avance de cada lector de CREA Reader, en un solo lugar. Entra con tu cuenta de Google de la organización.</p>
+    <div class="login-actions">
+      <button id="signin" class="btn primary big">Entrar con Google</button>
+      <button id="demo" class="btn big">Ver datos de ejemplo</button>
+    </div>
+    <p id="login-error" class="error hidden" role="alert"></p>
+  </div>
+  <div class="login-art" aria-hidden="true" id="login-art"></div>
+</section>
+
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="wrap">
+      <img src="assets/crea-wordmark.png" alt="CREA">
+      <nav class="tabs" aria-label="Secciones">
+        <button class="tab" data-view="summary" aria-current="page">Resumen</button>
+        <button class="tab" data-view="readers">Lectores</button>
+        <button class="tab" data-view="books">Libros</button>
+      </nav>
+      <div class="tools-top">
+        <span class="updated" id="updated"></span>
+        <button id="refresh" class="linkbtn">Actualizar</button>
+        <button id="export" class="linkbtn">Exportar CSV</button>
+        <span class="sep"></span>
+        <button id="theme" class="linkbtn">Tema</button>
+        <button id="signout" class="linkbtn">Salir</button>
+      </div>
+    </div>
+  </header>
+  <main class="wrap">
+    <div id="banners"></div>
+    <div id="content"></div>
+  </main>
+</div>
+<div id="drawer-host"></div>
+
+<script>
+"use strict";
+/* ---------- utilidades ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const DONE = 95;
+const DAY = 86400000;
+const fmtDate = (t) => t ? new Date(t).toLocaleDateString("es-NI", { day: "numeric", month: "short", year: "numeric" }) : "—";
+function ago(t) {
+  if (!t) return "sin lectura";
+  const d = Math.floor((Date.now() - t) / DAY);
+  if (d <= 0) { const h = Math.floor((Date.now() - t) / 3600000); return h < 1 ? "hace minutos" : `hace ${h} h`; }
+  if (d === 1) return "ayer";
+  if (d < 30) return `hace ${d} días`;
+  return fmtDate(t);
+}
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const initials = (n) => (n.trim()[0] || "?").toUpperCase();
+const hash = (s) => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+const pieceClass = (s) => ["", "v1", "v2"][hash(s) % 3];
+// Color de una pieza o barra según el avance, con los colores del logo de CREA.
+const progVar = (p) => p >= DONE ? "green" : p >= 66 ? "lime" : p >= 33 ? "cyan" : p > 0 ? "pink" : "gray";
+const PROG_LABEL = { gray: "Sin avance", pink: "Menos de un tercio", cyan: "Entre un tercio y dos tercios", lime: "Más de dos tercios", green: "Terminado" };
+const STATUS = { active: ["green", "Activo"], slow: ["orange", "Poco activo"], idle: ["gray", "Inactivo"] };
+
+/* ---------- estado ---------- */
+const state = { view: "summary", token: null, demo: false, data: null, sort: { key: "last", dir: -1 }, q: "", status: "all", cfg: {}, entered: false };
+
+/* ---------- Google / Drive ---------- */
+const SCOPE = "https://www.googleapis.com/auth/drive.readonly";
+const FOLDER = "CREA Reader", PREFIX = "crea-lector-";
+let tokenClient;
+
+async function loadConfig() {
+  try { state.cfg = await (await fetch("config.json", { cache: "no-store" })).json(); } catch { state.cfg = {}; }
+}
+function loadGsi() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.accounts?.oauth2) return resolve();
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client";
+    s.onload = resolve; s.onerror = () => reject(new Error("No se pudo cargar el inicio de sesión de Google."));
+    document.head.appendChild(s);
+  });
+}
+async function signIn() {
+  $("#login-error").classList.add("hidden");
+  try {
+    if (!state.cfg.clientId) throw new Error("Falta configurar GOOGLE_CLIENT_ID en el servidor. Mientras tanto puedes ver los datos de ejemplo.");
+    await loadGsi();
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: state.cfg.clientId, scope: SCOPE, hd: state.cfg.domain || undefined,
+      callback: (r) => { if (r.error) return fail(r.error_description || r.error); state.token = r.access_token; start(); },
+      error_callback: (e) => fail(e.message || e.type || "Inicio de sesión cancelado."),
+    });
+    tokenClient.requestAccessToken();
+  } catch (e) { fail(e.message); }
+}
+function fail(msg) { const err = $("#login-error"); err.textContent = msg; err.classList.remove("hidden"); showLogin(); }
+
+async function drive(path, params = {}, raw = false) {
+  const url = new URL("https://www.googleapis.com/drive/v3/" + path);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  const r = await fetch(url, { headers: { authorization: "Bearer " + state.token } });
+  if (r.status === 401) { state.token = null; throw new Error("La sesión de Google venció. Vuelve a entrar."); }
+  if (!r.ok) throw new Error("Drive respondió " + r.status);
+  return raw ? r.text() : r.json();
+}
+async function listAll(q, fields) {
+  const out = []; let pageToken;
+  do {
+    const r = await drive("files", { q, fields: `nextPageToken,files(${fields})`, pageSize: 1000, supportsAllDrives: true, includeItemsFromAllDrives: true, ...(pageToken ? { pageToken } : {}) });
+    out.push(...r.files); pageToken = r.nextPageToken;
+  } while (pageToken);
+  return out;
+}
+async function pool(items, size, fn) {
+  const results = new Array(items.length); let next = 0;
+  await Promise.all(Array.from({ length: Math.min(size, items.length) }, async () => {
+    while (next < items.length) { const i = next++; results[i] = await fn(items[i]); }
+  }));
+  return results;
+}
+function describeBook(name) {
+  const base = /\.(epub|pdf)$/i.test(name) ? name.replace(/\.[^.]+$/, "") : name;
+  const clean = base.replace(/_/g, " ").replace(/\s+/g, " ").trim() || name;
+  const at = clean.lastIndexOf(" - ");
+  if (at > 0 && at < clean.length - 3) return { title: clean.slice(0, at).trim(), author: clean.slice(at + 3).trim() };
+  return { title: clean, author: "" };
+}
+async function fetchDrive() {
+  const folders = await listAll(`mimeType='application/vnd.google-apps.folder' and name='${FOLDER}' and trashed=false`, "id,ownedByMe");
+  if (!folders.length) throw new Error(`No se encontró la carpeta «${FOLDER}» en tu Drive. Pide que la compartan contigo.`);
+  const books = new Map(), profiles = []; let files = [];
+  for (const f of folders) files.push(...await listAll(`'${f.id}' in parents and trashed=false`, "id,name,mimeType,modifiedTime"));
+  const comm = files.filter((f) => f.name.startsWith(PREFIX));
+  for (const f of files) {
+    if (f.name.startsWith(PREFIX) || f.mimeType === "application/json" || f.mimeType.startsWith("application/vnd.google-apps")) continue;
+    if (/\.(epub|pdf)$/i.test(f.name) || /epub|pdf/.test(f.mimeType)) books.set(f.id, { id: f.id, ...describeBook(f.name) });
+  }
+  const loaded = await pool(comm, 6, async (f) => {
+    try { return JSON.parse(await drive(`files/${f.id}`, { alt: "media", supportsAllDrives: true }, true)); } catch { return null; }
+  });
+  for (const p of loaded) if (p && typeof p === "object") profiles.push(p);
+  return { profiles, books };
+}
+
+/* ---------- modelo ---------- */
+function buildModel({ profiles, books }) {
+  const now = Date.now();
+  const bookStats = new Map();
+  let optedOut = 0;
+  const readers = [];
+  for (const p of profiles) {
+    if (!p.active || !String(p.nickname || "").trim()) { optedOut++; continue; }
+    const readings = (p.readings || []).map((r) => {
+      const meta = books.get(r.driveFileId);
+      return { id: r.driveFileId, title: meta?.title || "Libro (ya no está en la carpeta)", author: meta?.author || "", percent: Math.max(0, Math.min(100, r.percent | 0)), at: r.updatedAt || 0 };
+    }).sort((a, b) => b.at - a.at);
+    const finished = readings.filter((r) => r.percent >= DONE).length;
+    const progressing = readings.filter((r) => r.percent > 0 && r.percent < DONE);
+    const avg = readings.length ? Math.round(readings.reduce((s, r) => s + r.percent, 0) / readings.length) : 0;
+    // Actividad = la última vez que cambió el avance de un libro; la hora del perfil se renueva en cada sincronización y no cuenta.
+    const last = Math.max(0, ...readings.map((r) => r.at));
+    const reader = { id: p.userId, name: String(p.nickname).trim(), readings, finished, inProgress: progressing.length, avg, last, status: now - last <= 7 * DAY ? "active" : now - last <= 30 * DAY ? "slow" : "idle" };
+    readers.push(reader);
+    for (const r of readings) {
+      const b = bookStats.get(r.id) || { id: r.id, title: r.title, author: r.author, readers: 0, finished: 0, sum: 0 };
+      b.readers++; b.sum += r.percent; if (r.percent >= DONE) b.finished++;
+      bookStats.set(r.id, b);
+    }
+  }
+  const catalog = [...books.values()].map((b) => ({ ...(bookStats.get(b.id) || { id: b.id, readers: 0, finished: 0, sum: 0 }), title: b.title, author: b.author }));
+  for (const b of bookStats.values()) if (!books.has(b.id)) catalog.push(b);
+  for (const b of catalog) b.avg = b.readers ? Math.round(b.sum / b.readers) : 0;
+  return { readers, books: catalog, optedOut, catalogSize: books.size, loadedAt: now };
+}
+function demoData() {
+  const names = ["Camila", "Mateo", "Valentina", "Sebastián", "Luciana", "Joaquín", "Isabella", "Emiliano", "Sofía", "Thiago", "Renata", "Diego", "Ximena", "Andrés", "Daniela", "Gael", "Mariana", "Leonel", "Abril", "Samuel", "Fernanda", "Bruno", "Paula", "Iván"];
+  const titles = [["El principito", "Antoine de Saint-Exupéry"], ["Cuentos de la selva", "Horacio Quiroga"], ["Platero y yo", "Juan Ramón Jiménez"], ["Azul...", "Rubén Darío"], ["Mamita Yunai", "Carlos Luis Fallas"], ["El Quijote para niños", "Miguel de Cervantes"], ["Leyendas de Nicaragua", "Varios autores"], ["Fábulas", "Esopo"], ["Manual de ciencias 5.º", "CREA"]];
+  const books = new Map(titles.map(([title, author], i) => [`b${i}`, { id: `b${i}`, title, author }]));
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const now = Date.now(); const profiles = [];
+  names.forEach((n, i) => {
+    const count = 1 + Math.floor(rnd() * 4); const ids = [...books.keys()].sort(() => rnd() - .5).slice(0, count);
+    const lastAgo = rnd() < .65 ? rnd() * 6 * DAY : rnd() * 50 * DAY;
+    profiles.push({ userId: "d" + i, nickname: n, active: true, updatedAt: now - lastAgo, readings: ids.map((id) => ({ driveFileId: id, percent: Math.round(rnd() < .25 ? 95 + rnd() * 5 : rnd() * 94), updatedAt: now - lastAgo - rnd() * 10 * DAY })) });
+  });
+  profiles.push({ userId: "x1", nickname: "", active: false, readings: [] }, { userId: "x2", nickname: "", active: false, readings: [] });
+  return { profiles, books };
+}
+
+/* ---------- mosaico ---------- */
+// Piezas irregulares separadas por una línea fina, como el logo de CREA. Cada pieza es un dato.
+function mulberry(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function mosaic(items, { W = 1040, aspect = 3, seed = 3, interactive = true, label = "" } = {}) {
+  const n = items.length; if (!n) return "";
+  const H = Math.round(W / aspect), rnd = mulberry(seed + n);
+  const s = Math.sqrt(W * H / n);
+  const R = Math.max(1, Math.min(n, Math.round(H / s)));
+  const rowH = H / R;
+  const bounds = Array.from({ length: R + 1 }, (_, r) => ({ r, A: r === 0 || r === R ? 0 : rowH * (.1 + rnd() * .12), lam: W * (.45 + rnd() * .6), ph: rnd() * 6.283 }));
+  const yb = (r, x) => r * rowH + bounds[r].A * Math.sin(6.283 * x / bounds[r].lam + bounds[r].ph);
+  let idx = 0, paths = "", texts = "";
+  for (let r = 0; r < R; r++) {
+    const cnt = Math.floor((r + 1) * n / R) - Math.floor(r * n / R), cw = W / cnt;
+    const top = [], bot = [];
+    for (let k = 0; k <= cnt; k++) {
+      const edge = k === 0 || k === cnt;
+      top.push(edge ? k * cw : k * cw + (rnd() - .5) * .46 * cw);
+      bot.push(edge ? k * cw : top[k] + (rnd() - .5) * .5 * cw);
+    }
+    for (let k = 0; k < cnt; k++, idx++) {
+      const it = items[idx];
+      const pts = [[top[k], yb(r, top[k])], [top[k + 1], yb(r, top[k + 1])], [bot[k + 1], yb(r + 1, bot[k + 1])], [bot[k], yb(r + 1, bot[k])]];
+      const d = "M" + pts.map((p) => p[0].toFixed(1) + " " + p[1].toFixed(1)).join("L") + "Z";
+      const attrs = interactive ? ` tabindex="0" role="button" data-reader="${esc(it.id)}" data-cap="${esc(it.cap)}" aria-label="${esc(it.cap)}"` : "";
+      paths += `<path class="tile${it.off ? " off" : ""}" style="fill:var(--${it.color});--i:${idx}" d="${d}"${attrs}/>`;
+      if (it.text && Math.min(cw, rowH) > 46) {
+        const cx = pts.reduce((a, p) => a + p[0], 0) / 4, cy = pts.reduce((a, p) => a + p[1], 0) / 4;
+        texts += `<text class="tile-text" style="--i:${idx}" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" font-size="${Math.min(26, Math.min(cw, rowH) * .4).toFixed(0)}">${esc(it.text)}</text>`;
+      }
+    }
+  }
+  const cid = "mc" + seed;
+  return `<svg class="mosaic${state.entered ? "" : " enter"}" viewBox="0 0 ${W} ${H}" role="${interactive ? "group" : "presentation"}"${label ? ` aria-label="${esc(label)}"` : ""}>
+    <defs><clipPath id="${cid}"><rect width="${W}" height="${H}" rx="22"/></clipPath></defs><g clip-path="url(#${cid})">${paths}${texts}</g></svg>`;
+}
+function paintLoginArt() {
+  const colors = ["blue", "cyan", "pink", "lime", "red", "orange", "green", "yellow"];
+  const rnd = mulberry(11);
+  const items = Array.from({ length: 34 }, () => ({ color: colors[Math.floor(rnd() * colors.length)] }));
+  $("#login-art").innerHTML = mosaic(items, { W: 760, aspect: 1.05, seed: 5, interactive: false });
+}
+
+/* ---------- vistas ---------- */
+function setView(v) {
+  state.view = v;
+  document.querySelectorAll(".tab").forEach((b) => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  render();
+}
+function render() {
+  const m = state.data; const c = $("#content");
+  if (!m) return;
+  $("#updated").textContent = "Actualizado " + new Date(m.loadedAt).toLocaleTimeString("es-NI", { hour: "2-digit", minute: "2-digit" });
+  $("#banners").innerHTML =
+    (state.demo ? `<p class="note demo"><b>Datos de ejemplo.</b> Entra con Google para ver a las personas lectoras reales.</p>` : "") +
+    `<p class="note">Aquí aparecen solo quienes activaron <b>«Compartir mi lectura»</b> en la app${m.optedOut ? ` (${plural(m.optedOut, "persona dejó", "personas dejaron")} de compartir y no se muestran)` : ""}. Se ve el avance de su dispositivo, con apodo y sin correo.</p>`;
+  ({ summary: renderSummary, readers: renderReaders, books: renderBooks })[state.view](c, m);
+}
+
+function renderSummary(c, m) {
+  const R = m.readers, n = R.length;
+  const active = R.filter((r) => r.status === "active").length;
+  const all = R.flatMap((r) => r.readings);
+  const avg = all.length ? Math.round(all.reduce((s, r) => s + r.percent, 0) / all.length) : 0;
+  const finished = all.filter((r) => r.percent >= DONE).length;
+  const inProg = all.filter((r) => r.percent > 0 && r.percent < DONE).length;
+  const top = [...m.books].filter((b) => b.readers).sort((a, b) => b.readers - a.readers).slice(0, 6);
+  const maxTop = Math.max(1, ...top.map((b) => b.readers));
+
+  const lede = n === 0 ? "Todavía no hay personas lectoras que compartan su avance."
+    : `${plural(n, "persona lectora comparte", "personas lectoras comparten")} su avance y ${active === 0 ? "ninguna leyó" : active === 1 ? "1 leyó" : active + " leyeron"} en los últimos 7 días.`;
+  const tiles = [...R].sort((a, b) => b.avg - a.avg || b.last - a.last).map((r) => ({
+    id: r.id, color: progVar(r.avg), off: r.status === "idle", text: initials(r.name),
+    cap: `${r.name}: ${r.avg} % de avance medio, ${plural(r.finished, "libro terminado", "libros terminados")}, ${ago(r.last)}${r.status === "idle" ? " (sin leer hace más de 30 días)" : ""}`,
+  }));
+  const dist = [["gray", (p) => p === 0], ["pink", (p) => p > 0 && p < 33], ["cyan", (p) => p >= 33 && p < 66], ["lime", (p) => p >= 66 && p < DONE], ["green", (p) => p >= DONE]]
+    .map(([color, f]) => ({ color, count: all.filter((r) => f(r.percent)).length }));
+  const distTotal = Math.max(1, all.length);
+
+  c.innerHTML = `
+    <section class="hero">
+      <h1 class="lede">${esc(lede)}</h1>
+      <dl class="facts">
+        <div><dt>Avance medio</dt><dd>${avg} %</dd></div>
+        <div><dt>Libros terminados</dt><dd>${finished}</dd></div>
+        <div><dt>Lecturas en curso</dt><dd>${inProg}</dd></div>
+        <div><dt>Libros en la biblioteca</dt><dd>${m.catalogSize || m.books.length}</dd></div>
+      </dl>
+    </section>
+    <section class="mosaic-wrap" aria-label="Mosaico de lectores">
+      ${mosaic(tiles, { label: "Cada pieza es una persona lectora; el color indica su avance medio" })}
+      <p class="caption" id="caption" aria-live="polite">Cada pieza es una persona lectora. Pasa el cursor o usa Tab para ver su avance; haz clic para abrir el detalle.</p>
+      <ul class="legend">${["pink", "cyan", "lime", "green", "gray"].map((k) => `<li><i style="background:var(--${k})"></i>${PROG_LABEL[k]}</li>`).join("")}<li><i style="background:var(--gray);opacity:.4"></i>Más de 30 días sin leer</li></ul>
+    </section>
+    <div class="split">
+      <section class="sec"><h2>Actividad de los últimos 30 días</h2><p class="sub">Lectores distintos cuyo avance cambió cada día</p>${activityChart(R)}</section>
+      <section class="sec"><h2>Cuánto llevan leído</h2><p class="sub">${plural(all.length, "lectura", "lecturas")} según su avance</p>
+        <div class="segbar" role="img" aria-label="Distribución de lecturas por avance">${dist.map((d) => `<i style="--c:var(--${d.color});flex:${d.count / distTotal || 0.0001}"></i>`).join("")}</div>
+        <ul class="rows">${dist.map((d) => `<li><span class="name"><span class="sw" style="--c:var(--${d.color})"></span>${PROG_LABEL[d.color]}</span><span class="num">${d.count}</span></li>`).join("")}</ul>
+      </section>
+    </div>
+    <div class="split">
+      <section class="sec"><h2>Libros más leídos</h2><p class="sub">Por número de lectores</p>
+        ${top.length ? `<ul class="rows">${top.map((b) => `<li><span class="name">${esc(b.title)}</span><span class="num">${plural(b.readers, "lector", "lectores")} · ${b.avg} % de media</span><span class="bar"><i style="--c:var(--${progVar(b.avg)});width:${b.readers / maxTop * 100}%"></i></span></li>`).join("")}</ul>` : `<p class="empty">Todavía no hay lecturas.</p>`}
+      </section>
+      <section class="sec"><h2>Más libros terminados</h2><p class="sub">Quienes más han completado</p>${leaderboard(R)}</section>
+    </div>`;
+  wireMosaic(c);
+  c.querySelectorAll("li[data-reader]").forEach((el) => el.addEventListener("click", () => openReader(el.dataset.reader)));
+  state.entered = true;
+}
+function wireMosaic(c) {
+  const svg = c.querySelector("svg.mosaic"); const cap = c.querySelector("#caption"); if (!svg || !cap) return;
+  const base = cap.textContent;
+  const show = (e) => { const t = e.target.closest?.(".tile"); if (t?.dataset.cap) cap.textContent = t.dataset.cap; };
+  svg.addEventListener("mouseover", show); svg.addEventListener("focusin", show);
+  svg.addEventListener("mouseleave", () => { cap.textContent = base; });
+  svg.addEventListener("click", (e) => { const t = e.target.closest(".tile"); if (t) openReader(t.dataset.reader); });
+  svg.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".tile")) { e.preventDefault(); openReader(e.target.dataset.reader); } });
+}
+function leaderboard(R) {
+  const top = [...R].sort((a, b) => b.finished - a.finished || b.avg - a.avg).slice(0, 6).filter((r) => r.readings.length);
+  if (!top.length) return `<p class="empty">Todavía no hay lecturas.</p>`;
+  return `<ul class="rows">${top.map((r) => `<li data-reader="${esc(r.id)}"><span class="name"><span class="piece ${pieceClass(r.name)}" style="--c:var(--${progVar(r.avg)});width:26px;height:26px;font-size:12px">${esc(initials(r.name))}</span>${esc(r.name)}</span><span class="num">${plural(r.finished, "terminado", "terminados")} · ${r.avg} % de media</span></li>`).join("")}</ul>`;
+}
+function activityChart(R) {
+  const days = 30, today = new Date(); today.setHours(0, 0, 0, 0);
+  const start = today.getTime() - (days - 1) * DAY; const counts = new Array(days).fill(0);
+  for (const r of R) {
+    const seen = new Set();
+    for (const x of r.readings) { const i = Math.floor((x.at - start) / DAY); if (i >= 0 && i < days) seen.add(i); }
+    seen.forEach((i) => counts[i]++);
+  }
+  const max = Math.max(1, ...counts), W = 560, H = 170, bw = W / days;
+  const fmt = (i) => new Date(start + i * DAY).toLocaleDateString("es-NI", { day: "numeric", month: "short" });
+  return `<svg class="chart" viewBox="0 0 ${W + 30} ${H + 24}" role="img" aria-label="Lectores activos por día, últimos 30 días">
+    ${[0, Math.ceil(max / 2), max].map((t) => { const y = H - t / max * H; return `<line x1="26" x2="${W + 30}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="20" y="${y + 4}" text-anchor="end">${t}</text>`; }).join("")}
+    ${counts.map((v, i) => { const h = Math.max(v / max * H, v ? 3 : 0); return v ? `<rect fill="${i >= days - 7 ? "var(--cyan)" : "var(--blue)"}" x="${30 + i * bw + 2}" y="${H - h}" width="${bw - 4}" height="${h}" rx="3"><title>${fmt(i)}: ${v}</title></rect>` : ""; }).join("")}
+    ${[0, 14, 29].map((i) => `<text x="${30 + i * bw + bw / 2}" y="${H + 17}" text-anchor="${i === 0 ? "start" : i === 29 ? "end" : "middle"}">${fmt(i)}</text>`).join("")}
+  </svg>`;
+}
+
+function renderReaders(c, m) {
+  c.innerHTML = `
+    <div class="tools">
+      <input id="q" type="search" placeholder="Buscar por apodo" aria-label="Buscar por apodo" value="${esc(state.q)}">
+      <select id="status" aria-label="Filtrar por estado"><option value="all">Todos</option><option value="active">Activos (7 días)</option><option value="slow">Poco activos (30 días)</option><option value="idle">Inactivos</option></select>
+    </div>
+    <div class="table-wrap"><table><thead><tr>
+      <th data-k="name">Lector</th><th data-k="status">Estado</th><th data-k="inProgress" class="num">En curso</th><th data-k="finished" class="num">Terminados</th><th data-k="avg">Avance medio</th><th data-k="last" class="num">Última lectura</th>
+    </tr></thead><tbody id="rows"></tbody></table></div>`;
+  $("#status").value = state.status;
+  const draw = () => {
+    const q = state.q.trim().toLowerCase(); const { key, dir } = state.sort;
+    const list = m.readers.filter((r) => (state.status === "all" || r.status === state.status) && (!q || r.name.toLowerCase().includes(q)))
+      .sort((a, b) => (typeof a[key] === "string" ? a[key].localeCompare(b[key], "es") : a[key] - b[key]) * dir);
+    $("#rows").innerHTML = list.length ? list.map((r) => `<tr data-reader="${esc(r.id)}">
+      <td><span class="person"><span class="piece ${pieceClass(r.name)}" style="--c:var(--${progVar(r.avg)})">${esc(initials(r.name))}</span>${esc(r.name)}</span></td>
+      <td><span class="status" style="--c:var(--${STATUS[r.status][0]})">${STATUS[r.status][1]}</span></td>
+      <td class="num">${r.inProgress}</td><td class="num">${r.finished}</td>
+      <td><span class="mini"><i style="--c:var(--${progVar(r.avg)});width:${r.avg}%"></i></span>${r.avg} %</td>
+      <td class="num">${esc(ago(r.last))}</td></tr>`).join("") : `<tr><td colspan="6" class="empty">Ningún lector coincide con la búsqueda.</td></tr>`;
+    c.querySelectorAll("th").forEach((th) => th.setAttribute("aria-sort", th.dataset.k === key ? (dir > 0 ? "ascending" : "descending") : "none"));
+    c.querySelectorAll("tbody tr[data-reader]").forEach((tr) => tr.addEventListener("click", () => openReader(tr.dataset.reader)));
+  };
+  $("#q").addEventListener("input", (e) => { state.q = e.target.value; draw(); });
+  $("#status").addEventListener("change", (e) => { state.status = e.target.value; draw(); });
+  c.querySelectorAll("th").forEach((th) => th.addEventListener("click", () => {
+    const k = th.dataset.k; state.sort = { key: k, dir: state.sort.key === k ? -state.sort.dir : (k === "name" ? 1 : -1) }; draw();
+  }));
+  draw();
+}
+
+function renderBooks(c, m) {
+  const list = [...m.books].sort((a, b) => b.readers - a.readers || a.title.localeCompare(b.title, "es"));
+  c.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Libro</th><th>Autor</th><th class="num">Lectores</th><th class="num">Terminaron</th><th>Avance medio</th></tr></thead><tbody>
+    ${list.length ? list.map((b) => `<tr style="cursor:default"><td><b>${esc(b.title)}</b></td><td>${esc(b.author || "—")}</td><td class="num">${b.readers}</td><td class="num">${b.finished}</td><td><span class="mini"><i style="--c:var(--${progVar(b.avg)});width:${b.avg}%"></i></span>${b.avg} %</td></tr>`).join("") : `<tr><td colspan="5" class="empty">No hay libros en la carpeta.</td></tr>`}
+  </tbody></table></div>`;
+}
+
+function openReader(id) {
+  const r = state.data.readers.find((x) => x.id === id); if (!r) return;
+  const host = $("#drawer-host");
+  host.innerHTML = `<div class="scrim"></div><aside class="drawer" role="dialog" aria-modal="true" aria-label="Detalle de ${esc(r.name)}">
+    <header><span class="piece ${pieceClass(r.name)}" style="--c:var(--${progVar(r.avg)})">${esc(initials(r.name))}</span><div><h2>${esc(r.name)}</h2><span class="status" style="--c:var(--${STATUS[r.status][0]})">${STATUS[r.status][1]}</span> <span class="updated">${esc(ago(r.last))}</span></div><button class="close" aria-label="Cerrar">×</button></header>
+    <dl class="dstats"><div><dd>${r.readings.length}</dd><dt>libros</dt></div><div><dd>${r.finished}</dd><dt>terminados</dt></div><div><dd>${r.avg} %</dd><dt>avance medio</dt></div></dl>
+    <h3>Libros</h3>
+    ${r.readings.length ? `<ul class="rows">${r.readings.map((b) => `<li><span class="name">${esc(b.title)}</span><span class="num">${b.percent} %</span><span class="bar"><i style="--c:var(--${progVar(b.percent)});width:${b.percent}%"></i></span><span class="num" style="grid-column:1/-1;font-size:14px">${esc(b.author ? b.author + " · " : "")}${esc(ago(b.at))}</span></li>`).join("")}</ul>` : `<p class="empty">Todavía no comparte lecturas.</p>`}
+  </aside>`;
+  const close = () => { host.innerHTML = ""; document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onKey);
+  $(".scrim").addEventListener("click", close);
+  const x = $(".close"); x.addEventListener("click", close); x.focus();
+}
+
+function exportCsv() {
+  const m = state.data; if (!m) return;
+  const cell = (v) => { let s = String(v ?? ""); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return `"${s.replace(/"/g, '""')}"`; };
+  const rows = [["Lector", "Libro", "Autor", "Avance %", "Última lectura"]];
+  for (const r of m.readers) {
+    if (!r.readings.length) rows.push([r.name, "", "", "", ""]);
+    for (const b of r.readings) rows.push([r.name, b.title, b.author, b.percent, b.at ? new Date(b.at).toISOString().slice(0, 10) : ""]);
+  }
+  const blob = new Blob(["﻿" + rows.map((r) => r.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `crea-reader-avance-${new Date().toISOString().slice(0, 10)}.csv` });
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- flujo ---------- */
+function showLogin() { $("#login").classList.remove("hidden"); $("#app").classList.add("hidden"); }
+async function start() {
+  $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
+  await reload();
+}
+async function reload() {
+  $("#content").innerHTML = `<p class="loading">Leyendo la carpeta de CREA Reader…</p>`;
+  try {
+    state.data = buildModel(state.demo ? demoData() : await fetchDrive());
+    render();
+  } catch (e) {
+    if (!state.demo && !state.token) { state.data = null; return fail(e.message); }
+    $("#content").innerHTML = `<p class="empty">${esc(e.message)}</p>`;
+  }
+}
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+$("#signin").addEventListener("click", signIn);
+$("#demo").addEventListener("click", () => { state.demo = true; start(); });
+$("#refresh").addEventListener("click", reload);
+$("#export").addEventListener("click", exportCsv);
+$("#signout").addEventListener("click", () => {
+  if (state.token && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(state.token);
+  state.token = null; state.data = null; state.demo = false; state.entered = false; showLogin();
+});
+$("#theme").addEventListener("click", () => {
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const cur = document.documentElement.dataset.theme || (dark ? "dark" : "light");
+  document.documentElement.dataset.theme = cur === "dark" ? "light" : "dark";
+});
+paintLoginArt();
+loadConfig().then(() => { if (new URLSearchParams(location.search).has("demo")) { state.demo = true; start(); } });
+</script>
+</body>
+</html>

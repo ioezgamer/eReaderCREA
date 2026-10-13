@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,6 +7,44 @@ import { createService, loadConfig } from "./service.js";
 import { createStore } from "./store.js";
 
 const MAX_BODY = 160 * 1024;
+const ADMIN_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public", "admin");
+const ADMIN_HEADERS = {
+  "cache-control": "no-store",
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "no-referrer",
+  "x-frame-options": "DENY",
+};
+
+/** Panel web: archivos estáticos (sin sesión; los datos se leen desde Drive con la cuenta de quien entra). */
+function serveAdmin(url, response) {
+  if (url.pathname === "/admin") {
+    response.writeHead(301, { location: "/admin/" });
+    return response.end();
+  }
+  if (url.pathname === "/admin/config.json") {
+    response.writeHead(200, { ...ADMIN_HEADERS, "content-type": "application/json; charset=utf-8" });
+    return response.end(JSON.stringify({
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      domain: (process.env.ALLOWED_DOMAINS || "creanicaragua.org").split(",")[0].trim(),
+    }));
+  }
+  if (url.pathname === "/admin/") {
+    response.writeHead(200, { ...ADMIN_HEADERS, "content-type": "text/html; charset=utf-8" });
+    return response.end(fs.readFileSync(path.join(ADMIN_DIR, "index.html")));
+  }
+  const asset = /^\/admin\/assets\/([\w-]+\.png)$/.exec(url.pathname);
+  if (asset) {
+    try {
+      const file = fs.readFileSync(path.join(ADMIN_DIR, "assets", asset[1]));
+      response.writeHead(200, { ...ADMIN_HEADERS, "cache-control": "public, max-age=86400", "content-type": "image/png" });
+      return response.end(file);
+    } catch {
+      // cae al 404
+    }
+  }
+  response.writeHead(404, ADMIN_HEADERS);
+  return response.end();
+}
 
 export function createServer({ config, service, authenticate }) {
   const send = (response, status, body) => {
@@ -33,6 +72,7 @@ export function createServer({ config, service, authenticate }) {
     try {
       const url = new URL(request.url, "http://localhost");
       if (url.pathname === "/healthz") return send(response, 200, { ok: true });
+      if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) return serveAdmin(url, response);
 
       const user = await authenticate(request);
       if (!user) return send(response, 401, { ok: false, code: "unauthorized" });
