@@ -145,6 +145,7 @@ final class CREADriveCatalog: ObservableObject {
            let cached = try? JSONDecoder().decode(CREASharedInsightIndex.self, from: data) { applyInsights(cached) }
         sharedIndexVersion = UserDefaults.standard.string(forKey: scopedCacheKey + ".insightVersion")
         folders = UserDefaults.standard.dictionary(forKey: scopedCacheKey + ".folders") as? [String: String] ?? [:]
+        folderID = folders[""]
         lastSynced = UserDefaults.standard.object(forKey: scopedCacheKey + ".lastSync") as? Date
     }
 
@@ -331,7 +332,7 @@ final class CREADriveCatalog: ObservableObject {
         do {
             let access = try await token()
             let files = try await list(query: "'\(folderID)' in parents and name = 'crea-ai-catalog.json' and trashed = false", fields: "id,name,mimeType,modifiedTime,md5Checksum", token: access)
-            guard let shared = files.first else { applyInsights(CREASharedInsightIndex(books: [])); return }
+            guard let shared = files.first else { sharedIndexVersion = nil; UserDefaults.standard.removeObject(forKey: scopedCacheKey + ".insightVersion"); applyInsights(CREASharedInsightIndex(books: [])); return }
             let version = shared.modifiedTime ?? shared.md5Checksum
             if version != nil && version == sharedIndexVersion { applyInsights(loadedInsightIndex); return }
             let id = shared.id
@@ -364,6 +365,8 @@ final class CREADriveCatalog: ObservableObject {
     func synchronizeInsights(ai: CREAReaderAI, generate: Bool) async {
         guard generate, !generatingInsights else { return }
         generatingInsights = true; defer { generatingInsights = false }
+        if folderID == nil { await synchronize() }
+        guard folderID != nil else { return }
         await ai.refresh()
         guard ai.canUse, GIDSignIn.sharedInstance.currentUser?.grantedScopes?.contains("https://www.googleapis.com/auth/drive") == true else { return }
         let owner = GIDSignIn.sharedInstance.currentUser?.userID

@@ -6,6 +6,7 @@ import PDFKit
 struct CREAOnlineBookDetailsView: View {
     let book: CREARemoteBook
     @ObservedObject var catalog: CREADriveCatalog
+    @ObservedObject private var transfers = CREABackgroundDownloads.shared
     @ObservedObject var library: LocalLibrary
     @ObservedObject var progressSync: CREAProgressSync
     @ObservedObject var ai: CREAReaderAI
@@ -131,7 +132,10 @@ struct CREAOnlineBookDetailsView: View {
             busy = true
             defer { busy = false }
             await catalog.download(book, into: library)
-            if library.books.contains(where: { $0.driveFileID == book.id }) {
+            if let problem = catalog.errorMessage { errorMessage = problem }
+            else if transfers.record(for: book.id)?.state == "cancelled" { errorMessage = "Se omitió o canceló la copia por tu decisión." }
+            else if transfers.record(for: book.id)?.state == "ready" { errorMessage = "La descarga está guardada y pendiente de revisión al volver a la aplicación." }
+            else if library.books.contains(where: { $0.driveFileID == book.id }) {
                 errorMessage = nil
                 onDownloaded()
             } else {
@@ -274,12 +278,20 @@ struct CREAOnlineBookDetailsView: View {
                     } else {
                         Label("Disponible sin conexión en Mi biblioteca", systemImage: "checkmark.circle.fill")
                             .font(.footnote).foregroundStyle(.green)
+                        if catalog.needsUpdate(book, local: downloadedBook) {
+                            Button("Actualizar copia conservando mis datos", action: downloadToLibrary).disabled(busy)
+                        }
                     }
                 }
 
                 if busy || catalog.downloading.contains(book.id) {
                     ProgressView("Preparando el libro…")
                         .frame(maxWidth: .infinity)
+                }
+                if let transfer = transfers.record(for: book.id), transfer.active {
+                    if let fraction = transfer.progress { ProgressView(value: fraction) }
+                    Text("\(ByteCountFormatter.string(fromByteCount: transfer.copied, countStyle: .file)) recibidos").font(.caption)
+                    Button("Cancelar descarga") { transfers.cancel(book.id) }.disabled(transfer.state == "processing")
                 }
                 if let errorMessage {
                     Label(errorMessage, systemImage: "exclamationmark.triangle")

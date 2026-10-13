@@ -531,7 +531,7 @@ struct ReaderHomeView: View {
             .navigationTitle("CREA Reader")
             .task(id: googleAuth.progressAuthorized) {
                 if googleAuth.progressAuthorized {
-                    await driveCatalog.synchronize()
+                    if driveCatalog.needsAutoSync { await driveCatalog.synchronize() }
                     await progressSync.pull(catalog: driveCatalog, library: library)
                 }
             }
@@ -659,6 +659,7 @@ struct ReaderHomeView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(book.name).font(.headline).foregroundStyle(.primary).lineLimit(2)
                     Text(book.kind).font(.caption).foregroundStyle(.secondary)
+                    if let category = book.category { Text(category).font(.caption).foregroundStyle(.secondary) }
                     HStack(spacing: 8) {
                         ProgressView(value: book.progress).tint(CREAStyle.green)
                         Text("\(Int(book.progress * 100))%")
@@ -925,6 +926,9 @@ struct ReaderHomeView: View {
                     LabeledContent("Libros guardados", value: "\(library.books.count)")
                     LabeledContent("Formato EPUB", value: "\(library.books.filter { $0.kind == "EPUB" }.count)")
                     LabeledContent("Formato PDF", value: "\(library.books.filter { $0.kind == "PDF" }.count)")
+                    if library.books.allSatisfy({ $0.fileSize != nil }) {
+                        LabeledContent("Espacio usado", value: ByteCountFormatter.string(fromByteCount: library.books.reduce(0) { $0 + Int64($1.fileSize ?? 0) }, countStyle: .file))
+                    }
                 }
                 Section("Sincronización") {
                     Toggle("Sincronización automática", isOn: $autoSync).onChange(of: autoSync) { _, _ in CREABackgroundSync.schedule() }

@@ -1,6 +1,6 @@
-# CREA Reader iOS 0.10.0: paridad con Android
+# CREA Reader iOS 0.11.0: paridad con Android 0.9.4
 
-Referencia: Android `origin/main`, iOS basada en `feature/ios-flarestore` commit `59b29cf`. Esta tabla distingue implementación de validación física.
+Referencia: Android `release/0.9.3` commit `6681144` (versión 0.9.4), iOS basada en `feature/ios-flarestore` commit `1294f40` (0.10.1). Esta tabla distingue implementación de validación física.
 
 | Función Android | Implementación iOS | Verificación necesaria |
 | --- | --- | --- |
@@ -50,3 +50,19 @@ Referencia: Android `origin/main`, iOS basada en `feature/ios-flarestore` commit
 8. Probar modo oscuro, texto grande, VoiceOver, horizontal e iPad.
 
 Una compilación correcta no sustituye estas pruebas ni demuestra paridad completa.
+
+## Nuevos flujos portados en 0.11.0
+
+| Android | iOS | Límite de verificación |
+| --- | --- | --- |
+| Categorías/subcategorías | Jerarquía completa, categorías intermedias y filtro por descendientes; categoría de libro local y de Drive | Probar movimientos/renombrado en Drive con la cuenta real |
+| Importación sin duplicados | SHA-256, metadatos Readium/PDF, identificador o título/autor en el mismo formato; confirmación de otra edición | Probar iCloud, compartir desde CREA Home y varias importaciones |
+| Subir a carpeta y reutilizar libros | Carpeta elegida por el lector; coincidencias MD5/SHA-256 y título/autor de nombres creados por la app | Google Workspace y permisos de escritura |
+| Repositorios gratuitos | Directorio Android de 23 fuentes, OPDS y web; alta/baja persistente, descarga directa e importación real | La disponibilidad y licencias dependen de cada fuente |
+| TTS de calidad | Voces instaladas de iOS, calidad real, idioma, preferencia latinoamericana y elección manual | Instalar/probar voces en iPhone; iOS no expone el indicador Android de red |
+| Tres vistas/tamaños | Opciones independientes y persistentes de biblioteca y catálogo | iPhone/iPad, texto grande y horizontal |
+| Comunidad personalizada | Lectores similares, recomendaciones, actividad reciente y lectores que terminaron | Datos reales compartidos voluntariamente |
+| Descargas/actualizaciones | Servicio de fondo de iOS, diario persistente, bytes reales, cancelación, selección múltiple, espacio, MD5 y reemplazo conservando datos | iOS puede interrumpir tras cierre forzado; reintentar. Las importaciones que requieren aprobación esperan el primer plano |
+| Fichas IA compartidas | Contrato JSON Android con valores omitidos, versión por MD5/fecha, caché, búsqueda/autor/categorías y generación optativa de hasta 6 por actualización | Cuenta de CREA, cuota y permiso Drive. El control ETag no es una transacción entre Android/iOS |
+
+Prueba física adicional: actualizar un EPUB cambiado mientras su lector conserva una nota; cerrar/reabrir y verificar notas, marcadores y posición. Repetir descarga con pérdida de conexión, cancelación, falta de espacio, cambio de cuenta y cierre forzado. Confirmar que no se pierde la copia anterior si el checksum falla.
