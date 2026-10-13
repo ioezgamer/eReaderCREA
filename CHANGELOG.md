@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.9.6 - 2026-10-13
+
+- **Pasar la página como una hoja de papel**: al tocar el borde izquierdo o derecho, o al deslizar el dedo, la página se pliega como una hoja de papel con sombra sobre la página que aparece debajo (estilo Kindle/Kobo). Solo en EPUB con paginación; no se aplica en modo de desplazamiento ni mientras se lee en voz alta.
+
 ## 0.9.5 - 2026-10-13
 
 - **Números de página en el lector**: ahora se ve «Página 3 de 120» en una esquina mientras lees. Al tocar la pantalla (cuando aparece la barra superior) sale abajo una barra deslizante para saltar a cualquier página, como en ReadEra. En PDF son las páginas reales; en EPUB son páginas calculadas (cada ~1000 caracteres), así que el total no cambia al cambiar el tamaño de la letra.

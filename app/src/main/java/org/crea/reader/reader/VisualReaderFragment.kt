@@ -86,6 +86,8 @@ import org.readium.r2.navigator.util.BaseActionModeCallback
 import org.readium.r2.navigator.util.DirectionalNavigationAdapter
 import org.readium.r2.shared.ExperimentalReadiumApi
 import org.readium.r2.shared.publication.Locator
+import org.readium.r2.navigator.epub.EpubNavigatorFragment
+import org.readium.r2.navigator.preferences.ReadingProgression
 import org.readium.r2.shared.publication.allAreHtml
 import org.readium.r2.shared.publication.allAreHtml
 import org.readium.r2.shared.publication.services.content.Content
@@ -139,8 +141,12 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
 
         (navigator as OverflowableNavigator).apply {
             // This will automatically turn pages when tapping the screen edges or arrow keys.
-            addInputListener(DirectionalNavigationAdapter(this, animatedTransition = true))
+            // Edge taps are handled in setupPageTurns with the paper animation; keep the keys.
+            addInputListener(
+                DirectionalNavigationAdapter(this, tapEdges = emptySet(), animatedTransition = true)
+            )
         }
+        setupPageTurns()
 
         (navigator as VisualNavigator).apply {
             // Present the image full screen when the user taps it. Bind it before the
@@ -222,6 +228,34 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                     showFootnotePopup(event.text)
             }
         }
+    }
+
+    /** Paper-like page turns for taps on the screen edges and swipes (EPUB, paginated mode). */
+    private fun setupPageTurns() {
+        val overflowable = navigator as? OverflowableNavigator ?: return
+        val layout = binding.pageTurnLayout
+        layout.enabled = {
+            navigator is EpubNavigatorFragment && !disableTouches && !overflowable.overflow.value.scroll
+        }
+        layout.rtl = { overflowable.overflow.value.readingProgression == ReadingProgression.RTL }
+        layout.move = { forward ->
+            if (forward) overflowable.goForward(animated = false)
+            else overflowable.goBackward(animated = false)
+        }
+        (navigator as VisualNavigator).addInputListener(object : InputListener {
+            override fun onTap(event: TapEvent): Boolean {
+                val width = layout.width.toFloat()
+                if (width == 0f || disableTouches) return false
+                val x = event.point.x
+                val edge = width * 0.3f
+                val rtl = layout.rtl()
+                return when {
+                    x < edge -> { layout.turn(forward = rtl); true }
+                    x > width - edge -> { layout.turn(forward = !rtl); true }
+                    else -> false
+                }
+            }
+        })
     }
 
     @Composable
