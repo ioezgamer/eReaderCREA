@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 0.9.8 - 2026-10-13
+
+- **La hoja sigue el dedo**: al deslizar, la página se pliega siguiendo el dedo, como en un lector electrónico. Al soltar, si arrastraste lo suficiente (o con un gesto rápido) la hoja termina de pasar; si no, vuelve a su lugar.
+- **Corrige el índice**: tocar un capítulo (Contenido), una página (Páginas) o un marcador/nota no hacía nada; ahora lleva a esa parte del libro.
+
 ## 0.9.7 - 2026-10-13
 
 - **Corrige la animación de pasar página**: en 0.9.6 la hoja no se veía (saltaba de golpe a la página siguiente). Ahora la hoja se pliega con sombra al tocar el borde o deslizar el dedo.

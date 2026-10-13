@@ -171,7 +171,7 @@ open class ReaderActivity : AppCompatActivity() {
         }
     }
 
-    private fun closeOutlineFragment(locator: Locator) {
+    fun closeOutlineFragment(locator: Locator) {
         readerFragment.go(locator, true)
         supportFragmentManager.popBackStack()
     }

@@ -43,7 +43,16 @@ class OutlineFragment : Fragment() {
         childFragmentManager.setFragmentResultListener(
             OutlineContract.REQUEST_KEY,
             this,
-            FragmentResultListener { requestKey, bundle -> setFragmentResult(requestKey, bundle) }
+            FragmentResultListener { requestKey, bundle ->
+                // Hand the destination straight to the reader instead of relaying it through the
+                // activity's fragment manager results.
+                val reader = activity as? ReaderActivity
+                if (reader != null) {
+                    reader.closeOutlineFragment(OutlineContract.parseResult(bundle).destination)
+                } else {
+                    setFragmentResult(requestKey, bundle)
+                }
+            }
         )
     }
 
