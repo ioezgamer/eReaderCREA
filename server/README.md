@@ -90,3 +90,15 @@ El gasto se calcula con los tokens que informa Anthropic y los precios de `src/s
 ## Privacidad
 
 Se envía al servidor solo lo que la persona pide analizar (un pasaje seleccionado, un capítulo, o el nombre y el inicio de un libro del catálogo) junto con su token de Google para comprobar la organización. El servidor no guarda ese contenido: solo contadores de uso. Anthropic procesa el texto según sus condiciones de API.
+
+## Panel de administración (`/admin`)
+
+Página web con el avance de lectura de las personas inscritas: resumen (lectores activos, avance medio, libros terminados, actividad de 30 días), tabla de lectores con detalle por persona, libros más leídos y exportación a CSV. Está en `public/admin/index.html` y la sirve este mismo servicio en `https://<tu-servicio>.onrender.com/admin/`.
+
+**De dónde salen los datos.** No hay base de datos central: el panel entra con la cuenta de Google de quien lo abre y lee la carpeta compartida **«CREA Reader»** de Drive (la persona debe tener acceso a ella). Ahí cada lector que activó «Compartir mi lectura» publica su apodo y su avance por libro, así que **solo aparecen quienes comparten** (sin correo ni nombre de dispositivo). El servidor no guarda ni ve esos datos; el navegador habla directo con Drive (solo lectura).
+
+**Configuración (una vez):**
+
+1. En Google Cloud (proyecto `crea-reader`) → *APIs y servicios → Credenciales → Crear credenciales → ID de cliente de OAuth*, tipo **Aplicación web**. En *Orígenes autorizados de JavaScript* pon la dirección de Render (y `http://localhost:8787` para pruebas). No requiere facturación.
+2. En la pantalla de consentimiento, tipo **Interno** (solo la organización) y el alcance `drive.readonly`.
+3. En Render, variable `GOOGLE_CLIENT_ID` = el ID de cliente. Sin ella el panel solo ofrece los datos de ejemplo (`/admin/?demo`).
