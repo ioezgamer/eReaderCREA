@@ -123,8 +123,13 @@ final class CREAOPDSParser: NSObject, XMLParserDelegate {
             let named = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + (pdf ? ".pdf" : ".epub"))
             defer { try? FileManager.default.removeItem(at: named) }
             try FileManager.default.moveItem(at: file, to: named)
-            try library.add(url: named, displayName: entry.title)
-            message = "Libro añadido a Mi biblioteca"
+            let outcome = await CREAImportCoordinator.shared.run([named], fallbackNames: [named: entry.title])
+            switch outcome {
+            case .completed: message = "Importación revisada; consulta Mi biblioteca"
+            case .omitted: message = "Se omitió la copia parecida por tu decisión"
+            case .busy: message = "Termina la importación actual y vuelve a descargar"
+            case .failed(let problem): self.error = problem
+            }
         } catch { self.error = "No se pudo descargar el libro: " + error.localizedDescription }
     }
 }
@@ -141,6 +146,21 @@ struct CREAExploreScreen: View {
     ]
     private let topics = [("Novelas y cuentos", "s.fiction"), ("Poesía", "s.poetry"), ("Teatro", "s.drama"), ("Aventuras", "s.adventure"), ("Historia", "s.history"), ("Filosofía", "s.philosophy"), ("Viajes", "s.travel"), ("Infantil y juvenil", "s.children"), ("Miguel de Cervantes", "cervantes"), ("Rubén Darío", "a.darío"), ("Benito Pérez Galdós", "a.galdós")]
     @State private var custom = ""
+    @State private var repositories = false
+    @State private var webImport = false
+    @AppStorage("crea.reader.opds.removedDefaults") private var removedJSON = "[]"
+    @AppStorage("crea.reader.opds.names") private var namesJSON = "{}"
+    private var removed: [String] { removedJSON.data(using: .utf8).flatMap { try? JSONDecoder().decode([String].self, from: $0) } ?? [] }
+    private var names: [String: String] { namesJSON.data(using: .utf8).flatMap { try? JSONDecoder().decode([String: String].self, from: $0) } ?? [:] }
+    private var activeSources: [(String, String)] { sources.filter { !removed.contains($0.1) } }
+    private func addRepository(_ repo: CREAFreeRepository) {
+        guard let feed = repo.feed else { return }
+        if sources.contains(where: { $0.1 == feed }) {
+            if let data = try? JSONEncoder().encode(removed.filter { $0 != feed }), let json = String(data: data, encoding: .utf8) { removedJSON = json }
+        } else if !saved.contains(feed) { save(saved + [feed]) }
+        var titles = names; titles[feed] = repo.name
+        if let data = try? JSONEncoder().encode(titles), let json = String(data: data, encoding: .utf8) { namesJSON = json }
+    }
     @AppStorage("crea.reader.opds.custom") private var savedJSON = "[]"
     private var saved: [String] { (savedJSON.data(using: .utf8).flatMap { try? JSONDecoder().decode([String].self, from: $0) }) ?? [] }
     private func save(_ urls: [String]) {
@@ -150,8 +170,11 @@ struct CREAExploreScreen: View {
         NavigationStack {
             List {
                 Section("Bibliotecas en español") {
-                    ForEach(sources, id: \.0) { title, href in
+                    ForEach(activeSources, id: \.0) { title, href in
                         if let url = URL(string: href) { NavigationLink(title) { CREAOPDSFeedScreen(title: title, url: url, library: library) } }
+                    }.onDelete { offsets in
+                        let deleting = offsets.map { activeSources[$0].1 }
+                        if let data = try? JSONEncoder().encode(removed + deleting), let json = String(data: data, encoding: .utf8) { removedJSON = json }
                     }
                 }
                 Section("Temas y autores") {
@@ -167,10 +190,16 @@ struct CREAExploreScreen: View {
                         Button("Guardar catálogo") { if !saved.contains(custom) { save(saved + [custom]); custom = "" } }
                     }
                     ForEach(saved, id: \.self) { href in
-                        if let url = URL(string: href) { NavigationLink(href) { CREAOPDSFeedScreen(title: url.host ?? "Catálogo", url: url, library: library) } }
+                        if let url = URL(string: href) { NavigationLink(names[href] ?? href) { CREAOPDSFeedScreen(title: names[href] ?? url.host ?? "Catálogo", url: url, library: library) } }
                     }.onDelete { offsets in var urls = saved; urls.remove(atOffsets: offsets); save(urls) }
                 }
             }.navigationTitle("Explorar")
+                .toolbar {
+                    Button { repositories = true } label: { Label("Agregar repositorios", systemImage: "plus") }
+                    Button("Agregar desde la web") { webImport = true }
+                }
+                .sheet(isPresented: $repositories) { CREARepositoriesSheet(added: Set(activeSources.map { $0.1 } + saved), add: addRepository) }
+                .sheet(isPresented: $webImport) { CREAWebImportSheet(library: library) }
         }
     }
 }

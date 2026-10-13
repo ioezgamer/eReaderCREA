@@ -332,7 +332,7 @@ struct CREAOnlineBookDetailsView: View {
         }
         .task(id: book.id) {
             metadata = await catalog.inspect(book)
-            if aiInfo == nil { aiInfo = catalog.sharedInsights[book.id] }
+            if aiInfo == nil { aiInfo = catalog.insight(for: book) }
             // PDFKit must load the PDF to give an accurate page count.
             // Only preload small PDFs after the user enters this detail page.
             if !book.isEPUB, let length = book.size.flatMap(Int64.init),

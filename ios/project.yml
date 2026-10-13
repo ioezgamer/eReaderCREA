@@ -19,6 +19,7 @@ targets:
         CFBundleDisplayName: CREA Reader
         UILaunchStoryboardName: LaunchScreen
         GIDClientID: 101673121950-e6jb7e03imhbts9dc98em5gof37ebkn8.apps.googleusercontent.com
+        CREAAIBaseURL: https://crea-reader-ai.onrender.com
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - com.googleusercontent.apps.101673121950-e6jb7e03imhbts9dc98em5gof37ebkn8
@@ -65,7 +66,7 @@ targets:
         INFOPLIST_KEY_UIFileSharingEnabled: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         CODE_SIGN_STYLE: Automatic
-        MARKETING_VERSION: 0.10.1
+        MARKETING_VERSION: 0.11.0
         CURRENT_PROJECT_VERSION: 1
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: NO
