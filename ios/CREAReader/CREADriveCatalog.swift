@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 import CryptoKit
 import GoogleSignIn
+import Combine
 
 struct CREARemoteBook: Codable, Identifiable, Hashable {
     let id: String
@@ -13,29 +14,50 @@ struct CREARemoteBook: Codable, Identifiable, Hashable {
     let thumbnailLink: String?
     var category: String?
     var description: String?
+    var appProperties: [String: String]?
+    var ownedByMe: Bool?
     var isEPUB: Bool { name.lowercased().hasSuffix(".epub") }
-    var displayName: String { (name as NSString).deletingPathExtension }
+    var displayName: String { CREADriveNames.describe(name, createdByApp: appProperties?["kind"] == "book").title }
+    var authorFromName: String? { CREADriveNames.describe(name, createdByApp: appProperties?["kind"] == "book").author }
+    var versionKey: String { md5Checksum ?? String(CREACatalogRules.milliseconds(modifiedTime)) }
 }
 
 struct CREACommunityReading: Decodable {
     let driveFileId: String
     let percent: Int
+    let updatedAt: Int64?
+    enum CodingKeys: String, CodingKey { case driveFileId, percent, updatedAt }
+    init(driveFileId: String, percent: Int, updatedAt: Int64? = nil) { self.driveFileId = driveFileId; self.percent = percent; self.updatedAt = updatedAt }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        driveFileId = try c.decode(String.self, forKey: .driveFileId); percent = try c.decodeIfPresent(Int.self, forKey: .percent) ?? 0; updatedAt = try c.decodeIfPresent(Int64.self, forKey: .updatedAt)
+    }
 }
 struct CREACommunityProfile: Decodable, Identifiable {
     let userId: String
     let nickname: String
     let active: Bool
     let readings: [CREACommunityReading]
+    let updatedAt: Int64?
     var id: String { userId }
+    enum CodingKeys: String, CodingKey { case userId, nickname, active, readings, updatedAt }
+    init(userId: String, nickname: String, active: Bool, readings: [CREACommunityReading], updatedAt: Int64? = nil) { self.userId = userId; self.nickname = nickname; self.active = active; self.readings = readings; self.updatedAt = updatedAt }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        userId = try c.decode(String.self, forKey: .userId); nickname = try c.decodeIfPresent(String.self, forKey: .nickname) ?? ""
+        active = try c.decodeIfPresent(Bool.self, forKey: .active) ?? false; readings = try c.decodeIfPresent([CREACommunityReading].self, forKey: .readings) ?? []
+        updatedAt = try c.decodeIfPresent(Int64.self, forKey: .updatedAt)
+    }
 }
 private struct DriveListResponse: Decodable {
     let files: [CREARemoteBook]
     let nextPageToken: String?
 }
 
-private struct CREASharedInsightIndex: Decodable {
-    struct Entry: Decodable {
+struct CREASharedInsightIndex: Codable {
+    struct Entry: Codable {
         let driveFileId: String
+        let version: String?
         let title: String
         let author: String?
         let summary: String
@@ -43,9 +65,26 @@ private struct CREASharedInsightIndex: Decodable {
         let level: String
         let confidence: String
         var info: CREAAIBookInfo { CREAAIBookInfo(title: title, author: author, summary: summary, categories: categories, level: level, confidence: confidence) }
+        enum CodingKeys: String, CodingKey { case driveFileId, version, title, author, summary, categories, level, confidence }
+        init(book: CREARemoteBook, info: CREAAIBookInfo) {
+            driveFileId = book.id; version = book.versionKey; title = info.title; author = info.author; summary = info.summary; categories = info.categories; level = info.level; confidence = info.confidence
+        }
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            driveFileId = try c.decode(String.self, forKey: .driveFileId); version = try c.decodeIfPresent(String.self, forKey: .version)
+            title = try c.decode(String.self, forKey: .title); author = try c.decodeIfPresent(String.self, forKey: .author)
+            summary = try c.decode(String.self, forKey: .summary); categories = try c.decodeIfPresent([String].self, forKey: .categories) ?? []
+            level = try c.decodeIfPresent(String.self, forKey: .level) ?? "general"; confidence = try c.decodeIfPresent(String.self, forKey: .confidence) ?? "medium"
+        }
     }
     let schema: Int
     let books: [Entry]
+    enum CodingKeys: String, CodingKey { case schema, books }
+    init(books: [Entry]) { schema = 1; self.books = books }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        schema = try c.decodeIfPresent(Int.self, forKey: .schema) ?? 1; books = try c.decodeIfPresent([Entry].self, forKey: .books) ?? []
+    }
 }
 
 @MainActor
@@ -56,10 +95,20 @@ final class CREADriveCatalog: ObservableObject {
     @Published private(set) var downloading: Set<String> = []
     @Published private(set) var uploading: Set<UUID> = []
     @Published private(set) var sharedInsights: [String: CREAAIBookInfo] = [:]
+    @Published private(set) var insightVersions: [String: String] = [:]
+    @Published private(set) var generatingInsights = false
+    @Published var insightStatus: String?
+    private var sharedIndexVersion: String?
+    private var pendingInsightWrites: [CREASharedInsightIndex.Entry] = []
+    private var loadedInsightIndex = CREASharedInsightIndex(books: [])
+    private var transferObserver: AnyCancellable?
     @Published var errorMessage: String?
     @Published private(set) var communityPublishing = false
     @Published private(set) var communityStatus = ""
     @Published var lastSynced: Date?
+    @Published private(set) var folders: [String: String] = [:]
+    var needsAutoSync: Bool { guard let lastSynced else { return true }; let age = Date().timeIntervalSince(lastSynced); return age < 0 || age >= 900 }
+    private var syncWaiters: [CheckedContinuation<Void, Never>] = []
     private let cacheKey = "crea.ios.drive.catalog.v1"
     private let folderName = "CREA Reader"
     private var folderID: String?
@@ -74,16 +123,30 @@ final class CREADriveCatalog: ObservableObject {
         let leftovers = FileManager.default.temporaryDirectory
             .appendingPathComponent("CREAReaderOnline", isDirectory: true)
         if cleanupTemporaryFiles { try? FileManager.default.removeItem(at: leftovers) }
+        transferObserver = CREABackgroundDownloads.shared.$records.sink { [weak self] records in
+            let owner = GIDSignIn.sharedInstance.currentUser?.userID
+            self?.downloading = Set(records.values.filter { $0.ownerID == owner && $0.active }.map { $0.book.id })
+        }
     }
 
     func resetForCurrentAccount() {
         let current = GIDSignIn.sharedInstance.currentUser?.userID
         guard current != accountID else { return }
         accountID = current; folderID = nil; metadataCache = [:]; manifestETags = [:]
+        folders = [:]
         books = []; community = []; sharedInsights = [:]; lastSynced = nil
+        insightVersions = [:]; sharedIndexVersion = nil; pendingInsightWrites = []; loadedInsightIndex = CREASharedInsightIndex(books: [])
+        if current != nil, let data = UserDefaults.standard.data(forKey: scopedCacheKey + ".pendingInsights"),
+           let pending = try? JSONDecoder().decode([CREASharedInsightIndex.Entry].self, from: data) { pendingInsightWrites = pending }
         errorMessage = nil; communityStatus = ""
         if current != nil, let data = UserDefaults.standard.data(forKey: scopedCacheKey),
            let cached = try? JSONDecoder().decode([CREARemoteBook].self, from: data) { books = cached }
+        if current != nil, let data = UserDefaults.standard.data(forKey: scopedCacheKey + ".insights"),
+           let cached = try? JSONDecoder().decode(CREASharedInsightIndex.self, from: data) { applyInsights(cached) }
+        sharedIndexVersion = UserDefaults.standard.string(forKey: scopedCacheKey + ".insightVersion")
+        folders = UserDefaults.standard.dictionary(forKey: scopedCacheKey + ".folders") as? [String: String] ?? [:]
+        folderID = folders[""]
+        lastSynced = UserDefaults.standard.object(forKey: scopedCacheKey + ".lastSync") as? Date
     }
 
     private func token() async throws -> String {
@@ -111,6 +174,7 @@ final class CREADriveCatalog: ObservableObject {
         request.setValue("Bearer " + token, forHTTPHeaderField: "Authorization")
         let (data, response) = try await URLSession.shared.data(for: request)
         guard owner != nil, owner == GIDSignIn.sharedInstance.currentUser?.userID else { throw failure("La cuenta cambió durante la operación. Reintenta con la cuenta actual.") }
+        if url.query?.contains("alt=media") == true, let http = response as? HTTPURLResponse, let etag = http.value(forHTTPHeaderField: "ETag") { manifestETags[url.lastPathComponent] = etag }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw failure("Google Drive devolvió un error. Verifica los permisos de la cuenta.")
         }
@@ -118,7 +182,7 @@ final class CREADriveCatalog: ObservableObject {
     }
 
     /// Resumable binary upload; the original book stays local if any step fails.
-    func upload(_ book: LocalBook, library: LocalLibrary) async {
+    func upload(_ book: LocalBook, library: LocalLibrary, categoryPath: String? = nil) async {
         guard uploading.insert(book.id).inserted else { return }
         defer { uploading.remove(book.id) }
         do {
@@ -129,13 +193,7 @@ final class CREADriveCatalog: ObservableObject {
             let owner = GIDSignIn.sharedInstance.currentUser?.userID
             let source = library.url(for: book)
             let hash = try await Task.detached { try CREABookIdentity.hash(source) }.value
-            let existing = try await list(query: "trashed = false and appProperties has { key='sha256' and value='\(hash)' }",
-                                          fields: "id,name,mimeType", token: access)
-            if let linked = existing.first {
-                guard owner == GIDSignIn.sharedInstance.currentUser?.userID else { throw failure("La cuenta cambió durante la subida.") }
-                library.update(book) { $0.driveFileID = linked.id; $0.contentHash = hash; $0.driveAccount = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() }
-                await synchronize(); return
-            }
+            let md5 = try await Task.detached { try CREABookIdentity.md5(source) }.value
             if folderID == nil {
                 let folders = try await list(query: "name = 'CREA Reader' and mimeType = 'application/vnd.google-apps.folder' and trashed = false", fields: "id,name,mimeType", token: access)
                 folderID = folders.first?.id
@@ -151,16 +209,31 @@ final class CREADriveCatalog: ObservableObject {
                 }
             }
             guard let folderID else { throw failure("No se encontró la carpeta de biblioteca.") }
+            await synchronize()
+            guard owner == GIDSignIn.sharedInstance.currentUser?.userID else { throw failure("La cuenta cambió durante la subida.") }
+            if let linked = books.first(where: { remote in
+                (remote.isEPUB ? "EPUB" : "PDF") == book.kind && (remote.md5Checksum == md5 || remote.appProperties?["sha256"] == hash || CREADuplicateRules.sameNames(book.name, book.author, remote.displayName, remote.authorFromName))
+            }) {
+                library.update(book) { $0.driveFileID = linked.id; $0.contentHash = hash; $0.driveAccount = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased(); $0.category = linked.category }
+                errorMessage = "Este archivo o publicación ya está en Drive: " + linked.displayName
+                return
+            }
+            let parent: String
+            if let categoryPath, !categoryPath.isEmpty {
+                guard let target = folders[categoryPath] else { throw failure("La carpeta seleccionada no existe. Actualiza el catálogo.") }
+                parent = target
+            } else { parent = folderID }
             let mime = book.kind == "PDF" ? "application/pdf" : "application/epub+zip"
             let size = try source.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-            let clean = book.name.components(separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>|").union(.controlCharacters)).joined(separator: " ")
+            let fullName = [book.name, book.author].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " - ")
+            let clean = fullName.components(separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>|").union(.controlCharacters)).joined(separator: " ")
             var start = URLRequest(url: URL(string: "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id")!)
             start.httpMethod = "POST"
             start.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
             start.setValue("application/json", forHTTPHeaderField: "Content-Type")
             start.setValue(mime, forHTTPHeaderField: "X-Upload-Content-Type")
             start.setValue(String(size), forHTTPHeaderField: "X-Upload-Content-Length")
-            start.httpBody = try JSONSerialization.data(withJSONObject: ["name": String(clean.prefix(120)) + "." + book.kind.lowercased(), "parents": [folderID], "appProperties": ["kind": "book", "sha256": hash]])
+            start.httpBody = try JSONSerialization.data(withJSONObject: ["name": String(clean.prefix(120)) + "." + book.kind.lowercased(), "parents": [parent], "appProperties": ["kind": "book", "sha256": hash]])
             let (_, response) = try await URLSession.shared.data(for: start)
             guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
                   let location = http.value(forHTTPHeaderField: "Location"), let session = URL(string: location),
@@ -172,7 +245,7 @@ final class CREADriveCatalog: ObservableObject {
             guard owner == GIDSignIn.sharedInstance.currentUser?.userID else { throw failure("La cuenta cambió durante la subida; actualiza el catálogo de la cuenta original.") }
             guard let uploaded = result as? HTTPURLResponse, (200...299).contains(uploaded.statusCode),
                   let object = try JSONSerialization.jsonObject(with: data) as? [String: Any], let id = object["id"] as? String else { throw failure("No se completó la subida. Tu libro local está guardado.") }
-            library.update(book) { $0.driveFileID = id; $0.contentHash = hash; $0.driveAccount = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() }
+            library.update(book) { $0.driveFileID = id; $0.contentHash = hash; $0.driveAccount = GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased(); $0.category = categoryPath }
             await synchronize()
         } catch { errorMessage = error.localizedDescription }
     }
@@ -199,28 +272,31 @@ final class CREADriveCatalog: ObservableObject {
     }
 
     func synchronize() async {
-        guard !isLoading else { return }
+        if isLoading { await withCheckedContinuation { syncWaiters.append($0) }; return }
         isLoading = true
-        defer { isLoading = false }
+        defer { isLoading = false; let waiters = syncWaiters; syncWaiters = []; waiters.forEach { $0.resume() } }
         do {
             let access = try await token()
             let folders = try await list(query: "name = '\(folderName)' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
-                                         fields: "id,name,mimeType", token: access)
-            guard let folder = folders.first else {
+                                         fields: "id,name,mimeType,ownedByMe", token: access)
+            guard let folder = folders.sorted(by: { ($0.ownedByMe == true ? 1 : 0) > ($1.ownedByMe == true ? 1 : 0) }).first else {
                 throw failure("No existe la carpeta CREA Reader en esta cuenta de Google.")
             }
             folderID = folder.id
             var pending: [(id: String, category: String?)] = [(folder.id, nil)]
             var visited = Set<String>()
             var found: [CREARemoteBook] = []
+            var folderPaths: [String: String] = ["": folder.id]
             while !pending.isEmpty {
                 let parent = pending.removeFirst()
                 guard visited.insert(parent.id).inserted else { continue }
+                guard visited.count <= 500 else { throw failure("La biblioteca tiene demasiadas subcarpetas.") }
                 let children = try await list(query: "'\(parent.id)' in parents and trashed = false",
-                                              fields: "id,name,mimeType,size,modifiedTime,md5Checksum,thumbnailLink,description", token: access)
+                                              fields: "id,name,mimeType,size,modifiedTime,md5Checksum,thumbnailLink,description,appProperties", token: access)
                 for file in children {
                     if file.mimeType == "application/vnd.google-apps.folder" {
-                        pending.append((file.id, parent.category ?? file.name))
+                        let path = CREACategoryPaths.join(parent.category, file.name)
+                        pending.append((file.id, path)); folderPaths[path] = file.id
                     } else if file.name.lowercased().hasSuffix(".epub") || file.name.lowercased().hasSuffix(".pdf") {
                         var book = file
                         book.category = parent.category
@@ -229,8 +305,21 @@ final class CREADriveCatalog: ObservableObject {
                 }
             }
             books = found.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            self.folders = folderPaths
+            UserDefaults.standard.set(folderPaths, forKey: scopedCacheKey + ".folders")
+            for local in LocalLibrary.shared.books {
+                if let remote = found.first(where: { $0.id == local.driveFileID }), local.driveAccount == nil || local.driveAccount == GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased() {
+                    LocalLibrary.shared.update(local) { $0.category = remote.category }
+                    if local.remoteMD5 == nil, remote.md5Checksum != nil {
+                        let url = LocalLibrary.shared.url(for: local)
+                        let hash = try? await Task.detached { try CREABookIdentity.md5(url) }.value
+                        LocalLibrary.shared.update(local) { $0.remoteMD5 = hash }
+                    }
+                }
+            }
             UserDefaults.standard.set(try JSONEncoder().encode(books), forKey: scopedCacheKey)
             lastSynced = Date()
+            UserDefaults.standard.set(lastSynced, forKey: scopedCacheKey + ".lastSync")
             errorMessage = nil
             await loadSharedInsights()
         } catch {
@@ -242,14 +331,104 @@ final class CREADriveCatalog: ObservableObject {
         guard let folderID else { return }
         do {
             let access = try await token()
-            let files = try await list(query: "'\(folderID)' in parents and name = 'crea-ai-catalog.json' and trashed = false", fields: "id,name,mimeType", token: access)
-            guard let id = files.first?.id else { sharedInsights = [:]; return }
+            let files = try await list(query: "'\(folderID)' in parents and name = 'crea-ai-catalog.json' and trashed = false", fields: "id,name,mimeType,modifiedTime,md5Checksum", token: access)
+            guard let shared = files.first else { sharedIndexVersion = nil; UserDefaults.standard.removeObject(forKey: scopedCacheKey + ".insightVersion"); applyInsights(CREASharedInsightIndex(books: [])); return }
+            let version = shared.modifiedTime ?? shared.md5Checksum
+            if version != nil && version == sharedIndexVersion { applyInsights(loadedInsightIndex); return }
+            let id = shared.id
             let data = try await request(URL(string: api + "/" + id + "?alt=media")!, token: access)
             guard data.count <= 10_000_000 else { throw failure("El índice de fichas supera el tamaño admitido.") }
             let index = try JSONDecoder().decode(CREASharedInsightIndex.self, from: data)
             guard index.schema == 1 else { throw failure("Versión de fichas compartidas no compatible.") }
-            sharedInsights = Dictionary(index.books.map { ($0.driveFileId, $0.info) }, uniquingKeysWith: { _, latest in latest })
+            applyInsights(index); sharedIndexVersion = version
+            UserDefaults.standard.set(version, forKey: scopedCacheKey + ".insightVersion")
         } catch { errorMessage = "El catálogo está disponible, pero no se pudieron actualizar las fichas compartidas: " + error.localizedDescription }
+    }
+    private func applyInsights(_ index: CREASharedInsightIndex) {
+        var combined = Dictionary(index.books.map { ($0.driveFileId, $0) }, uniquingKeysWith: { _, b in b })
+        for pending in pendingInsightWrites where books.first(where: { $0.id == pending.driveFileId })?.versionKey == pending.version { combined[pending.driveFileId] = pending }
+        let usable = combined.values.filter { !$0.summary.hasPrefix("(Ejemplo)") }
+        loadedInsightIndex = CREASharedInsightIndex(books: usable)
+        sharedInsights = Dictionary(usable.map { ($0.driveFileId, $0.info) }, uniquingKeysWith: { _, latest in latest })
+        insightVersions = Dictionary(usable.compactMap { entry in entry.version.map { (entry.driveFileId, $0) } }, uniquingKeysWith: { _, latest in latest })
+        if let data = try? JSONEncoder().encode(CREASharedInsightIndex(books: usable)) { UserDefaults.standard.set(data, forKey: scopedCacheKey + ".insights") }
+    }
+    func insight(for book: CREARemoteBook) -> CREAAIBookInfo? { insightVersions[book.id] == book.versionKey ? sharedInsights[book.id] : nil }
+    func title(for book: CREARemoteBook) -> String { insight(for: book)?.title ?? book.displayName }
+    func categories(for book: CREARemoteBook) -> [String] { Array(Set((book.category.map { [$0] } ?? []) + (insight(for: book)?.categories ?? []))).sorted() }
+    func needsUpdate(_ book: CREARemoteBook, local: LocalBook?) -> Bool {
+        guard let local else { return false }
+        if let md5 = book.md5Checksum, let saved = local.remoteMD5 { return md5 != saved }
+        if let saved = local.remoteModifiedTime, let current = book.modifiedTime { return saved != current }
+        return false
+    }
+    func synchronizeInsights(ai: CREAReaderAI, generate: Bool) async {
+        guard generate, !generatingInsights else { return }
+        generatingInsights = true; defer { generatingInsights = false }
+        if folderID == nil { await synchronize() }
+        guard folderID != nil else { return }
+        await ai.refresh()
+        guard ai.canUse, GIDSignIn.sharedInstance.currentUser?.grantedScopes?.contains("https://www.googleapis.com/auth/drive") == true else { return }
+        let owner = GIDSignIn.sharedInstance.currentUser?.userID
+        let pending = books.filter { insight(for: $0) == nil }.prefix(6)
+        var created: [CREASharedInsightIndex.Entry] = []
+        for book in pending {
+            do {
+                try Task.checkCancellation()
+                guard owner == GIDSignIn.sharedInstance.currentUser?.userID else { return }
+                var excerpt: String?
+                if book.isEPUB { excerpt = await inspect(book).excerpt }
+                let info = try await ai.bookInfo(fileName: book.name, excerpt: excerpt)
+                guard !info.summary.hasPrefix("(Ejemplo)"), !info.summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+                created.append(CREASharedInsightIndex.Entry(book: book, info: info))
+            } catch { insightStatus = error.localizedDescription; break }
+        }
+        var queued = Dictionary(pendingInsightWrites.map { ($0.driveFileId, $0) }, uniquingKeysWith: { _, b in b })
+        for item in created { queued[item.driveFileId] = item }
+        pendingInsightWrites = Array(queued.values)
+        if let data = try? JSONEncoder().encode(pendingInsightWrites) { UserDefaults.standard.set(data, forKey: scopedCacheKey + ".pendingInsights") }
+        guard !pendingInsightWrites.isEmpty, let folderID else { return }
+        do {
+            let access = try await token()
+            guard owner == GIDSignIn.sharedInstance.currentUser?.userID else { return }
+            let files = try await list(query: "'\(folderID)' in parents and name = 'crea-ai-catalog.json' and trashed = false", fields: "id,name,mimeType", token: access)
+            var entries: [CREASharedInsightIndex.Entry] = []
+            if let existing = files.first {
+                let bytes = try await request(URL(string: api + "/" + existing.id + "?alt=media")!, token: access)
+                let index = try JSONDecoder().decode(CREASharedInsightIndex.self, from: bytes)
+                guard index.schema == 1 else { throw failure("El índice de IA tiene una versión no compatible.") }
+                entries = index.books
+            }
+            var merged = Dictionary(entries.map { ($0.driveFileId, $0) }, uniquingKeysWith: { _, b in b })
+            for item in pendingInsightWrites where books.first(where: { $0.id == item.driveFileId })?.versionKey == item.version { merged[item.driveFileId] = item }
+            let live = Set(books.map { $0.id })
+            let index = CREASharedInsightIndex(books: merged.values.filter { live.contains($0.driveFileId) && !$0.summary.hasPrefix("(Ejemplo)") }.sorted { $0.driveFileId < $1.driveFileId })
+            try await writeSharedJSON(try JSONEncoder().encode(index), name: "crea-ai-catalog.json", folderID: folderID, fileID: files.first?.id, access: access)
+            pendingInsightWrites = []; UserDefaults.standard.removeObject(forKey: scopedCacheKey + ".pendingInsights")
+            applyInsights(index); sharedIndexVersion = nil
+            insightStatus = "\(created.count) fichas creadas y compartidas"
+        } catch {
+            applyInsights(loadedInsightIndex)
+            insightStatus = "Fichas conservadas para reintentar compartir: " + error.localizedDescription
+        }
+    }
+    private func writeSharedJSON(_ bytes: Data, name: String, folderID: String, fileID: String?, access: String) async throws {
+        var request: URLRequest; var body = bytes
+        if let fileID {
+            request = URLRequest(url: URL(string: "https://www.googleapis.com/upload/drive/v3/files/\(fileID)?uploadType=media")!)
+            request.httpMethod = "PATCH"; request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            if let etag = manifestETags[fileID] { request.setValue(etag, forHTTPHeaderField: "If-Match") }
+        } else {
+            let boundary = UUID().uuidString
+            body = Data("--\(boundary)\r\nContent-Type: application/json\r\n\r\n".utf8)
+            body.append(try JSONSerialization.data(withJSONObject: ["name": name, "parents": [folderID], "mimeType": "application/json"]))
+            body.append(Data("\r\n--\(boundary)\r\nContent-Type: application/json\r\n\r\n".utf8)); body.append(bytes); body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+            request = URLRequest(url: URL(string: "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart")!)
+            request.httpMethod = "POST"; request.setValue("multipart/related; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        }
+        request.setValue("Bearer " + access, forHTTPHeaderField: "Authorization")
+        let (_, response) = try await URLSession.shared.upload(for: request, from: body)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw failure("Drive rechazó las fichas compartidas.") }
     }
 
     func loadCommunity() async {
@@ -566,20 +745,30 @@ final class CREADriveCatalog: ObservableObject {
     }
 
     func download(_ book: CREARemoteBook, into library: LocalLibrary) async {
-        guard !downloading.contains(book.id) else { return }
-        downloading.insert(book.id)
-        defer { downloading.remove(book.id) }
         do {
             let access = try await token()
-            var parts = URLComponents(string: api + "/" + book.id)!
-            parts.queryItems = [URLQueryItem(name: "alt", value: "media")]
-            let data = try await request(parts.url!, token: access)
-            guard !data.isEmpty else { throw failure("El libro descargado está vacío.") }
-            let ext = book.isEPUB ? "epub" : "pdf"
-            let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "." + ext)
-            defer { try? FileManager.default.removeItem(at: temp) }
-            try data.write(to: temp, options: .atomic)
-            try library.add(url: temp, displayName: book.displayName, driveFileID: book.id)
+            guard let owner = GIDSignIn.sharedInstance.currentUser?.userID else { throw failure("Inicia sesión con Google.") }
+            try checkDownloadSpace([book])
+            let id = CREABackgroundDownloads.shared.enqueue(book, token: access, ownerID: owner, accountEmail: GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased())
+            await CREABackgroundDownloads.shared.wait(id)
+            errorMessage = CREABackgroundDownloads.shared.records[id]?.error
+        } catch { errorMessage = error.localizedDescription }
+    }
+    func checkDownloadSpace(_ selection: [CREARemoteBook]) throws {
+        let required = try CREATransferValidation.requiredSpace(selection)
+        let volume = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        if let available = try? volume.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]).volumeAvailableCapacityForImportantUsage, available < required {
+            throw failure("No hay espacio para esta selección. Se requieren aproximadamente \(ByteCountFormatter.string(fromByteCount: required, countStyle: .file)).")
+        }
+    }
+    func downloadBatch(_ selection: [CREARemoteBook]) async {
+        do {
+            try checkDownloadSpace(selection)
+            let access = try await token()
+            guard let owner = GIDSignIn.sharedInstance.currentUser?.userID else { throw failure("Inicia sesión con Google.") }
+            for book in selection {
+                _ = CREABackgroundDownloads.shared.enqueue(book, token: access, ownerID: owner, accountEmail: GIDSignIn.sharedInstance.currentUser?.profile?.email.lowercased())
+            }
             errorMessage = nil
         } catch { errorMessage = error.localizedDescription }
     }

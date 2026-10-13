@@ -6,6 +6,7 @@ import ReadiumStreamer
 struct CREALocalCoverView: View {
     let url: URL
     let kind: String
+    var title: String? = nil
     @State private var cover: UIImage?
 
     var body: some View {
@@ -14,8 +15,11 @@ struct CREALocalCoverView: View {
                 Image(uiImage: cover).resizable().scaledToFill()
             } else {
                 LinearGradient(colors: [.blue, .purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                Image(systemName: kind == "PDF" ? "doc.richtext" : "book.closed.fill")
-                    .font(.system(size: 36)).foregroundStyle(.white)
+                Color.black.opacity(0.2)
+                VStack(spacing: 10) {
+                    Image(systemName: kind == "PDF" ? "doc.richtext" : "book.closed.fill").font(.system(size: 30))
+                    if let title { Text(title).font(.headline).multilineTextAlignment(.center).lineLimit(4) }
+                }.foregroundStyle(.white).padding(10)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

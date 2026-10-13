@@ -105,6 +105,7 @@ final class CREAAuthSession: ObservableObject {
     }
 
     func signOut() {
+        if let owner = GIDSignIn.sharedInstance.currentUser?.userID { CREABackgroundDownloads.shared.cancelForAccount(owner) }
         GIDSignIn.sharedInstance.signOut()
         accountEmail = nil
         progressAuthorized = false

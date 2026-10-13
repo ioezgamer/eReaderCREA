@@ -1,5 +1,16 @@
 # Historial de cambios
 
+## iOS 0.11.0 - 2026-10-13
+
+- Paridad con Android 0.9.4 (`release/0.9.3`, commit `6681144`): categorías jerárquicas, filtros por descendientes, categoría local y actualización de la categoría de Drive al mover el libro; elección de carpeta al subir.
+- Importador que revisa metadatos reales antes de añadir: los mismos bytes no crean copias y las ediciones parecidas requieren confirmación, conservando los datos del libro existente. Importación desde web y directorio de 23 repositorios abiertos con OPDS o enlace web.
+- TTS selecciona la mejor voz instalada del idioma, conserva la voz elegida, ordena por calidad y favorece español latinoamericano a igual calidad. Se conserva la corrección del multiplicador de fuente de 0.10.1.
+- Vistas independientes de biblioteca/catálogo: lista, cuadrícula y solo portadas, con tres tamaños; búsqueda por palabras sin distinguir tildes, categorías y autor; orden del catálogo y filtro de cambios recientes.
+- Descargas Drive con URLSession de fondo, progreso real, cancelación, selección múltiple, comprobación de espacio e integridad MD5. Actualizaciones en lugar de duplicados, conservando identidad, avance, favoritos, colecciones y anotaciones; las notas añadidas por un lector aún abierto también permanecen asociadas.
+- Comunidad: recomendaciones ponderadas por lecturas similares, leyendo ahora y popularidad, con timestamps y umbral Android del 98 %.
+- Fichas IA compartidas: decodificación compatible con los valores predeterminados omitidos por Android, caché por cuenta/versiones, metadatos en búsqueda/filtros y generación optativa de hasta seis fichas por sincronización. Se preservan resultados pendientes ante fallo de escritura y se rechazan respuestas de ejemplo.
+- Sincronización automática de catálogo al abrir solo si pasaron 15 minutos; configuración del servidor público de IA obtenida del APK Android, sin claves en la aplicación.
+
 ## iOS 0.10.0 - 2026-10-12
 
 - Herramientas EPUB/PDF: índice, búsqueda real, marcadores, resaltados/subrayados, notas y navegación; anotaciones identificadas por SHA-256.

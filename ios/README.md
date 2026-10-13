@@ -50,3 +50,11 @@ El workflow de distribución existente sigue generando la IPA y la fuente FlareS
 Alcance confirmado por el usuario: libros sin DRM; Readium LCP queda excluido de esta entrega. Los catálogos OPDS autenticados necesitan su flujo de credenciales. Los PDFs escaneados no tienen OCR; la voz requiere texto.
 
 La creación inicial del manifiesto no constituye una transacción entre plataformas y Android aún puede escribir sin If-Match. Se necesitan pruebas físicas con la misma cuenta, permisos Workspace, fallos de red, iPad y accesibilidad antes de declarar igualdad funcional completa.
+
+## 0.11.0 — referencia Android 0.9.4
+
+La versión Android más reciente está en `release/0.9.3` (commit `6681144`), no en `main`. Se portaron categorías jerárquicas, carpeta de subida, importación con confirmación de ediciones parecidas, títulos limpios, directorio de repositorios, voces por calidad y las brechas de catálogo/descargas/comunidad/fichas IA. Se mantienen el multiplicador de fuente de 0.10.1 y el alcance de libros sin DRM.
+
+Las descargas de Drive usan URLSession de fondo y guardan un diario por cuenta. Los bytes y el MD5 se verifican antes de sustituir el archivo local; favoritos, colecciones, posición y anotaciones conservan su identidad. Una edición que necesita aprobación espera a que la aplicación esté activa. iOS controla la ejecución y puede detener tareas al cerrar forzadamente la app; los reintentos se realizan desde el catálogo.
+
+Las fichas IA utilizan el servidor público que incorpora el APK Android (`https://crea-reader-ai.onrender.com`). La IA sigue siendo optativa; la generación y publicación automática de fichas requiere activar la opción y autorizar escritura en Drive. Si falta cuota o disponibilidad, el lector y el catálogo siguen funcionando con metadatos locales o cacheados.

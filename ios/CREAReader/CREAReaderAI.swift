@@ -15,6 +15,7 @@ struct CREAAIBookInfo: Codable {
     let categories: [String]
     let level: String
     let confidence: String
+    var shareable: Bool { !summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !summary.hasPrefix("(Ejemplo)") }
 }
 
 struct CREAAITeacherQuestion: Decodable {
@@ -237,7 +238,9 @@ final class CREAReaderAI: ObservableObject {
         let value = try await ask(task: "book_info",
                                   input: compact(["fileName": String(fileName.prefix(300)),
                                                   "excerpt": excerpt.map { String($0.prefix(6000)) }]))
-        return try JSONDecoder().decode(CREAAIBookInfo.self, from: value)
+        let info = try JSONDecoder().decode(CREAAIBookInfo.self, from: value)
+        guard info.shareable else { throw CREAAIError.response }
+        return info
     }
 
     private func compact(_ values: [String: String?]) -> [String: String] {
