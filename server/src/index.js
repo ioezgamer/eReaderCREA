@@ -32,6 +32,16 @@ function serveAdmin(url, response) {
     response.writeHead(200, { ...ADMIN_HEADERS, "content-type": "text/html; charset=utf-8" });
     return response.end(fs.readFileSync(path.join(ADMIN_DIR, "index.html")));
   }
+  const asset = /^\/admin\/assets\/([\w-]+\.png)$/.exec(url.pathname);
+  if (asset) {
+    try {
+      const file = fs.readFileSync(path.join(ADMIN_DIR, "assets", asset[1]));
+      response.writeHead(200, { ...ADMIN_HEADERS, "cache-control": "public, max-age=86400", "content-type": "image/png" });
+      return response.end(file);
+    } catch {
+      // cae al 404
+    }
+  }
   response.writeHead(404, ADMIN_HEADERS);
   return response.end();
 }
