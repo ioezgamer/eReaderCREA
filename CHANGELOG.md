@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.9.9 - 2026-10-13
+
+- **Se quita el efecto de hoja de papel** (0.9.6 a 0.9.8): el pase de página vuelve al de antes, con la transición animada normal al tocar los bordes o deslizar. Se mantienen los números de página y la corrección del índice.
+
 ## 0.9.8 - 2026-10-13
 
 - **La hoja sigue el dedo**: al deslizar, la página se pliega siguiendo el dedo, como en un lector electrónico. Al soltar, si arrastraste lo suficiente (o con un gesto rápido) la hoja termina de pasar; si no, vuelve a su lugar.
