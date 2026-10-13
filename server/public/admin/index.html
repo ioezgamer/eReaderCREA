@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Panel CREA Reader</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231558D6'/%3E%3Cpath d='M9 9h7a4 4 0 0 1 4 4v10a3 3 0 0 0-3-3H9zM23 9h-1v11h1z' fill='white'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f4f6fb; --surface: #ffffff; --surface-2: #eef2fa; --border: #dde3ef;
+  --text: #121a2b; --muted: #5b6678; --primary: #1558d6; --primary-soft: #dce8ff; --on-primary: #fff;
+  --accent: #d6246e; --ok: #12805c; --ok-soft: #d8f3e8; --warn: #b85f00; --warn-soft: #ffe3bf; --off: #8791a3;
+  --shadow: 0 1px 2px rgba(18,26,43,.06), 0 4px 16px rgba(18,26,43,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1220; --surface: #151c2e; --surface-2: #1c2540; --border: #28324d;
+    --text: #e8edf8; --muted: #9aa5bd; --primary: #6c9bff; --primary-soft: #1d2e57; --on-primary: #0a1633;
+    --accent: #ff6ba5; --ok: #4ad3a0; --ok-soft: #123a2e; --warn: #ffb15c; --warn-soft: #3d2a0c; --off: #6f7a92;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1220; --surface: #151c2e; --surface-2: #1c2540; --border: #28324d;
+  --text: #e8edf8; --muted: #9aa5bd; --primary: #6c9bff; --primary-soft: #1d2e57; --on-primary: #0a1633;
+  --accent: #ff6ba5; --ok: #4ad3a0; --ok-soft: #123a2e; --warn: #ffb15c; --warn-soft: #3d2a0c; --off: #6f7a92;
+  --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; min-height: 100vh; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3 { margin: 0; line-height: 1.2; }
+.hidden { display: none !important; }
+
+/* login */
+.login { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); padding: 36px 32px; width: min(420px, 100%); text-align: center; }
+.logo { width: 56px; height: 56px; border-radius: 16px; background: var(--primary); display: grid; place-items: center; margin: 0 auto 18px; }
+.logo svg { width: 30px; height: 30px; }
+.login-card h1 { font-size: 24px; margin-bottom: 8px; }
+.login-card p { color: var(--muted); margin: 0 0 22px; }
+.btn { border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 9px 14px; font-weight: 600; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.block { display: block; width: 100%; padding: 12px; margin-top: 10px; }
+.error { color: var(--accent); margin-top: 14px; font-size: 14px; }
+
+/* layout */
+.app { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+.side { background: var(--surface); border-right: 1px solid var(--border); padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 18px; font-weight: 700; font-size: 17px; }
+.brand .logo { width: 34px; height: 34px; border-radius: 10px; margin: 0; }
+.brand .logo svg { width: 19px; height: 19px; }
+.nav { display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 10px 12px; border-radius: 10px; color: var(--muted); font-weight: 600; text-align: left; width: 100%; }
+.nav svg { width: 19px; height: 19px; flex: none; }
+.nav:hover { background: var(--surface-2); }
+.nav[aria-current="page"] { background: var(--primary-soft); color: var(--primary); }
+.side .spacer { flex: 1; }
+.side small { color: var(--muted); padding: 0 8px; }
+main { padding: 26px 30px 60px; min-width: 0; max-width: 1280px; }
+.topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
+.topbar h2 { font-size: 24px; flex: 1; min-width: 160px; }
+.topbar .meta { color: var(--muted); font-size: 13px; }
+.banner { background: var(--warn-soft); color: var(--text); border: 1px solid var(--warn); border-radius: 12px; padding: 10px 14px; margin-bottom: 18px; font-size: 14px; }
+.banner.demo { background: var(--primary-soft); border-color: var(--primary); }
+
+/* cards */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); min-width: 0; }
+.kpi .label { color: var(--muted); font-size: 13px; font-weight: 600; }
+.kpi .value { font-size: 32px; font-weight: 750; margin-top: 4px; letter-spacing: -.5px; }
+.kpi .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.grid2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; margin-bottom: 14px; }
+.card h3 { font-size: 15px; margin-bottom: 4px; }
+.card .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
+svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+svg.chart text { fill: var(--muted); font-size: 11px; font-family: inherit; }
+.bar-primary { fill: var(--primary); }
+.bar-soft { fill: var(--primary-soft); }
+.ranking { display: flex; flex-direction: column; gap: 12px; }
+.rank-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
+.rank-row .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-row .num { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.track { grid-column: 1 / -1; height: 7px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.track > i { display: block; height: 100%; background: var(--primary); border-radius: 99px; }
+.track > i.done { background: var(--ok); }
+
+/* tables */
+.tools { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.tools input, .tools select { font: inherit; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; }
+.tools input { flex: 1; min-width: 200px; }
+.table-wrap { overflow-x: auto; padding: 0; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--surface-2); position: sticky; top: 0; cursor: pointer; user-select: none; }
+th[aria-sort="ascending"]::after { content: " ▲"; }
+th[aria-sort="descending"]::after { content: " ▼"; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--surface-2); }
+tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.person { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #fff; flex: none; }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 700; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.off { background: var(--surface-2); color: var(--off); }
+.mini { display: inline-block; width: 90px; height: 7px; background: var(--surface-2); border-radius: 99px; overflow: hidden; vertical-align: middle; margin-right: 8px; }
+.mini > i { display: block; height: 100%; background: var(--primary); }
+.empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+
+/* drawer */
+.scrim { position: fixed; inset: 0; background: rgba(5,10,25,.45); z-index: 20; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 100%); background: var(--surface); z-index: 21; box-shadow: -8px 0 40px rgba(0,0,0,.25); padding: 24px; overflow-y: auto; }
+.drawer header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.drawer header .avatar { width: 48px; height: 48px; font-size: 18px; }
+.drawer header h3 { font-size: 20px; }
+.drawer header .close { margin-left: auto; border: 0; background: var(--surface-2); width: 34px; height: 34px; border-radius: 50%; font-size: 18px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+.stats div { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
+.stats b { display: block; font-size: 22px; }
+.stats span { color: var(--muted); font-size: 12px; }
+.drawer h4 { margin: 0 0 10px; font-size: 14px; }
+.book-line { margin-bottom: 14px; }
+.book-line .top { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.book-line .top span:first-child { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.book-line small { color: var(--muted); }
+
+.loading { padding: 80px 0; text-align: center; color: var(--muted); }
+.spin { width: 30px; height: 30px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: s 0.8s linear infinite; margin: 0 auto 14px; }
+@keyframes s { to { transform: rotate(360deg); } }
+.menu-btn { display: none; }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px 12px; }
+  .brand { padding: 0 8px 0 0; }
+  .side .spacer, .side small { display: none; }
+  .nav { width: auto; padding: 8px 10px; }
+  main { padding: 18px 16px 50px; }
+  .grid2 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<section id="login" class="login">
+  <div class="login-card">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="#fff"><path d="M4 4h7a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H4zM20 4h-3v13.5h3z"/></svg></div>
+    <h1>Panel CREA Reader</h1>
+    <p>Avance de lectura de las personas inscritas. Entra con tu cuenta de Google de la organización.</p>
+    <button id="signin" class="btn primary block">Entrar con Google</button>
+    <button id="demo" class="btn block">Ver con datos de ejemplo</button>
+    <div id="login-error" class="error hidden"></div>
+  </div>
+</section>
+
+<div id="app" class="app hidden">
+  <aside class="side">
+    <div class="brand"><div class="logo"><svg viewBox="0 0 24 24" fill="#fff"><path d="M4 4h7a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H4zM20 4h-3v13.5h3z"/></svg></div>CREA Reader</div>
+    <button class="nav" data-view="summary" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Resumen</button>
+    <button class="nav" data-view="readers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.8.7 2.9 2.4 3.2 5.2"/></svg>Lectores</button>
+    <button class="nav" data-view="books"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5zM4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>Libros</button>
+    <div class="spacer"></div>
+    <small id="who"></small>
+    <button id="theme" class="nav">◐ Tema</button>
+    <button id="signout" class="nav">Salir</button>
+  </aside>
+  <main>
+    <div class="topbar">
+      <h2 id="title">Resumen</h2>
+      <span class="meta" id="updated"></span>
+      <button id="refresh" class="btn">Actualizar</button>
+      <button id="export" class="btn">Exportar CSV</button>
+    </div>
+    <div id="banners"></div>
+    <div id="content"></div>
+  </main>
+</div>
+
+<div id="drawer-host"></div>
+
+<script>
+"use strict";
+/* ---------- utilidades ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const DONE = 95;
+const DAY = 86400000;
+const fmtDate = (t) => t ? new Date(t).toLocaleDateString("es-NI", { day: "numeric", month: "short", year: "numeric" }) : "—";
+function ago(t) {
+  if (!t) return "nunca";
+  const d = Math.floor((Date.now() - t) / DAY);
+  if (d <= 0) { const h = Math.floor((Date.now() - t) / 3600000); return h < 1 ? "hace minutos" : `hace ${h} h`; }
+  if (d === 1) return "ayer";
+  if (d < 30) return `hace ${d} días`;
+  return fmtDate(t);
+}
+const COLORS = ["#1558d6", "#d6246e", "#12805c", "#b85f00", "#7a3fd1", "#0a8aa6", "#c2410c", "#4d7c0f"];
+const colorFor = (s) => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return COLORS[h % COLORS.length]; };
+const initials = (n) => (n.trim()[0] || "?").toUpperCase();
+
+/* ---------- estado ---------- */
+const state = { view: "summary", token: null, demo: false, data: null, sort: { key: "last", dir: -1 }, q: "", status: "all", booksSort: "readers", cfg: {} };
+
+/* ---------- Google / Drive ---------- */
+const SCOPE = "https://www.googleapis.com/auth/drive.readonly";
+const FOLDER = "CREA Reader", PREFIX = "crea-lector-";
+let tokenClient;
+
+async function loadConfig() {
+  try { state.cfg = await (await fetch("config.json", { cache: "no-store" })).json(); } catch { state.cfg = {}; }
+}
+function loadGsi() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.accounts?.oauth2) return resolve();
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client";
+    s.onload = resolve; s.onerror = () => reject(new Error("No se pudo cargar el inicio de sesión de Google."));
+    document.head.appendChild(s);
+  });
+}
+async function signIn() {
+  const err = $("#login-error"); err.classList.add("hidden");
+  try {
+    if (!state.cfg.clientId) throw new Error("Falta configurar GOOGLE_CLIENT_ID en el servidor. Mientras tanto puedes ver los datos de ejemplo.");
+    await loadGsi();
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: state.cfg.clientId, scope: SCOPE, hd: state.cfg.domain || undefined,
+      callback: (r) => { if (r.error) return fail(r.error_description || r.error); state.token = r.access_token; start(); },
+      error_callback: (e) => fail(e.message || e.type || "Inicio de sesión cancelado."),
+    });
+    tokenClient.requestAccessToken();
+  } catch (e) { fail(e.message); }
+}
+function fail(msg) { const err = $("#login-error"); err.textContent = msg; err.classList.remove("hidden"); showLogin(); }
+
+async function drive(path, params = {}, raw = false) {
+  const url = new URL("https://www.googleapis.com/drive/v3/" + path);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  const r = await fetch(url, { headers: { authorization: "Bearer " + state.token } });
+  if (r.status === 401) { state.token = null; throw new Error("La sesión de Google venció. Vuelve a entrar."); }
+  if (!r.ok) throw new Error("Drive respondió " + r.status);
+  return raw ? r.text() : r.json();
+}
+async function listAll(q, fields) {
+  const out = []; let pageToken;
+  do {
+    const r = await drive("files", { q, fields: `nextPageToken,files(${fields})`, pageSize: 1000, supportsAllDrives: true, includeItemsFromAllDrives: true, ...(pageToken ? { pageToken } : {}) });
+    out.push(...r.files); pageToken = r.nextPageToken;
+  } while (pageToken);
+  return out;
+}
+async function pool(items, size, fn) {
+  const results = new Array(items.length); let next = 0;
+  await Promise.all(Array.from({ length: Math.min(size, items.length) }, async () => {
+    while (next < items.length) { const i = next++; results[i] = await fn(items[i]); }
+  }));
+  return results;
+}
+function describeBook(name) {
+  const base = /\.(epub|pdf)$/i.test(name) ? name.replace(/\.[^.]+$/, "") : name;
+  const clean = base.replace(/_/g, " ").replace(/\s+/g, " ").trim() || name;
+  const at = clean.lastIndexOf(" - ");
+  if (at > 0 && at < clean.length - 3) return { title: clean.slice(0, at).trim(), author: clean.slice(at + 3).trim() };
+  return { title: clean, author: "" };
+}
+async function fetchDrive() {
+  const folders = await listAll(`mimeType='application/vnd.google-apps.folder' and name='${FOLDER}' and trashed=false`, "id,ownedByMe");
+  if (!folders.length) throw new Error(`No se encontró la carpeta «${FOLDER}» en tu Drive. Pide que la compartan contigo.`);
+  const books = new Map(), profiles = []; let files = [];
+  for (const f of folders) files.push(...await listAll(`'${f.id}' in parents and trashed=false`, "id,name,mimeType,modifiedTime"));
+  const comm = files.filter((f) => f.name.startsWith(PREFIX));
+  for (const f of files) {
+    if (f.name.startsWith(PREFIX) || f.mimeType === "application/json" || f.mimeType.startsWith("application/vnd.google-apps")) continue;
+    if (/\.(epub|pdf)$/i.test(f.name) || /epub|pdf/.test(f.mimeType)) books.set(f.id, { id: f.id, ...describeBook(f.name) });
+  }
+  const loaded = await pool(comm, 6, async (f) => {
+    try { return JSON.parse(await drive(`files/${f.id}`, { alt: "media", supportsAllDrives: true }, true)); } catch { return null; }
+  });
+  for (const p of loaded) if (p && typeof p === "object") profiles.push(p);
+  return { profiles, books };
+}
+
+/* ---------- modelo ---------- */
+function buildModel({ profiles, books }) {
+  const now = Date.now();
+  const bookStats = new Map();
+  let optedOut = 0;
+  const readers = [];
+  for (const p of profiles) {
+    if (!p.active || !String(p.nickname || "").trim()) { optedOut++; continue; }
+    const readings = (p.readings || []).map((r) => {
+      const meta = books.get(r.driveFileId);
+      return { id: r.driveFileId, title: meta?.title || "Libro (ya no está en la carpeta)", author: meta?.author || "", percent: Math.max(0, Math.min(100, r.percent | 0)), at: r.updatedAt || 0 };
+    }).sort((a, b) => b.at - a.at);
+    const finished = readings.filter((r) => r.percent >= DONE).length;
+    const progressing = readings.filter((r) => r.percent > 0 && r.percent < DONE);
+    const avg = readings.length ? Math.round(readings.reduce((s, r) => s + r.percent, 0) / readings.length) : 0;
+    const last = Math.max(p.updatedAt || 0, ...readings.map((r) => r.at), 0);
+    const reader = { id: p.userId, name: String(p.nickname).trim(), readings, finished, inProgress: progressing.length, avg, last, status: now - last <= 7 * DAY ? "active" : now - last <= 30 * DAY ? "slow" : "idle" };
+    readers.push(reader);
+    for (const r of readings) {
+      const b = bookStats.get(r.id) || { id: r.id, title: r.title, author: r.author, readers: 0, finished: 0, sum: 0 };
+      b.readers++; b.sum += r.percent; if (r.percent >= DONE) b.finished++;
+      bookStats.set(r.id, b);
+    }
+  }
+  const catalog = [...books.values()].map((b) => ({ ...(bookStats.get(b.id) || { id: b.id, readers: 0, finished: 0, sum: 0 }), title: b.title, author: b.author }));
+  for (const b of bookStats.values()) if (!books.has(b.id)) catalog.push(b);
+  for (const b of catalog) b.avg = b.readers ? Math.round(b.sum / b.readers) : 0;
+  return { readers, books: catalog, optedOut, catalogSize: books.size, loadedAt: now };
+}
+function demoData() {
+  const names = ["Camila", "Mateo", "Valentina", "Sebastián", "Luciana", "Joaquín", "Isabella", "Emiliano", "Sofía", "Thiago", "Renata", "Diego", "Ximena", "Andrés", "Daniela", "Gael", "Mariana", "Leonel", "Abril", "Samuel", "Fernanda", "Bruno", "Paula", "Iván"];
+  const titles = [["El principito", "Antoine de Saint-Exupéry"], ["Cuentos de la selva", "Horacio Quiroga"], ["Platero y yo", "Juan Ramón Jiménez"], ["Azul...", "Rubén Darío"], ["Mamita Yunai", "Carlos Luis Fallas"], ["El Quijote para niños", "Miguel de Cervantes"], ["Leyendas de Nicaragua", "Varios autores"], ["Fábulas", "Esopo"], ["Manual de ciencias 5.º", "CREA"]];
+  const books = new Map(titles.map(([title, author], i) => [`b${i}`, { id: `b${i}`, title, author }]));
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const now = Date.now(); const profiles = [];
+  names.forEach((n, i) => {
+    const count = 1 + Math.floor(rnd() * 4); const ids = [...books.keys()].sort(() => rnd() - .5).slice(0, count);
+    const lastAgo = rnd() < .65 ? rnd() * 6 * DAY : rnd() * 50 * DAY;
+    profiles.push({ userId: "d" + i, nickname: n, active: true, updatedAt: now - lastAgo, readings: ids.map((id) => ({ driveFileId: id, percent: Math.round(rnd() < .25 ? 95 + rnd() * 5 : rnd() * 94), updatedAt: now - lastAgo - rnd() * 10 * DAY })) });
+  });
+  profiles.push({ userId: "x1", nickname: "", active: false, readings: [] }, { userId: "x2", nickname: "", active: false, readings: [] });
+  return { profiles, books };
+}
+
+/* ---------- render ---------- */
+const TITLES = { summary: "Resumen", readers: "Lectores inscritos", books: "Libros" };
+function setView(v) {
+  state.view = v; $("#title").textContent = TITLES[v];
+  document.querySelectorAll(".nav[data-view]").forEach((b) => b.toggleAttribute("aria-current", b.dataset.view === v) || b.removeAttribute("aria-current"));
+  document.querySelectorAll(".nav[data-view]").forEach((b) => { if (b.dataset.view === v) b.setAttribute("aria-current", "page"); });
+  render();
+}
+function render() {
+  const m = state.data; const c = $("#content");
+  if (!m) return;
+  $("#updated").textContent = "Actualizado " + new Date(m.loadedAt).toLocaleTimeString("es-NI", { hour: "2-digit", minute: "2-digit" });
+  $("#banners").innerHTML =
+    (state.demo ? `<div class="banner demo"><b>Datos de ejemplo.</b> Entra con Google para ver a los lectores reales.</div>` : "") +
+    `<div class="banner">Solo aparecen quienes activaron <b>«Compartir mi lectura»</b> en la app${m.optedOut ? ` (${m.optedOut} ${m.optedOut === 1 ? "persona dejó" : "personas dejaron"} de compartir y no se muestran)` : ""}. El avance es el de su dispositivo, con apodo y sin correo.</div>`;
+  ({ summary: renderSummary, readers: renderReaders, books: renderBooks })[state.view](c, m);
+}
+
+function kpi(label, value, sub) { return `<div class="card kpi"><div class="label">${esc(label)}</div><div class="value">${esc(value)}</div><div class="sub">${esc(sub)}</div></div>`; }
+
+function renderSummary(c, m) {
+  const R = m.readers, n = R.length;
+  const active = R.filter((r) => r.status === "active").length;
+  const allReadings = R.flatMap((r) => r.readings);
+  const avg = allReadings.length ? Math.round(allReadings.reduce((s, r) => s + r.percent, 0) / allReadings.length) : 0;
+  const finished = allReadings.filter((r) => r.percent >= DONE).length;
+  const inProg = allReadings.filter((r) => r.percent > 0 && r.percent < DONE).length;
+  const top = [...m.books].filter((b) => b.readers).sort((a, b) => b.readers - a.readers).slice(0, 6);
+  const maxTop = Math.max(1, ...top.map((b) => b.readers));
+  c.innerHTML = `
+    <div class="kpis">
+      ${kpi("Lectores inscritos", n, `${m.optedOut ? m.optedOut + " dejaron de compartir" : "comparten su lectura"}`)}
+      ${kpi("Activos esta semana", active, n ? Math.round(active / n * 100) + " % de los inscritos" : "—")}
+      ${kpi("Avance promedio", avg + " %", `en ${allReadings.length} lecturas`)}
+      ${kpi("Libros terminados", finished, `${inProg} lecturas en curso`)}
+      ${kpi("Libros en la biblioteca", m.catalogSize || m.books.length, "en la carpeta de Drive")}
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Actividad de los últimos 30 días</h3><div class="hint">Lectores distintos con avance registrado cada día</div>${activityChart(R)}</div>
+      <div class="card"><h3>¿Cuánto llevan leído?</h3><div class="hint">Lecturas por tramo de avance</div>${distChart(allReadings)}</div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Libros más leídos</h3><div class="hint">Lectores por libro</div>
+        ${top.length ? `<div class="ranking">${top.map((b) => `<div class="rank-row"><span class="name">${esc(b.title)}</span><span class="num">${b.readers} · ${b.avg} % prom.</span><div class="track"><i style="width:${b.readers / maxTop * 100}%"></i></div></div>`).join("")}</div>` : `<div class="empty">Aún no hay lecturas.</div>`}
+      </div>
+      <div class="card"><h3>Más constantes</h3><div class="hint">Lectores con más libros terminados</div>
+        ${leaderboard(R)}
+      </div>
+    </div>`;
+  c.querySelectorAll("[data-reader]").forEach((el) => el.addEventListener("click", () => openReader(el.dataset.reader)));
+}
+function leaderboard(R) {
+  const top = [...R].sort((a, b) => b.finished - a.finished || b.avg - a.avg).slice(0, 6).filter((r) => r.readings.length);
+  if (!top.length) return `<div class="empty">Aún no hay lecturas.</div>`;
+  return `<div class="ranking">${top.map((r) => `<div class="rank-row" data-reader="${esc(r.id)}" style="cursor:pointer"><span class="name person"><span class="avatar" style="background:${colorFor(r.name)}">${esc(initials(r.name))}</span>${esc(r.name)}</span><span class="num">${r.finished} ${r.finished === 1 ? "terminado" : "terminados"}</span><div class="track"><i class="done" style="width:${r.avg}%"></i></div></div>`).join("")}</div>`;
+}
+function activityChart(R) {
+  const days = 30, today = new Date(); today.setHours(0, 0, 0, 0);
+  const start = today.getTime() - (days - 1) * DAY; const counts = new Array(days).fill(0);
+  for (const r of R) {
+    const seen = new Set();
+    for (const x of r.readings) { const i = Math.floor((x.at - start) / DAY); if (i >= 0 && i < days) seen.add(i); }
+    seen.forEach((i) => counts[i]++);
+  }
+  const max = Math.max(1, ...counts), W = 560, H = 170, bw = W / days;
+  const ticks = [0, Math.ceil(max / 2), max];
+  return `<svg class="chart" viewBox="0 0 ${W + 30} ${H + 24}" role="img" aria-label="Actividad diaria">
+    ${ticks.map((t) => { const y = H - t / max * H; return `<line x1="26" x2="${W + 30}" y1="${y}" y2="${y}" stroke="var(--border)"/><text x="20" y="${y + 4}" text-anchor="end">${t}</text>`; }).join("")}
+    ${counts.map((v, i) => `<rect class="${v ? "bar-primary" : "bar-soft"}" x="${30 + i * bw + 2}" y="${H - Math.max(v / max * H, v ? 3 : 2)}" width="${bw - 4}" height="${Math.max(v / max * H, v ? 3 : 2)}" rx="3"><title>${new Date(start + i * DAY).toLocaleDateString("es-NI", { day: "numeric", month: "short" })}: ${v}</title></rect>`).join("")}
+    ${[0, 14, 29].map((i) => `<text x="${30 + i * bw + bw / 2}" y="${H + 16}" text-anchor="${i === 0 ? "start" : i === 29 ? "end" : "middle"}">${new Date(start + i * DAY).toLocaleDateString("es-NI", { day: "numeric", month: "short" })}</text>`).join("")}
+  </svg>`;
+}
+function distChart(readings) {
+  const buckets = [["Sin empezar", (p) => p === 0], ["1–25 %", (p) => p > 0 && p <= 25], ["26–50 %", (p) => p > 25 && p <= 50], ["51–75 %", (p) => p > 50 && p <= 75], ["76–94 %", (p) => p > 75 && p < DONE], ["Terminado", (p) => p >= DONE]];
+  const counts = buckets.map(([, f]) => readings.filter((r) => f(r.percent)).length); const max = Math.max(1, ...counts);
+  return `<div class="ranking">${buckets.map(([l], i) => `<div class="rank-row"><span class="name">${l}</span><span class="num">${counts[i]}</span><div class="track"><i class="${i === 5 ? "done" : ""}" style="width:${counts[i] / max * 100}%"></i></div></div>`).join("")}</div>`;
+}
+
+const STATUS = { active: ["ok", "Activo"], slow: ["warn", "Poco activo"], idle: ["off", "Inactivo"] };
+function renderReaders(c, m) {
+  c.innerHTML = `
+    <div class="tools">
+      <input id="q" type="search" placeholder="Buscar por apodo…" value="${esc(state.q)}">
+      <select id="status"><option value="all">Todos</option><option value="active">Activos (7 días)</option><option value="slow">Poco activos (30 días)</option><option value="idle">Inactivos</option></select>
+    </div>
+    <div class="card table-wrap"><table><thead><tr>
+      <th data-k="name">Lector</th><th data-k="status">Estado</th><th data-k="inProgress" class="num">En curso</th><th data-k="finished" class="num">Terminados</th><th data-k="avg">Avance medio</th><th data-k="last" class="num">Última actividad</th>
+    </tr></thead><tbody id="rows"></tbody></table></div>`;
+  $("#status").value = state.status;
+  const draw = () => {
+    const q = state.q.trim().toLowerCase(); const { key, dir } = state.sort;
+    const list = m.readers.filter((r) => (state.status === "all" || r.status === state.status) && (!q || r.name.toLowerCase().includes(q)))
+      .sort((a, b) => (typeof a[key] === "string" ? a[key].localeCompare(b[key], "es") : a[key] - b[key]) * dir);
+    $("#rows").innerHTML = list.length ? list.map((r) => `<tr data-reader="${esc(r.id)}">
+      <td><span class="person"><span class="avatar" style="background:${colorFor(r.name)}">${esc(initials(r.name))}</span>${esc(r.name)}</span></td>
+      <td><span class="pill ${STATUS[r.status][0]}">${STATUS[r.status][1]}</span></td>
+      <td class="num">${r.inProgress}</td><td class="num">${r.finished}</td>
+      <td><span class="mini"><i style="width:${r.avg}%"></i></span>${r.avg} %</td>
+      <td class="num">${esc(ago(r.last))}</td></tr>`).join("") : `<tr><td colspan="6" class="empty">Ningún lector coincide.</td></tr>`;
+    c.querySelectorAll("th").forEach((th) => th.setAttribute("aria-sort", th.dataset.k === key ? (dir > 0 ? "ascending" : "descending") : "none"));
+    c.querySelectorAll("tbody tr[data-reader]").forEach((tr) => tr.addEventListener("click", () => openReader(tr.dataset.reader)));
+  };
+  $("#q").addEventListener("input", (e) => { state.q = e.target.value; draw(); });
+  $("#status").addEventListener("change", (e) => { state.status = e.target.value; draw(); });
+  c.querySelectorAll("th").forEach((th) => th.addEventListener("click", () => {
+    const k = th.dataset.k; state.sort = { key: k, dir: state.sort.key === k ? -state.sort.dir : (k === "name" ? 1 : -1) }; draw();
+  }));
+  draw();
+}
+
+function renderBooks(c, m) {
+  const list = [...m.books].sort((a, b) => b.readers - a.readers || a.title.localeCompare(b.title, "es"));
+  c.innerHTML = `<div class="card table-wrap"><table><thead><tr><th>Libro</th><th>Autor</th><th class="num">Lectores</th><th class="num">Terminaron</th><th>Avance medio</th></tr></thead><tbody>
+    ${list.length ? list.map((b) => `<tr style="cursor:default"><td><b>${esc(b.title)}</b></td><td>${esc(b.author || "—")}</td><td class="num">${b.readers}</td><td class="num">${b.finished}</td><td><span class="mini"><i style="width:${b.avg}%"></i></span>${b.avg} %</td></tr>`).join("") : `<tr><td colspan="5" class="empty">No hay libros.</td></tr>`}
+  </tbody></table></div>`;
+}
+
+function openReader(id) {
+  const r = state.data.readers.find((x) => x.id === id); if (!r) return;
+  $("#drawer-host").innerHTML = `<div class="scrim"></div><aside class="drawer" role="dialog" aria-label="Detalle de ${esc(r.name)}">
+    <header><span class="avatar" style="background:${colorFor(r.name)}">${esc(initials(r.name))}</span><div><h3>${esc(r.name)}</h3><span class="pill ${STATUS[r.status][0]}">${STATUS[r.status][1]}</span> <small style="color:var(--muted)">${esc(ago(r.last))}</small></div><button class="close" aria-label="Cerrar">×</button></header>
+    <div class="stats"><div><b>${r.readings.length}</b><span>libros</span></div><div><b>${r.finished}</b><span>terminados</span></div><div><b>${r.avg} %</b><span>avance medio</span></div></div>
+    <h4>Libros</h4>
+    ${r.readings.length ? r.readings.map((b) => `<div class="book-line"><div class="top"><span>${esc(b.title)}</span><span>${b.percent} %</span></div><div class="track"><i class="${b.percent >= DONE ? "done" : ""}" style="width:${b.percent}%"></i></div><small>${esc(b.author ? b.author + " · " : "")}${esc(ago(b.at))}</small></div>`).join("") : `<div class="empty">Todavía no comparte lecturas.</div>`}
+  </aside>`;
+  const close = () => { $("#drawer-host").innerHTML = ""; document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onKey);
+  $(".scrim").addEventListener("click", close); $(".close").addEventListener("click", close);
+}
+
+function exportCsv() {
+  const m = state.data; if (!m) return;
+  const cell = (v) => { let s = String(v ?? ""); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return `"${s.replace(/"/g, '""')}"`; };
+  const rows = [["Lector", "Libro", "Autor", "Avance %", "Última lectura"]];
+  for (const r of m.readers) {
+    if (!r.readings.length) rows.push([r.name, "", "", "", ""]);
+    for (const b of r.readings) rows.push([r.name, b.title, b.author, b.percent, b.at ? new Date(b.at).toISOString().slice(0, 10) : ""]);
+  }
+  const blob = new Blob(["﻿" + rows.map((r) => r.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `crea-reader-avance-${new Date().toISOString().slice(0, 10)}.csv` });
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- flujo ---------- */
+function showLogin() { $("#login").classList.remove("hidden"); $("#app").classList.add("hidden"); }
+async function start() {
+  $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
+  $("#who").textContent = state.demo ? "Modo ejemplo" : "Sesión de Google";
+  await reload();
+}
+async function reload() {
+  $("#content").innerHTML = `<div class="loading"><div class="spin"></div>Leyendo la carpeta de CREA Reader…</div>`;
+  try {
+    state.data = buildModel(state.demo ? demoData() : await fetchDrive());
+    render();
+  } catch (e) {
+    if (!state.demo && !state.token) { state.data = null; return fail(e.message); }
+    $("#content").innerHTML = `<div class="card empty">${esc(e.message)}</div>`;
+  }
+}
+document.querySelectorAll(".nav[data-view]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+$("#signin").addEventListener("click", signIn);
+$("#demo").addEventListener("click", () => { state.demo = true; start(); });
+$("#refresh").addEventListener("click", reload);
+$("#export").addEventListener("click", exportCsv);
+$("#signout").addEventListener("click", () => {
+  if (state.token && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(state.token);
+  state.token = null; state.data = null; state.demo = false; showLogin();
+});
+$("#theme").addEventListener("click", () => {
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const cur = document.documentElement.dataset.theme || (dark ? "dark" : "light");
+  document.documentElement.dataset.theme = cur === "dark" ? "light" : "dark";
+});
+loadConfig().then(() => { if (new URLSearchParams(location.search).has("demo")) { state.demo = true; start(); } });
+</script>
+</body>
+</html>
