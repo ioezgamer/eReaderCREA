@@ -21,6 +21,8 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import org.crea.reader.sync.SyncScheduler
+import org.crea.reader.ui.glass.GlassSupport
+import org.crea.reader.ui.glass.LiquidNavHost
 
 class MainActivity : AppCompatActivity() {
 
@@ -51,7 +53,9 @@ class MainActivity : AppCompatActivity() {
             )
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
-        GlassNavigationBar.attach(this, navHostFragment)
+        val glassBar = GlassNavigationBar.attach(this, navHostFragment)
+        // Android 12+ gets the real-blur Liquid Glass bar; older versions keep the translucent pill.
+        if (GlassSupport.realBlur) LiquidNavHost.install(this, glassBar)
 
         viewModel.channel.receive(this) { handleEvent(it) }
     }

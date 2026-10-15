@@ -10,7 +10,8 @@
         android:layout_height="wrap_content"
         android:clipToPadding="false"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="20dp"
+        android:paddingBottom="@dimen/scroll_bottom_padding">
 
         <!-- Language -->
         <LinearLayout

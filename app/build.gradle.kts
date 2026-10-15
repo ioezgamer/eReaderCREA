@@ -123,6 +123,8 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.4.0")
     implementation("androidx.compose.runtime:runtime:1.12.0")
     implementation("androidx.compose.ui:ui:1.12.0")
+    // Real backdrop blur and refraction ("Liquid Glass"), Apache License 2.0.
+    implementation("io.github.kyant0:backdrop:2.0.1")
     implementation("androidx.compose.ui:ui-tooling:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.2")
     implementation("androidx.core:core-ktx:1.19.0")

@@ -17,6 +17,17 @@
         app:layout_constraintTop_toTopOf="parent"
         app:navGraph="@navigation/navigation" />
 
+    <!-- Liquid Glass navigation bar (Android 12+). Replaces the pill below when it is in use. -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/liquid_nav"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <!-- Compact glass pill: only the selected tab shows its name -->
     <LinearLayout
         android:id="@+id/nav_container"

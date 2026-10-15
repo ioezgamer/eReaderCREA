@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+: the glass behind the bar is drawn by the reader itself (real blur of the book) -->
+    <style name="Widget.Crea.ReaderActionBar" parent="Widget.Material3.ActionBar.Solid">
+        <item name="background">@color/transparent</item>
+        <item name="backgroundStacked">@color/transparent</item>
+        <item name="elevation">0dp</item>
+        <item name="titleTextStyle">@style/TextAppearance.Crea.ActionBarTitle</item>
+    </style>
+</resources>

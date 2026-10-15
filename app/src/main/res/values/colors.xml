@@ -39,4 +39,7 @@
     <color name="hero_start">#1558D6</color>
     <color name="hero_end">#17A2EC</color>
     <color name="transparent">#00000000</color>
+    <!-- Reader top bar where there is no real blur (before Android 12): nearly opaque so text behind it stays out of the way -->
+    <color name="reader_bar_top">#F2FFFFFF</color>
+    <color name="reader_bar_bottom">#E6FFFFFF</color>
 </resources>

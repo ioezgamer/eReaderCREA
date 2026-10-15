@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets as ComposeWindowInsets
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBars
@@ -103,6 +104,10 @@ import org.crea.reader.reader.tts.TtsPreferencesBottomSheetDialogFragment
 import org.crea.reader.reader.tts.TtsViewModel
 import org.crea.reader.stats.PageTurnCounter
 import org.crea.reader.stats.ReadingSession
+import org.crea.reader.ui.glass.GlassSupport
+import org.crea.reader.ui.glass.liquidGlass
+import org.crea.reader.ui.glass.liquidGlassSurfaceColor
+import org.crea.reader.ui.glass.rememberViewBackdrop
 import org.crea.reader.utils.clearPadding
 import org.crea.reader.utils.extensions.confirmDialog
 import org.crea.reader.utils.extensions.throttleLatest
@@ -255,13 +260,46 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
         val glassTop = colorResource(R.color.glass_nav_top)
         val glassBottom = colorResource(R.color.glass_nav)
         val onGlass = colorResource(R.color.crea_on_surface)
+        // Real Liquid Glass over the book where the device allows it; the translucent gradient otherwise.
+        val realGlass = remember { GlassSupport.effectsEnabled(requireContext()) }
+        val backdrop = rememberViewBackdrop(listOf(binding.fragmentReaderContainer))
+        val glassSurface = liquidGlassSurfaceColor(alpha = 0.6f)
+        val barShape = RoundedCornerShape(topStart = (24 * k).dp, topEnd = (24 * k).dp)
+
+        // The top bar is transparent on Android 12+; this strip behind it is its glass.
+        val topBackdrop = rememberViewBackdrop(listOf(binding.fragmentReaderContainer))
+        val density = LocalDensity.current
+        val actionBarHeight = remember {
+            val value = android.util.TypedValue()
+            requireContext().theme.resolveAttribute(androidx.appcompat.R.attr.actionBarSize, value, true)
+            android.util.TypedValue.complexToDimensionPixelSize(value.data, resources.displayMetrics)
+        }
+        if (barsVisible && GlassSupport.realBlur) {
+            Spacer(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(with(density) { ComposeWindowInsets.statusBars.getTop(this).toDp() + actionBarHeight.toDp() })
+                    .liquidGlass(
+                        topBackdrop,
+                        RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
+                        glassSurface,
+                        effects = realGlass,
+                        lensHeight = 8.dp,
+                        lensAmount = 8.dp,
+                    )
+            )
+        }
 
         if (barsVisible) {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(glassTop, glassBottom)))
+                    .then(
+                        if (realGlass) Modifier.liquidGlass(backdrop, barShape, glassSurface)
+                        else Modifier.background(Brush.verticalGradient(listOf(glassTop, glassBottom)))
+                    )
                     .padding(horizontal = (16 * k).dp, vertical = (4 * k).dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -292,7 +330,10 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(8.dp)
-                    .background(glassBottom, RoundedCornerShape((10 * k).dp))
+                    .then(
+                        if (realGlass) Modifier.liquidGlass(backdrop, RoundedCornerShape((10 * k).dp), glassSurface, blur = 6.dp, lensHeight = 6.dp, lensAmount = 8.dp)
+                        else Modifier.background(glassBottom, RoundedCornerShape((10 * k).dp))
+                    )
                     .padding(horizontal = (8 * k).dp, vertical = (2 * k).dp)
             )
         }

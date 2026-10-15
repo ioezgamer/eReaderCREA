@@ -10,6 +10,8 @@ import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
 import androidx.transition.AutoTransition
 import androidx.transition.TransitionManager
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Floating glass tab bar. Mirrors what a BottomNavigationView does with the nav graph (single top,
@@ -22,6 +24,16 @@ class GlassNavigationBar(
     private val tabs: List<Tab>,
 ) {
     class Tab(val view: View, val label: View, val graphId: Int)
+
+    private val _selectedIndex = MutableStateFlow(0)
+
+    /** Index of the tab that matches the current screen; the Liquid Glass bar follows it. */
+    val selectedIndex: StateFlow<Int> = _selectedIndex
+
+    /** Same navigation as tapping the tab, for the other bar that can replace this one. */
+    fun openAt(index: Int) {
+        tabs.getOrNull(index)?.let(::open)
+    }
 
     init {
         tabs.forEach { tab ->
@@ -46,6 +58,7 @@ class GlassNavigationBar(
 
     private fun select(destination: NavDestination, animate: Boolean = true) {
         val active = tabs.firstOrNull { tab -> destination.hierarchy.any { it.id == tab.graphId } }
+        tabs.indexOf(active).takeIf { it >= 0 }?.let { _selectedIndex.value = it }
         if (animate) {
             TransitionManager.beginDelayedTransition(pill, AutoTransition().setDuration(220))
         }
