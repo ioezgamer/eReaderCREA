@@ -25,7 +25,9 @@ jobs:
           SDKMGR="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -n 1)"
           if [ -z "$SDKMGR" ]; then echo "sdkmanager no encontrado"; exit 1; fi
           yes | "$SDKMGR" --licenses >/dev/null || true
-          "$SDKMGR" "platforms;android-37"
+          echo "Paquetes SDK Android 37 disponibles:"
+          "$SDKMGR" --list --channel=3 | grep -E 'platforms;android-(37|36)' | head -n 20 || true
+          "$SDKMGR" --channel=3 "platforms;android-37"
 
       - uses: gradle/actions/setup-gradle@v4
 
