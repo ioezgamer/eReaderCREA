@@ -49,6 +49,8 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
@@ -250,17 +252,20 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
         val label = stringResource(R.string.page_indicator, shown, total)
         val barSize by (requireContext().applicationContext as Application).readerLook.barSize.collectAsState()
         val k = barSize.relative
+        val glassTop = colorResource(R.color.glass_nav_top)
+        val glassBottom = colorResource(R.color.glass_nav)
+        val onGlass = colorResource(R.color.crea_on_surface)
 
         if (barsVisible) {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .background(ComposeColor.Black.copy(alpha = 0.55f))
+                    .background(Brush.verticalGradient(listOf(glassTop, glassBottom)))
                     .padding(horizontal = (16 * k).dp, vertical = (4 * k).dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(label, color = ComposeColor.White, fontSize = (13 * k).sp)
+                Text(label, color = onGlass, fontSize = (13 * k).sp)
                 if (total > 1) {
                     Slider(
                         value = dragging ?: current.toFloat(),
@@ -282,12 +287,12 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
         } else {
             Text(
                 label,
-                color = ComposeColor.White,
+                color = onGlass,
                 fontSize = (12 * k).sp,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(8.dp)
-                    .background(ComposeColor.Black.copy(alpha = 0.45f), RoundedCornerShape((10 * k).dp))
+                    .background(glassBottom, RoundedCornerShape((10 * k).dp))
                     .padding(horizontal = (8 * k).dp, vertical = (2 * k).dp)
             )
         }
@@ -422,6 +427,22 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
             )
         ) {
             AndroidTtsEngine.requestInstallVoice(activity)
+        }
+    }
+
+    override fun onListen() {
+        val tts = model.tts
+        if (tts == null) super.onListen() else tts.start(navigator)
+    }
+
+    override fun onAddNote() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val selection = (navigator as? SelectableNavigator)?.currentSelection()
+            if (selection?.locator?.text?.highlight.isNullOrBlank()) {
+                android.widget.Toast.makeText(requireContext(), R.string.appearance_note_select_text, android.widget.Toast.LENGTH_LONG).show()
+            } else {
+                showAnnotationPopup()
+            }
         }
     }
 
