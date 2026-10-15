@@ -22,8 +22,10 @@ jobs:
 
       - name: Preparar Android SDK
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-37"
+          SDKMGR="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -n 1)"
+          if [ -z "$SDKMGR" ]; then echo "sdkmanager no encontrado"; exit 1; fi
+          yes | "$SDKMGR" --licenses >/dev/null || true
+          "$SDKMGR" "platforms;android-37"
 
       - uses: gradle/actions/setup-gradle@v4
 
