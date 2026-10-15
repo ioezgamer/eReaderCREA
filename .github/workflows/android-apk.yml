@@ -62,7 +62,12 @@ jobs:
             echo "### CREA Reader ${{ steps.v.outputs.version }}"
             cat SHA256SUMS.txt
             echo "SHA-1 de firma:"
-            keytool -printcert -jarfile *.apk | grep 'SHA1:'
+            APK_SIGNER="$(find /usr/local/lib/android/sdk/build-tools -type f -name apksigner | sort -V | tail -n 1)"
+            if [ -n "$APK_SIGNER" ]; then
+              "$APK_SIGNER" verify --print-certs *.apk | grep -i 'SHA-1' || true
+            else
+              echo "No se encontró apksigner para consultar SHA-1."
+            fi
             echo "(esperado: AF:35:20:BD:BB:0F:59:C5:A3:9C:65:B5:13:C3:9F:E9:B4:CB:D5:1B)"
           } >> "$GITHUB_STEP_SUMMARY"
 
