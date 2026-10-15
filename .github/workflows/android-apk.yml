@@ -27,7 +27,7 @@ jobs:
           yes | "$SDKMGR" --licenses >/dev/null || true
           echo "Paquetes SDK Android 37 disponibles:"
           "$SDKMGR" --list --channel=3 | grep -E 'platforms;android-(37|36)' | head -n 20 || true
-          "$SDKMGR" --channel=3 "platforms;android-37"
+          "$SDKMGR" --channel=3 "platforms;android-37.0"
 
       - uses: gradle/actions/setup-gradle@v4
 
