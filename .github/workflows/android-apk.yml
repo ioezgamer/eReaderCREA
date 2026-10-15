@@ -3,6 +3,7 @@ name: Android APK
 on:
   workflow_dispatch:
   push:
+    branches: ['ci/android-apk-build-once-20261015']
     tags: ['android-v*']
 
 permissions:
