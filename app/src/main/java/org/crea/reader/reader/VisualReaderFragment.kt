@@ -38,6 +38,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets as ComposeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
@@ -69,6 +70,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -90,12 +92,15 @@ import org.readium.r2.shared.publication.allAreHtml
 import org.readium.r2.shared.publication.allAreHtml
 import org.readium.r2.shared.publication.services.content.Content
 import org.readium.r2.shared.util.Language
+import org.crea.reader.Application
 import org.crea.reader.R
 import org.crea.reader.data.model.Highlight
 import org.crea.reader.databinding.FragmentReaderBinding
 import org.crea.reader.reader.tts.TtsControls
 import org.crea.reader.reader.tts.TtsPreferencesBottomSheetDialogFragment
 import org.crea.reader.reader.tts.TtsViewModel
+import org.crea.reader.stats.PageTurnCounter
+import org.crea.reader.stats.ReadingSession
 import org.crea.reader.utils.clearPadding
 import org.crea.reader.utils.extensions.confirmDialog
 import org.crea.reader.utils.extensions.throttleLatest
@@ -243,6 +248,8 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
         var dragging by remember { mutableStateOf<Float?>(null) }
         val shown = dragging?.roundToInt()?.coerceIn(1, total) ?: current
         val label = stringResource(R.string.page_indicator, shown, total)
+        val barSize by (requireContext().applicationContext as Application).readerLook.barSize.collectAsState()
+        val k = barSize.relative
 
         if (barsVisible) {
             Column(
@@ -250,10 +257,10 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .background(ComposeColor.Black.copy(alpha = 0.55f))
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .padding(horizontal = (16 * k).dp, vertical = (4 * k).dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(label, color = ComposeColor.White, fontSize = 13.sp)
+                Text(label, color = ComposeColor.White, fontSize = (13 * k).sp)
                 if (total > 1) {
                     Slider(
                         value = dragging ?: current.toFloat(),
@@ -266,7 +273,9 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                             dragging = null
                         },
                         valueRange = 1f..total.toFloat(),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height((48 * k).dp.coerceAtLeast(40.dp))
                     )
                 }
             }
@@ -274,12 +283,12 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
             Text(
                 label,
                 color = ComposeColor.White,
-                fontSize = 12.sp,
+                fontSize = (12 * k).sp,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(8.dp)
-                    .background(ComposeColor.Black.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .background(ComposeColor.Black.copy(alpha = 0.45f), RoundedCornerShape((10 * k).dp))
+                    .padding(horizontal = (8 * k).dp, vertical = (2 * k).dp)
             )
         }
     }
@@ -304,9 +313,20 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
     private fun setupObservers() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                navigator.currentLocator
-                    .onEach { model.saveProgression(it) }
-                    .launchIn(this)
+                val stats = (requireContext().applicationContext as Application).readingStats
+                val session = ReadingSession(stats).also { it.start() }
+                val turns = PageTurnCounter(stats)
+                try {
+                    navigator.currentLocator
+                        .onEach {
+                            model.saveProgression(it)
+                            it.locations.position?.let(turns::onPosition)
+                        }
+                        .launchIn(this)
+                    awaitCancellation()
+                } finally {
+                    session.stop()
+                }
             }
         }
 

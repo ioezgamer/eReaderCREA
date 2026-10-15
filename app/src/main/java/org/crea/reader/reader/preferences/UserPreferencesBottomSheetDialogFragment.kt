@@ -10,9 +10,11 @@ import android.app.Dialog
 import android.os.Bundle
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.activityViewModels
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import org.crea.reader.Application
 import org.crea.reader.R
 import org.crea.reader.reader.ReaderViewModel
 import org.crea.reader.utils.compose.ComposeBottomSheetDialogFragment
@@ -49,6 +51,16 @@ class MainPreferencesBottomSheetDialogFragment : UserPreferencesBottomSheetDialo
 
     override val preferencesModel: UserPreferencesViewModel<*, *> by lazy {
         checkNotNull(viewModel.settings)
+    }
+
+    @Composable
+    override fun Content() {
+        val look = (LocalContext.current.applicationContext as Application).readerLook
+        UserPreferences(
+            model = preferencesModel,
+            title = stringResource(R.string.epubactivity_settings),
+            header = { ReaderLookSection(look) },
+        )
     }
 }
 

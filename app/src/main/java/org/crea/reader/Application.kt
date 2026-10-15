@@ -47,6 +47,9 @@ import org.crea.reader.ai.AiClient
 import org.crea.reader.ai.AiService
 import org.crea.reader.data.db.InsightsDao
 import org.crea.reader.data.model.BookInsight
+import org.crea.reader.reader.ReaderLook
+import org.crea.reader.stats.PrefsStatsStore
+import org.crea.reader.stats.ReadingStats
 import org.crea.reader.sync.CommunityStore
 import org.crea.reader.sync.InsightsSyncState
 import kotlinx.coroutines.flow.map
@@ -66,6 +69,10 @@ class Application : android.app.Application() {
 
     lateinit var bookRepository: BookRepository
         private set
+
+    val readingStats: ReadingStats by lazy { ReadingStats(PrefsStatsStore(this)) }
+
+    val readerLook: ReaderLook by lazy { ReaderLook(this) }
 
     lateinit var bookshelf: Bookshelf
         private set

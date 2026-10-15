@@ -46,13 +46,15 @@ import org.crea.reader.utils.compose.DropdownMenuButton
 fun UserPreferences(
     model: UserPreferencesViewModel<*, *>,
     title: String,
+    header: @Composable () -> Unit = {},
 ) {
     val editor by model.editor.collectAsState()
 
     UserPreferences(
         editor = editor,
         commit = model::commit,
-        title = title
+        title = title,
+        header = header
     )
 }
 
@@ -61,6 +63,7 @@ private fun <P : Configurable.Preferences<P>, E : PreferencesEditor<P>> UserPref
     editor: E,
     commit: () -> Unit,
     title: String,
+    header: @Composable () -> Unit,
 ) {
     Column(
         modifier = Modifier.padding(vertical = 24.dp)
@@ -93,6 +96,8 @@ private fun <P : Configurable.Preferences<P>, E : PreferencesEditor<P>> UserPref
         }
 
         Divider()
+
+        header()
 
         when (editor) {
             is PdfiumPreferencesEditor ->

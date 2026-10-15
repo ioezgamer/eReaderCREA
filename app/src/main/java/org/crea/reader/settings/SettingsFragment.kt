@@ -39,6 +39,9 @@ class SettingsFragment : Fragment() {
         binding.settingsDriveRow.setOnClickListener {
             findNavController().navigate(R.id.sync)
         }
+        binding.settingsStatsRow.setOnClickListener {
+            findNavController().navigate(R.id.navigation_stats)
+        }
         val ai = (requireContext().applicationContext as org.crea.reader.Application).aiService.availability
         // Without a configured server this build has no AI features, so there is nothing to switch.
         binding.settingsAiRow.isVisible = ai.configured

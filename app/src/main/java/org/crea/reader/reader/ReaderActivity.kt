@@ -16,7 +16,11 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentResultListener
 import androidx.fragment.app.commit
 import androidx.fragment.app.commitNow
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.util.toUri
 import org.crea.reader.Application
@@ -96,6 +100,20 @@ open class ReaderActivity : AppCompatActivity() {
         // Add support for display cutout.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+
+        // Brightness only affects this window, so it goes back to the system value when leaving.
+        val look = (application as Application).readerLook
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                look.brightness.collect { applyBrightness(it) }
+            }
+        }
+    }
+
+    private fun applyBrightness(value: Float?) {
+        window.attributes = window.attributes.apply {
+            screenBrightness = value ?: BrightnessRules.NO_OVERRIDE
         }
     }
 

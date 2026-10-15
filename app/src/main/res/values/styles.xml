@@ -27,7 +27,7 @@
         <item name="colorOnSurfaceVariant">@color/crea_on_surface_variant</item>
         <item name="colorOutline">@color/crea_outline</item>
         <item name="colorOutlineVariant">@color/crea_outline_variant</item>
-        <item name="android:fontFamily">sans</item>
+        <item name="android:fontFamily">@font/nunito</item>
         <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
         <item name="android:navigationBarColor">@color/transparent</item>
         <item name="android:enforceNavigationBarContrast" tools:targetApi="29">false</item>

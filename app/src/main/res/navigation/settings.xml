@@ -10,4 +10,10 @@
         android:name="org.crea.reader.settings.SettingsFragment"
         android:label="@string/title_settings"
         tools:layout="@layout/fragment_settings" />
+
+    <fragment
+        android:id="@+id/navigation_stats"
+        android:name="org.crea.reader.stats.StatsFragment"
+        android:label="@string/title_stats"
+        tools:layout="@layout/fragment_stats" />
 </navigation>
