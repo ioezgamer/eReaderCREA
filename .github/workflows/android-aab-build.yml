@@ -1,0 +1,71 @@
+name: CREA Reader AAB (unsigned build for local signing)
+
+on:
+  push:
+    branches:
+      - ci/google-play-aab-20261016
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout application
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Android SDK 37
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMGR="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -n 1)"
+          test -n "$SDKMGR"
+          yes | "$SDKMGR" --licenses >/dev/null || true
+          "$SDKMGR" --channel=3 "platforms;android-37.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Disable default debug signing for bundle
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("app/build.gradle.kts")
+          source = path.read_text(encoding="utf-8")
+          old = '''            signingConfig = if (!signWithDebugKey && keystoreProperties.containsKey("storeFile")) {
+                          signingConfigs.getByName("upload")
+                      } else {
+                          signingConfigs.getByName("debug")
+                      }'''
+          # Preserve source unchanged in repository. This replacement runs only in CI.
+          import re
+          pattern = r'            signingConfig = if \(!signWithDebugKey && keystoreProperties\.containsKey\("storeFile"\)\) \{\s*signingConfigs\.getByName\("upload"\)\s*\} else \{\s*signingConfigs\.getByName\("debug"\)\s*\}'
+          modified, count = re.subn(pattern, "            signingConfig = null", source)
+          if count != 1:
+              raise SystemExit(f"Release signing override expected once, found {count}")
+          path.write_text(modified, encoding="utf-8")
+          PY
+
+      - name: Build unsigned release bundle
+        shell: bash
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon bundleRelease
+          test -s app/build/outputs/bundle/release/app-release.aab
+
+      - name: Publish build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CREA-Reader-0.9.9-unsigned-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
