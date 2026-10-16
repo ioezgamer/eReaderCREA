@@ -1,11 +1,8 @@
 package org.crea.reader.reader.preferences
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,12 +24,7 @@ fun ReaderLookSection(look: ReaderLook) {
     val barSize by look.barSize.collectAsState()
     val brightness by look.brightness.collectAsState()
 
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-        Text(
-            text = stringResource(R.string.look_brightness),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+    OptionCard(R.string.look_brightness) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Slider(
                 value = BrightnessRules.toPercent(brightness ?: BrightnessRules.AUTO_THUMB).toFloat(),
@@ -44,28 +36,17 @@ fun ReaderLookSection(look: ReaderLook) {
                 selected = brightness == null,
                 onClick = { look.setBrightness(null) },
                 label = { Text(stringResource(R.string.look_auto)) },
-                modifier = Modifier.padding(start = 12.dp),
+                modifier = Modifier.padding(start = 8.dp),
             )
         }
+    }
 
-        Text(
-            text = stringResource(R.string.look_bars),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(top = 12.dp),
+    OptionCard(R.string.look_bars) {
+        DropdownField(
+            options = BarSize.entries.map { it to stringResource(barSizeLabel(it)) },
+            selected = barSize,
+            onSelect = { look.setBarSize(it) },
         )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 8.dp),
-        ) {
-            BarSize.entries.forEach { size ->
-                FilterChip(
-                    selected = size == barSize,
-                    onClick = { look.setBarSize(size) },
-                    label = { Text(stringResource(barSizeLabel(size))) },
-                )
-            }
-        }
     }
 }
 
