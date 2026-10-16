@@ -87,7 +87,7 @@
     <string name="settings_language_en">English</string>
     <string name="settings_about_title">About CREA Reader</string>
     <string name="settings_version">Version %1$s</string>
-    <string name="settings_credits">Reading engine: Readium Kotlin Toolkit (BSD license). Interface font: Nunito (SIL Open Font License). Liquid Glass effect: Backdrop by Kyant (Apache License 2.0).</string>
+    <string name="settings_credits">Reading engine: Readium Kotlin Toolkit (BSD license). Interface font: Nunito (SIL Open Font License). Liquid Glass effect: Backdrop by Kyant (Apache License 2.0). Icons: iOS 27 style by Icons8 (icons8.com).</string>
     <string name="settings_drive_title">Google Drive</string>
     <string name="settings_drive_detail">Manage the sync of your library and your «CREA Reader» folder.</string>
     <string name="settings_stats_title">Reading statistics</string>

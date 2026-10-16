@@ -37,7 +37,6 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets as ComposeWindowInsets
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBars
@@ -265,31 +264,6 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
         val backdrop = rememberViewBackdrop(listOf(binding.fragmentReaderContainer))
         val glassSurface = liquidGlassSurfaceColor(alpha = 0.6f)
         val barShape = RoundedCornerShape(topStart = (24 * k).dp, topEnd = (24 * k).dp)
-
-        // The top bar is transparent on Android 12+; this strip behind it is its glass.
-        val topBackdrop = rememberViewBackdrop(listOf(binding.fragmentReaderContainer))
-        val density = LocalDensity.current
-        val actionBarHeight = remember {
-            val value = android.util.TypedValue()
-            requireContext().theme.resolveAttribute(androidx.appcompat.R.attr.actionBarSize, value, true)
-            android.util.TypedValue.complexToDimensionPixelSize(value.data, resources.displayMetrics)
-        }
-        if (barsVisible && GlassSupport.realBlur) {
-            Spacer(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .height(with(density) { ComposeWindowInsets.statusBars.getTop(this).toDp() + actionBarHeight.toDp() })
-                    .liquidGlass(
-                        topBackdrop,
-                        RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
-                        glassSurface,
-                        effects = realGlass,
-                        lensHeight = 8.dp,
-                        lensAmount = 8.dp,
-                    )
-            )
-        }
 
         if (barsVisible) {
             Column(
