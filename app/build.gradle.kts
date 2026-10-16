@@ -28,7 +28,7 @@ android {
         versionCode = 27
         versionName = "0.9.9"
         // Address of the AI server (see server/README.md). Empty = AI features do not exist in this build.
-        buildConfigField("String", "AI_BASE_URL", "\"${project.findProperty("aiBaseUrl") ?: ""}\"")
+        buildConfigField("String", "AI_BASE_URL", "\"${project.findProperty("aiBaseUrl") ?: "https://crea-reader-ai.onrender.com"}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Every CREA tablet is ARM: the x86 libraries only go into debug builds, for the emulator.
         ndk.abiFilters += listOf("armeabi-v7a", "arm64-v8a")
