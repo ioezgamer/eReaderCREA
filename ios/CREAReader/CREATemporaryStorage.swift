@@ -6,7 +6,7 @@ enum CREATemporaryStorage {
 
     static func size() -> Int64 {
         guard let files = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: [.fileSizeKey]) else { return 0 }
-        return files.compactMap { ($0 as? URL)?.resourceValues(forKeys: [.fileSizeKey]).fileSize }.reduce(0) { $0 + Int64($1) }
+        return files.compactMap { ($0 as? URL).flatMap { try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize } }.reduce(0) { $0 + Int64($1) }
     }
 
     static func clear() { try? FileManager.default.removeItem(at: directory) }
