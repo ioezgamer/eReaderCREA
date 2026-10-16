@@ -13,7 +13,11 @@
         android:padding="20dp"
         android:paddingBottom="@dimen/scroll_bottom_padding">
 
-        <!-- Language -->
+        <!-- ================= Appearance ================= -->
+        <TextView
+            style="@style/Widget.Crea.SettingsSection"
+            android:text="@string/settings_section_appearance" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -24,6 +28,59 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="@string/settings_theme_title"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:lineSpacingExtra="3dp"
+                android:text="@string/settings_theme_detail"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/settings_theme_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/settings_theme_system"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="48dp"
+                    android:text="@string/settings_theme_system" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/settings_theme_light"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="48dp"
+                    android:text="@string/settings_theme_light" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/settings_theme_dark"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="48dp"
+                    android:text="@string/settings_theme_dark" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
                 android:text="@string/settings_language_title"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textStyle="bold" />
@@ -44,190 +101,244 @@
                 android:layout_marginTop="8dp"
                 android:orientation="vertical">
 
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/settings_language_es"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="56dp"
-                android:paddingStart="12dp"
-                android:text="@string/settings_language_es"
-                android:textAppearance="?attr/textAppearanceTitleMedium" />
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/settings_language_en"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="56dp"
-                android:paddingStart="12dp"
-                android:text="@string/settings_language_en"
-                android:textAppearance="?attr/textAppearanceTitleMedium" />
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/settings_language_es"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="56dp"
+                    android:paddingStart="12dp"
+                    android:text="@string/settings_language_es"
+                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/settings_language_en"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="56dp"
+                    android:paddingStart="12dp"
+                    android:text="@string/settings_language_en"
+                    android:textAppearance="?attr/textAppearanceTitleMedium" />
             </RadioGroup>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/settings_bars_title"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:lineSpacingExtra="3dp"
+                android:text="@string/settings_bars_detail"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/settings_bars_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/settings_bars_small"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="48dp"
+                    android:text="@string/look_bars_small" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/settings_bars_medium"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="48dp"
+                    android:text="@string/look_bars_medium" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/settings_bars_large"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="48dp"
+                    android:text="@string/look_bars_large" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
         </LinearLayout>
 
-        <!-- Drive shortcut -->
+        <!-- ================= Reading ================= -->
+        <TextView
+            style="@style/Widget.Crea.SettingsSection"
+            android:text="@string/settings_section_reading" />
+
+        <include
+            android:id="@+id/settings_voice_row"
+            layout="@layout/item_settings_row" />
+
+        <!-- ================= Claude AI ================= -->
+        <TextView
+            style="@style/Widget.Crea.SettingsSection"
+            android:text="@string/settings_section_ai" />
+
         <LinearLayout
-            android:id="@+id/settings_drive_row"
+            android:id="@+id/settings_ai_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:background="@drawable/bg_glass_card"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:minHeight="72dp"
-            android:orientation="horizontal"
+            android:background="@drawable/bg_glass"
+            android:orientation="vertical"
             android:padding="20dp">
 
-            <ImageView
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_status_circle"
-                android:contentDescription="@null"
-                android:padding="10dp"
-                android:src="@drawable/ic_cloud_done"
-                app:tint="?attr/colorOnPrimaryContainer" />
-
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/settings_drive_title"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
-                    android:textStyle="bold" />
+                <ImageView
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_status_circle"
+                    android:contentDescription="@null"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_ai"
+                    app:tint="?attr/colorOnPrimaryContainer" />
 
-                <TextView
-                    android:layout_width="match_parent"
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="@string/settings_drive_detail"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_ai_claude_title"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/settings_ai_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/settings_ai_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@string/settings_ai_claude_title" />
             </LinearLayout>
 
-            <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_chevron_right"
-                app:tint="?attr/colorOnSurfaceVariant" />
-        </LinearLayout>
-
-        <!-- Reading statistics shortcut -->
-        <LinearLayout
-            android:id="@+id/settings_stats_row"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:background="@drawable/bg_glass_card"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:minHeight="72dp"
-            android:orientation="horizontal"
-            android:padding="20dp">
-
-            <ImageView
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_status_circle"
-                android:contentDescription="@null"
-                android:padding="10dp"
-                android:src="@drawable/ic_stats"
-                app:tint="?attr/colorOnPrimaryContainer" />
-
-            <LinearLayout
-                android:layout_width="0dp"
+            <TextView
+                android:id="@+id/settings_ai_detail"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/settings_stats_title"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="@string/settings_stats_detail"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
-            </LinearLayout>
-
-            <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_chevron_right"
-                app:tint="?attr/colorOnSurfaceVariant" />
-        </LinearLayout>
-
-        <!-- AI assistant: an extra the person can turn off -->
-        <LinearLayout
-            android:id="@+id/settings_ai_row"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:background="@drawable/bg_glass_card"
-            android:gravity="center_vertical"
-            android:minHeight="72dp"
-            android:orientation="horizontal"
-            android:padding="20dp">
-
-            <ImageView
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_status_circle"
-                android:contentDescription="@null"
-                android:padding="10dp"
-                android:src="@drawable/ic_ai"
-                app:tint="?attr/colorOnPrimaryContainer" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/ai_settings_title"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/settings_ai_detail"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="@string/ai_settings_detail"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
-            </LinearLayout>
+                android:layout_marginTop="12dp"
+                android:lineSpacingExtra="3dp"
+                android:text="@string/ai_settings_detail"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/settings_ai_switch"
-                android:layout_width="wrap_content"
+                android:id="@+id/settings_ai_reader_switch"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp" />
+                android:layout_marginTop="12dp"
+                android:minHeight="48dp"
+                android:text="@string/settings_ai_reader" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/settings_ai_catalog_switch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/settings_ai_catalog" />
+
+            <TextView
+                android:id="@+id/settings_ai_quota"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="3dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/settings_ai_server"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="3dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/settings_ai_check"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:minHeight="48dp"
+                    android:text="@string/settings_ai_check" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/settings_ai_change_server"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:minHeight="48dp"
+                    android:text="@string/settings_ai_change_server" />
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- About -->
+        <!-- ================= Library ================= -->
+        <TextView
+            style="@style/Widget.Crea.SettingsSection"
+            android:text="@string/settings_section_library" />
+
+        <include
+            android:id="@+id/settings_drive_row"
+            layout="@layout/item_settings_row" />
+
+        <include
+            android:id="@+id/settings_storage_row"
+            layout="@layout/item_settings_row" />
+
+        <include
+            android:id="@+id/settings_stats_row"
+            layout="@layout/item_settings_row" />
+
+        <!-- ================= About ================= -->
+        <TextView
+            style="@style/Widget.Crea.SettingsSection"
+            android:text="@string/settings_section_about" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
             android:background="@drawable/bg_glass"
             android:orientation="vertical"
             android:padding="20dp">

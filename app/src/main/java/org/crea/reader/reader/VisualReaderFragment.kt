@@ -540,7 +540,7 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                 menu.findItem(R.id.note).isVisible = true
             }
             menu.findItem(R.id.ai_explain).isVisible =
-                (requireContext().applicationContext as org.crea.reader.Application).aiService.availability.available.value &&
+                (requireContext().applicationContext as org.crea.reader.Application).aiService.availability.readerOn() &&
                 publication.readingOrder.allAreHtml
             return true
         }

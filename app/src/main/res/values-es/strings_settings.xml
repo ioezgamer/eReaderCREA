@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_appearance">Apariencia</string>
+    <string name="settings_theme_title">Tema</string>
+    <string name="settings_theme_detail">Claro, oscuro, o el mismo que use tu dispositivo.</string>
+    <string name="settings_theme_system">Sistema</string>
+    <string name="settings_theme_light">Claro</string>
+    <string name="settings_theme_dark">Oscuro</string>
+    <string name="settings_bars_title">Tamaño de las barras del lector</string>
+    <string name="settings_bars_detail">Número de página y deslizador que aparecen al leer.</string>
+
+    <string name="settings_section_reading">Lectura</string>
+    <string name="settings_voice_title">Voz de lectura</string>
+    <string name="settings_voice_detail">Abre los ajustes de voz del dispositivo para elegir la voz y la velocidad.</string>
+    <string name="settings_voice_unavailable">Este dispositivo no permite abrir los ajustes de voz desde aquí.</string>
+
+    <string name="settings_section_ai">Inteligencia artificial</string>
+    <string name="settings_ai_claude_title">Asistente de IA (Claude)</string>
+    <string name="settings_ai_status_off">Desactivada</string>
+    <string name="settings_ai_status_no_server">Sin servidor: indica su dirección para activarla</string>
+    <string name="settings_ai_status_needs_drive">Conecta Google Drive para usarla</string>
+    <string name="settings_ai_status_available">Disponible</string>
+    <string name="settings_ai_status_unavailable">No disponible por ahora (sin créditos o apagada en el servidor)</string>
+    <string name="settings_ai_status_unreachable">El servidor no responde. Prueba en un momento</string>
+    <string name="settings_ai_reader">Funciones en el lector (explicar, resumir, guía docente)</string>
+    <string name="settings_ai_catalog">Fichas y categorías de los libros del catálogo</string>
+    <string name="settings_ai_quota">Usos que quedan hoy en este dispositivo: %1$s</string>
+    <string name="settings_ai_task_explain">Explicar</string>
+    <string name="settings_ai_task_summary">Resúmenes</string>
+    <string name="settings_ai_task_teacher">Guías docentes</string>
+    <string name="settings_ai_task_catalog">Fichas</string>
+    <string name="settings_ai_check">Comprobar ahora</string>
+    <string name="settings_ai_checking">Comprobando…</string>
+    <string name="settings_ai_change_server">Servidor</string>
+    <string name="settings_ai_server_none">Servidor: ninguno en esta versión</string>
+    <string name="settings_ai_server_builtin">Servidor: %1$s (el de esta versión)</string>
+    <string name="settings_ai_server_custom">Servidor: %1$s (el que indicaste)</string>
+    <string name="settings_ai_server_title">Servidor de IA</string>
+    <string name="settings_ai_server_warning">La app envía a este servidor el texto que consultas y tu cuenta de Google para comprobar que eres de la organización. Escribe solo una dirección https que te haya dado CREA.</string>
+    <string name="settings_ai_server_hint">https://…</string>
+    <string name="settings_ai_server_save">Guardar</string>
+    <string name="settings_ai_server_default">Usar el de la versión</string>
+    <string name="settings_ai_server_invalid">Escribe una dirección https válida, sin usuario, parámetros ni #</string>
+
+    <string name="settings_section_library">Biblioteca</string>
+    <string name="settings_storage_title">Espacio usado</string>
+    <string name="settings_storage_loading">Calculando…</string>
+    <string name="settings_storage_detail">Libros en este dispositivo: %1$s · Lecturas temporales: %2$s. Toca para liberar las temporales.</string>
+    <string name="settings_storage_clear_title">Liberar espacio</string>
+    <string name="settings_storage_clear_message">Se borrarán las copias temporales de los libros que abriste con «Leer en línea» (%1$s). Tus libros descargados y tus notas no se tocan.</string>
+    <string name="settings_storage_clear">Borrar</string>
+    <string name="settings_storage_freed">Se liberaron %1$s</string>
+    <string name="settings_storage_nothing">No hay copias temporales que borrar</string>
+
+    <string name="settings_section_about">Acerca de</string>
+</resources>

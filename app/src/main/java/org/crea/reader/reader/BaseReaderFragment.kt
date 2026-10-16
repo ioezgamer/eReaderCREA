@@ -192,13 +192,13 @@ abstract class BaseReaderFragment : Fragment() {
 
     /** The assistant works on text: books made of HTML (EPUB), not scanned or fixed-layout PDFs. */
     private fun aiAvailableForThisBook() =
-        app.aiService.availability.available.value && publication.readingOrder.allAreHtml
+        app.aiService.availability.readerOn() && publication.readingOrder.allAreHtml
 
     private fun watchAiAvailability() {
         viewLifecycleOwner.lifecycleScope.launch {
             app.aiService.availability.refresh()
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                app.aiService.availability.available.collect { requireActivity().invalidateOptionsMenu() }
+                app.aiService.availability.readerAvailable.collect { requireActivity().invalidateOptionsMenu() }
             }
         }
     }

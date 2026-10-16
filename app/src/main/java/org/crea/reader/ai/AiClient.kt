@@ -44,9 +44,25 @@ data class AiStatus(val available: Boolean, val reason: String?, val remaining: 
 class AiClient(
     private val context: Context,
     private val deviceId: () -> String,
-    private val baseUrl: String = BuildConfig.AI_BASE_URL,
+    private val builtInBaseUrl: String = BuildConfig.AI_BASE_URL,
 ) {
+    private val settings = context.getSharedPreferences("ai", Context.MODE_PRIVATE)
+
+    /** The address chosen in Ajustes, or the one this build was made with. */
+    private val baseUrl: String get() = savedServer() ?: builtInBaseUrl
+
     val configured: Boolean get() = baseUrl.isNotBlank()
+
+    /** Address typed in Ajustes (already validated), if any. */
+    fun savedServer(): String? = settings.getString(KEY_SERVER, null)?.takeIf { it.isNotBlank() }
+
+    /** Address of the server in use, if there is one. */
+    fun activeServer(): String? = baseUrl.takeIf { it.isNotBlank() }
+
+    /** Saves [url] (null removes it, going back to the one built into the app). */
+    fun saveServer(url: String?) {
+        settings.edit().apply { if (url == null) remove(KEY_SERVER) else putString(KEY_SERVER, url) }.apply()
+    }
 
     suspend fun status(): AiStatus? {
         val response = call("GET", "/v1/status", null)
@@ -125,6 +141,8 @@ class AiClient(
     }
 
     companion object {
+        private const val KEY_SERVER = "server_url"
+
         fun input(vararg pairs: Pair<String, String?>): JsonObject = buildJsonObject {
             for ((key, value) in pairs) if (value != null) put(key, JsonPrimitive(value))
         }

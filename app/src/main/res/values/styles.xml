@@ -75,6 +75,18 @@
         <item name="titleTextStyle">@style/TextAppearance.Crea.ActionBarTitle</item>
     </style>
 
+    <style name="Widget.Crea.SettingsSection" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingStart">6dp</item>
+        <item name="android:paddingTop">22dp</item>
+        <item name="android:paddingBottom">8dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleSmall</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:accessibilityHeading" tools:targetApi="p">true</item>
+    </style>
+
     <style name="Widget.Crea.ActionBar" parent="Widget.Material3.ActionBar.Solid">
         <item name="background">@color/transparent</item>
         <item name="backgroundStacked">@color/transparent</item>

@@ -66,7 +66,7 @@ class AppearanceBottomSheetDialogFragment : ComposeBottomSheetDialogFragment(isS
         val app = LocalContext.current.applicationContext as Application
         val settings = viewModel.settings
         val editor = settings?.editor?.collectAsState()?.value
-        val aiAvailable by app.aiService.availability.available.collectAsState()
+        val aiAvailable by app.aiService.availability.readerAvailable.collectAsState(initial = false)
         val canUseAi = aiAvailable && viewModel.publication.readingOrder.allAreHtml
 
         fun run(shortcut: ReaderShortcut) {

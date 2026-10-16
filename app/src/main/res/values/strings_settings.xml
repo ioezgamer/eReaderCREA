@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_detail">Light, dark, or the same as your device.</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_bars_title">Reader bar size</string>
+    <string name="settings_bars_detail">Page number and slider shown while reading.</string>
+
+    <string name="settings_section_reading">Reading</string>
+    <string name="settings_voice_title">Reading voice</string>
+    <string name="settings_voice_detail">Opens the device voice settings to choose the voice and speed.</string>
+    <string name="settings_voice_unavailable">This device cannot open the voice settings from here.</string>
+
+    <string name="settings_section_ai">Artificial intelligence</string>
+    <string name="settings_ai_claude_title">AI assistant (Claude)</string>
+    <string name="settings_ai_status_off">Off</string>
+    <string name="settings_ai_status_no_server">No server: enter its address to turn it on</string>
+    <string name="settings_ai_status_needs_drive">Connect Google Drive to use it</string>
+    <string name="settings_ai_status_available">Available</string>
+    <string name="settings_ai_status_unavailable">Not available right now (out of credits or switched off on the server)</string>
+    <string name="settings_ai_status_unreachable">The server is not answering. Try again in a moment</string>
+    <string name="settings_ai_reader">Reader features (explain, summarise, teacher guide)</string>
+    <string name="settings_ai_catalog">Cards and categories for catalog books</string>
+    <string name="settings_ai_quota">Uses left today on this device: %1$s</string>
+    <string name="settings_ai_task_explain">Explain</string>
+    <string name="settings_ai_task_summary">Summaries</string>
+    <string name="settings_ai_task_teacher">Teacher guides</string>
+    <string name="settings_ai_task_catalog">Cards</string>
+    <string name="settings_ai_check">Check now</string>
+    <string name="settings_ai_checking">Checking…</string>
+    <string name="settings_ai_change_server">Server</string>
+    <string name="settings_ai_server_none">Server: none in this version</string>
+    <string name="settings_ai_server_builtin">Server: %1$s (the one in this version)</string>
+    <string name="settings_ai_server_custom">Server: %1$s (the one you entered)</string>
+    <string name="settings_ai_server_title">AI server</string>
+    <string name="settings_ai_server_warning">The app sends this server the text you ask about and your Google account, to check you belong to the organisation. Only enter an https address given to you by CREA.</string>
+    <string name="settings_ai_server_hint">https://…</string>
+    <string name="settings_ai_server_save">Save</string>
+    <string name="settings_ai_server_default">Use the built-in one</string>
+    <string name="settings_ai_server_invalid">Enter a valid https address, without user, parameters or #</string>
+
+    <string name="settings_section_library">Library</string>
+    <string name="settings_storage_title">Space used</string>
+    <string name="settings_storage_loading">Calculating…</string>
+    <string name="settings_storage_detail">Books on this device: %1$s · Temporary reads: %2$s. Tap to free the temporary ones.</string>
+    <string name="settings_storage_clear_title">Free up space</string>
+    <string name="settings_storage_clear_message">The temporary copies of books you opened with “Read online” (%1$s) will be deleted. Your downloaded books and notes are not touched.</string>
+    <string name="settings_storage_clear">Delete</string>
+    <string name="settings_storage_freed">Freed %1$s</string>
+    <string name="settings_storage_nothing">There are no temporary copies to delete</string>
+
+    <string name="settings_section_about">About</string>
+</resources>

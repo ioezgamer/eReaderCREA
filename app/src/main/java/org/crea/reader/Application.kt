@@ -144,6 +144,7 @@ class Application : android.app.Application() {
         super.onCreate()
 
         AppLanguage.applyAtStartup(this)
+        AppThemeMode.applyAtStartup(this)
 
         readium = Readium(this)
 
