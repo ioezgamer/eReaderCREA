@@ -117,7 +117,7 @@ struct CREAAppearancePanel: View {
         .accessibilityLabel("Aspecto del lector")
     }
 
-    private func group<Content: View>(_ title: String, _ icon: String, @ViewBuilder content: () -> Content) -> some View {
+    private func group<Content: View>(_ title: String, _ icon: String, @ViewBuilder content: @escaping () -> Content) -> some View {
         DisclosureGroup(isExpanded: Binding(get: { open.contains(title) }, set: { if $0 { open.insert(title) } else { open.remove(title) } })) {
             VStack(alignment: .leading, spacing: 8) { content() }.padding(.top, 6)
         } label: { Label(LocalizedStringKey(title), systemImage: icon).font(.subheadline.weight(.semibold)) }
