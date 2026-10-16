@@ -116,14 +116,19 @@ private class OutlineFragmentStateAdapter(
                 publication.readingOrder.isNotEmpty() -> publication.readingOrder
                 publication.images.isNotEmpty() -> publication.images
                 else -> mutableListOf()
-            }
+            },
+            R.string.outline_empty_contents
         )
 
     private fun createPageListFragment() =
-        NavigationFragment.newInstance(publication.pageList)
+        if (publication.pageList.isNotEmpty()) {
+            NavigationFragment.newInstance(publication.pageList, R.string.outline_empty_pages)
+        } else {
+            PositionsFragment()
+        }
 
     private fun createLandmarksFragment() =
-        NavigationFragment.newInstance(publication.landmarks)
+        NavigationFragment.newInstance(publication.landmarks, R.string.outline_empty_landmarks)
 }
 
 private enum class Outline(val label: Int) {

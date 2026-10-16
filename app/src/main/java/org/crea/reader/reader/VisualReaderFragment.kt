@@ -38,9 +38,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets as ComposeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -48,6 +52,8 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
@@ -69,6 +75,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -90,12 +97,19 @@ import org.readium.r2.shared.publication.allAreHtml
 import org.readium.r2.shared.publication.allAreHtml
 import org.readium.r2.shared.publication.services.content.Content
 import org.readium.r2.shared.util.Language
+import org.crea.reader.Application
 import org.crea.reader.R
 import org.crea.reader.data.model.Highlight
 import org.crea.reader.databinding.FragmentReaderBinding
 import org.crea.reader.reader.tts.TtsControls
 import org.crea.reader.reader.tts.TtsPreferencesBottomSheetDialogFragment
 import org.crea.reader.reader.tts.TtsViewModel
+import org.crea.reader.stats.PageTurnCounter
+import org.crea.reader.stats.ReadingSession
+import org.crea.reader.ui.glass.GlassSupport
+import org.crea.reader.ui.glass.liquidGlass
+import org.crea.reader.ui.glass.liquidGlassSurfaceColor
+import org.crea.reader.ui.glass.rememberViewBackdrop
 import org.crea.reader.utils.clearPadding
 import org.crea.reader.utils.extensions.confirmDialog
 import org.crea.reader.utils.extensions.throttleLatest
@@ -224,6 +238,7 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
         }
     }
 
+    @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
     @Composable
     private fun BoxScope.PageIndicator() {
         val positions by produceState<List<Locator>>(emptyList(), publication) {
@@ -241,19 +256,33 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
 
         val barsVisible = ComposeWindowInsets.statusBars.getTop(LocalDensity.current) > 0
         var dragging by remember { mutableStateOf<Float?>(null) }
+        val sliderInteraction = remember { MutableInteractionSource() }
         val shown = dragging?.roundToInt()?.coerceIn(1, total) ?: current
         val label = stringResource(R.string.page_indicator, shown, total)
+        val barSize by (requireContext().applicationContext as Application).readerLook.barSize.collectAsState()
+        val k = barSize.relative
+        val glassTop = colorResource(R.color.glass_nav_top)
+        val glassBottom = colorResource(R.color.glass_nav)
+        val onGlass = colorResource(R.color.crea_on_surface)
+        // Real Liquid Glass over the book where the device allows it; the translucent gradient otherwise.
+        val realGlass = remember { GlassSupport.effectsEnabled(requireContext()) }
+        val backdrop = rememberViewBackdrop(listOf(binding.fragmentReaderContainer))
+        val glassSurface = liquidGlassSurfaceColor(alpha = 0.6f)
+        val barShape = RoundedCornerShape(0.dp)
 
         if (barsVisible) {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .background(ComposeColor.Black.copy(alpha = 0.55f))
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .then(
+                        if (realGlass) Modifier.liquidGlass(backdrop, barShape, glassSurface)
+                        else Modifier.background(Brush.verticalGradient(listOf(glassTop, glassBottom)))
+                    )
+                    .padding(horizontal = (16 * k).dp, vertical = (2 * k).dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(label, color = ComposeColor.White, fontSize = 13.sp)
+                Text(label, color = onGlass, fontSize = (11 * k).sp)
                 if (total > 1) {
                     Slider(
                         value = dragging ?: current.toFloat(),
@@ -266,20 +295,41 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                             dragging = null
                         },
                         valueRange = 1f..total.toFloat(),
-                        modifier = Modifier.fillMaxWidth()
+                        interactionSource = sliderInteraction,
+                        thumb = {
+                            SliderDefaults.Thumb(
+                                interactionSource = sliderInteraction,
+                                thumbSize = DpSize((12 * k).dp, (12 * k).dp),
+                            )
+                        },
+                        track = { state ->
+                            SliderDefaults.Track(
+                                sliderState = state,
+                                modifier = Modifier.height((3 * k).dp),
+                                thumbTrackGapSize = 0.dp,
+                                trackInsideCornerSize = 0.dp,
+                                drawStopIndicator = null,
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height((26 * k).dp.coerceAtLeast(24.dp))
                     )
                 }
             }
         } else {
             Text(
                 label,
-                color = ComposeColor.White,
-                fontSize = 12.sp,
+                color = onGlass,
+                fontSize = (12 * k).sp,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(8.dp)
-                    .background(ComposeColor.Black.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .then(
+                        if (realGlass) Modifier.liquidGlass(backdrop, RoundedCornerShape((10 * k).dp), glassSurface, blur = 6.dp, lensHeight = 6.dp, lensAmount = 8.dp)
+                        else Modifier.background(glassBottom, RoundedCornerShape((10 * k).dp))
+                    )
+                    .padding(horizontal = (8 * k).dp, vertical = (2 * k).dp)
             )
         }
     }
@@ -304,9 +354,20 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
     private fun setupObservers() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                navigator.currentLocator
-                    .onEach { model.saveProgression(it) }
-                    .launchIn(this)
+                val stats = (requireContext().applicationContext as Application).readingStats
+                val session = ReadingSession(stats).also { it.start() }
+                val turns = PageTurnCounter(stats)
+                try {
+                    navigator.currentLocator
+                        .onEach {
+                            model.saveProgression(it)
+                            it.locations.position?.let(turns::onPosition)
+                        }
+                        .launchIn(this)
+                    awaitCancellation()
+                } finally {
+                    session.stop()
+                }
             }
         }
 
@@ -405,6 +466,22 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
         }
     }
 
+    override fun onListen() {
+        val tts = model.tts
+        if (tts == null) super.onListen() else tts.start(navigator)
+    }
+
+    override fun onAddNote() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val selection = (navigator as? SelectableNavigator)?.currentSelection()
+            if (selection?.locator?.text?.highlight.isNullOrBlank()) {
+                android.widget.Toast.makeText(requireContext(), R.string.appearance_note_select_text, android.widget.Toast.LENGTH_LONG).show()
+            } else {
+                showAnnotationPopup()
+            }
+        }
+    }
+
     override fun go(locator: Locator, animated: Boolean) {
         model.tts?.stop()
         super.go(locator, animated)
@@ -484,7 +561,7 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                 menu.findItem(R.id.note).isVisible = true
             }
             menu.findItem(R.id.ai_explain).isVisible =
-                (requireContext().applicationContext as org.crea.reader.Application).aiService.availability.available.value &&
+                (requireContext().applicationContext as org.crea.reader.Application).aiService.availability.readerOn() &&
                 publication.readingOrder.allAreHtml
             return true
         }

@@ -22,7 +22,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
+import org.crea.reader.widget.WidgetUpdater
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -47,6 +49,9 @@ import org.crea.reader.ai.AiClient
 import org.crea.reader.ai.AiService
 import org.crea.reader.data.db.InsightsDao
 import org.crea.reader.data.model.BookInsight
+import org.crea.reader.reader.ReaderLook
+import org.crea.reader.stats.PrefsStatsStore
+import org.crea.reader.stats.ReadingStats
 import org.crea.reader.sync.CommunityStore
 import org.crea.reader.sync.InsightsSyncState
 import kotlinx.coroutines.flow.map
@@ -66,6 +71,10 @@ class Application : android.app.Application() {
 
     lateinit var bookRepository: BookRepository
         private set
+
+    val readingStats: ReadingStats by lazy { ReadingStats(PrefsStatsStore(this)) }
+
+    val readerLook: ReaderLook by lazy { ReaderLook(this) }
 
     lateinit var bookshelf: Bookshelf
         private set
@@ -137,6 +146,7 @@ class Application : android.app.Application() {
         super.onCreate()
 
         AppLanguage.applyAtStartup(this)
+        AppThemeMode.applyAtStartup(this)
 
         readium = Readium(this)
 
@@ -189,6 +199,13 @@ class Application : android.app.Application() {
         coroutineScope.launch {
             val books = booksState.filterNotNull().first()
             CoverImages.warmUp(books.map { it.cover })
+        }
+        // Keep the home-screen widgets in step with the library and reading progress.
+        coroutineScope.launch {
+            @OptIn(kotlinx.coroutines.FlowPreview::class)
+            booksState.filterNotNull()
+                .debounce(1500)
+                .collect { WidgetUpdater.refreshAll(this@Application) }
         }
 
         driveCatalogState = driveCatalogDao.observeAll()

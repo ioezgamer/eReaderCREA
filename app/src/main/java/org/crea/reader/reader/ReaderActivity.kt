@@ -16,7 +16,11 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentResultListener
 import androidx.fragment.app.commit
 import androidx.fragment.app.commitNow
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.util.toUri
 import org.crea.reader.Application
@@ -97,6 +101,20 @@ open class ReaderActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
+
+        // Brightness only affects this window, so it goes back to the system value when leaving.
+        val look = (application as Application).readerLook
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                look.brightness.collect { applyBrightness(it) }
+            }
+        }
+    }
+
+    private fun applyBrightness(value: Float?) {
+        window.attributes = window.attributes.apply {
+            screenBrightness = value ?: BrightnessRules.NO_OVERRIDE
+        }
     }
 
     private fun createReaderFragment(readerData: ReaderInitData): BaseReaderFragment? {
@@ -117,6 +135,12 @@ open class ReaderActivity : AppCompatActivity() {
         return supportFragmentManager.findFragmentByTag(READER_FRAGMENT_TAG) as BaseReaderFragment?
     }
 
+    override fun onStop() {
+        super.onStop()
+        // Reading time and pages changed: refresh the statistics widget.
+        org.crea.reader.widget.WidgetUpdater.refreshAll(this)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         // Publish where the reader stopped so the other devices (and the catalog) see it soon.
@@ -135,7 +159,7 @@ open class ReaderActivity : AppCompatActivity() {
         title = when (currentFragment) {
             is OutlineFragment -> model.publication.metadata.title
             is DrmManagementFragment -> getString(R.string.title_fragment_drm_management)
-            else -> null
+            else -> model.publication.metadata.title
         }
 
         // The back arrow is always available: it closes the outline/DRM screens or the book itself.

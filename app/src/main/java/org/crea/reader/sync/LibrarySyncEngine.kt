@@ -391,7 +391,7 @@ class LibrarySyncEngine(
 
             // 2. Generate a few missing ones, if AI can pay for them right now.
             ai.availability.refresh()
-            if (!ai.availability.available.value) return
+            if (!ai.availability.catalogOn()) return
             val pending = listing.filter { entry ->
                 val version = versionOf(entry.file)
                 known[entry.file.id]?.version != version

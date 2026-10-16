@@ -28,7 +28,7 @@ android {
         versionCode = 27
         versionName = "0.9.9"
         // Address of the AI server (see server/README.md). Empty = AI features do not exist in this build.
-        buildConfigField("String", "AI_BASE_URL", "\"${project.findProperty("aiBaseUrl") ?: ""}\"")
+        buildConfigField("String", "AI_BASE_URL", "\"${project.findProperty("aiBaseUrl") ?: "https://crea-reader-ai.onrender.com"}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Every CREA tablet is ARM: the x86 libraries only go into debug builds, for the emulator.
         ndk.abiFilters += listOf("armeabi-v7a", "arm64-v8a")
@@ -123,6 +123,8 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.4.0")
     implementation("androidx.compose.runtime:runtime:1.12.0")
     implementation("androidx.compose.ui:ui:1.12.0")
+    // Real backdrop blur and refraction ("Liquid Glass"), Apache License 2.0.
+    implementation("io.github.kyant0:backdrop:2.0.1")
     implementation("androidx.compose.ui:ui-tooling:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.2")
     implementation("androidx.core:core-ktx:1.19.0")

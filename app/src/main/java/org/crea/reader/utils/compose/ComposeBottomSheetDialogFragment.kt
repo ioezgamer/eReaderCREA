@@ -33,7 +33,8 @@ abstract class ComposeBottomSheetDialogFragment(
         val composeView = ComposeView(context).apply {
             setContent {
                 AppTheme {
-                    Surface {
+                    // The sheet itself provides the (translucent) glass background.
+                    Surface(color = androidx.compose.ui.graphics.Color.Transparent) {
                         this@ComposeBottomSheetDialogFragment.Content()
                     }
                 }

@@ -436,7 +436,7 @@
             android:paddingStart="10dp"
             android:paddingTop="8dp"
             android:paddingEnd="10dp"
-            android:paddingBottom="24dp"
+            android:paddingBottom="@dimen/list_bottom_padding"
             tools:listitem="@layout/item_recycle_book" />
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
@@ -505,7 +505,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end|bottom"
-        android:layout_margin="20dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="@dimen/fab_bottom_margin"
         android:contentDescription="@string/add_book"
         android:text="@string/add_book"
         android:textColor="?attr/colorOnPrimary"

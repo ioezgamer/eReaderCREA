@@ -89,6 +89,10 @@ class ReaderViewModel(
     val searchChannel: EventChannel<SearchCommand> =
         EventChannel(Channel(Channel.BUFFERED), viewModelScope)
 
+    /** Quick actions chosen in the "Aspecto" sheet; the reader fragment carries them out. */
+    val shortcutChannel: EventChannel<ReaderShortcut> =
+        EventChannel(Channel(Channel.BUFFERED), viewModelScope)
+
     val tts: TtsViewModel? = TtsViewModel(
         viewModelScope = viewModelScope,
         readerInitData = readerInitData
@@ -346,6 +350,8 @@ class ReaderViewModel(
     sealed class SearchCommand {
         object StartNewSearch : SearchCommand()
     }
+
+    enum class ReaderShortcut { LISTEN, ADD_NOTE, SUMMARIZE_CHAPTER, TEACHER_GUIDE, EXPORT_NOTES, STATS, MORE_SETTINGS }
 
     companion object {
         fun createFactory(application: Application, arguments: ReaderActivityContract.Arguments) =

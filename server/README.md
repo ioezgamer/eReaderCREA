@@ -73,7 +73,7 @@ Al terminar muestra una dirección `https://crea-reader-ai-xxxx.run.app`. Compil
 ./gradlew.bat assembleRelease -PsignWithDebugKey -PaiBaseUrl=https://crea-reader-ai-xxxx.run.app
 ```
 
-Sin `aiBaseUrl` la app no tiene funciones de IA (no hay nada que mostrar ni que apagar).
+Sin `aiBaseUrl` la app usa `https://crea-reader-ai.onrender.com`; para una versión sin IA compila con `-PaiBaseUrl=`.
 
 ## Controles
 

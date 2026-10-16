@@ -6,6 +6,7 @@
 
 package org.crea.reader.reader
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuInflater
@@ -20,6 +21,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.crea.reader.Application
 import org.crea.reader.ai.AiSheets
@@ -32,7 +35,9 @@ import org.readium.r2.shared.ExperimentalReadiumApi
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
 import org.crea.reader.R
+import org.crea.reader.reader.preferences.AppearanceBottomSheetDialogFragment
 import org.crea.reader.reader.preferences.MainPreferencesBottomSheetDialogFragment
+import org.crea.reader.stats.StatsBottomSheetDialogFragment
 import org.crea.reader.utils.UserError
 
 /*
@@ -65,7 +70,67 @@ abstract class BaseReaderFragment : Fragment() {
                 )
             }
         }
+
+        model.shortcutChannel.receive(this) { shortcut -> onShortcut(shortcut) }
     }
+
+    // region Appearance sheet shortcuts
+
+    private suspend fun onShortcut(shortcut: ReaderViewModel.ReaderShortcut) {
+        when (shortcut) {
+            ReaderViewModel.ReaderShortcut.LISTEN -> onListen()
+            ReaderViewModel.ReaderShortcut.ADD_NOTE -> onAddNote()
+            ReaderViewModel.ReaderShortcut.SUMMARIZE_CHAPTER -> openChapterTool(teacher = false)
+            ReaderViewModel.ReaderShortcut.TEACHER_GUIDE -> openChapterTool(teacher = true)
+            ReaderViewModel.ReaderShortcut.EXPORT_NOTES -> exportNotes()
+            ReaderViewModel.ReaderShortcut.STATS ->
+                StatsBottomSheetDialogFragment().show(childFragmentManager, "Stats")
+            ReaderViewModel.ReaderShortcut.MORE_SETTINGS ->
+                MainPreferencesBottomSheetDialogFragment().show(childFragmentManager, "Settings")
+        }
+    }
+
+    /** Start reading aloud, for readers that can. */
+    protected open fun onListen() {
+        Toast.makeText(requireContext(), R.string.appearance_listen_unavailable, Toast.LENGTH_SHORT).show()
+    }
+
+    /** Add a note to the selected text, for readers that can select text. */
+    protected open fun onAddNote() {
+        Toast.makeText(requireContext(), R.string.appearance_note_unavailable, Toast.LENGTH_SHORT).show()
+    }
+
+    private suspend fun exportNotes() {
+        val bookmarks = model.getBookmarks().first().map {
+            ExportBookmark(it.resourceTitle, it.locator.locations.totalProgression?.let { p -> (p * 100).roundToInt() })
+        }
+        val notes = model.highlights.first().map {
+            ExportNote(it.title.orEmpty(), it.text.highlight.orEmpty(), it.annotation)
+        }
+        val text = NotesExport.build(
+            title = publication.metadata.title,
+            author = publication.metadata.authors.firstOrNull()?.name,
+            bookmarks = bookmarks,
+            notes = notes,
+            labels = ExportLabels(
+                bookmarks = getString(R.string.export_bookmarks),
+                notes = getString(R.string.export_notes),
+                note = getString(R.string.export_note),
+            ),
+        )
+        if (text == null) {
+            Toast.makeText(requireContext(), R.string.export_nothing, Toast.LENGTH_LONG).show()
+            return
+        }
+        startActivity(
+            Intent.createChooser(
+                Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text),
+                getString(R.string.appearance_export_notes),
+            )
+        )
+    }
+
+    // endregion
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -104,8 +169,8 @@ abstract class BaseReaderFragment : Fragment() {
                         }
                         R.id.ai -> showAiMenu()
                         R.id.settings -> {
-                            MainPreferencesBottomSheetDialogFragment()
-                                .show(childFragmentManager, "Settings")
+                            AppearanceBottomSheetDialogFragment()
+                                .show(childFragmentManager, "Appearance")
                         }
                         R.id.drm -> {
                             model.activityChannel.send(
@@ -127,13 +192,13 @@ abstract class BaseReaderFragment : Fragment() {
 
     /** The assistant works on text: books made of HTML (EPUB), not scanned or fixed-layout PDFs. */
     private fun aiAvailableForThisBook() =
-        app.aiService.availability.available.value && publication.readingOrder.allAreHtml
+        app.aiService.availability.readerOn() && publication.readingOrder.allAreHtml
 
     private fun watchAiAvailability() {
         viewLifecycleOwner.lifecycleScope.launch {
             app.aiService.availability.refresh()
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                app.aiService.availability.available.collect { requireActivity().invalidateOptionsMenu() }
+                app.aiService.availability.readerAvailable.collect { requireActivity().invalidateOptionsMenu() }
             }
         }
     }

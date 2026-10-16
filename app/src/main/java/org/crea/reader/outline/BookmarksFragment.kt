@@ -83,6 +83,7 @@ class BookmarksFragment : Fragment() {
                 viewModel.getBookmarks().collectLatest {
                     val bookmarks = it.sortedWith(comparator)
                     bookmarkAdapter.submitList(bookmarks)
+                    binding.showEmpty(bookmarks.isEmpty(), R.string.outline_empty_bookmarks)
                 }
             }
         }
@@ -128,14 +129,17 @@ class BookmarkAdapter(
     ) {
 
         fun bind(bookmark: Bookmark) {
+            val context = binding.root.context
             val title = getBookSpineItem(Url(bookmark.resourceHref)!!)
-                ?: "*Title Missing*"
+                ?: bookmark.locator.title?.takeIf { it.isNotBlank() }
+                ?: context.getString(R.string.outline_untitled)
 
             binding.bookmarkChapter.text = title
-            bookmark.locator.locations.progression?.let { progression ->
-                val formattedProgression = "${(progression * 100).roundToInt()}% through resource"
-                binding.bookmarkProgression.text = formattedProgression
-            }
+            val page = bookmark.locator.locations.position
+                ?.let { context.getString(R.string.outline_page_number, it) }
+            val inChapter = bookmark.locator.locations.progression
+                ?.let { context.getString(R.string.outline_chapter_progress, (it * 100).roundToInt()) }
+            binding.bookmarkProgression.text = listOfNotNull(page, inChapter).joinToString(" · ")
 
             val formattedDate = bookmark.creation?.let {
                 DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(it))
@@ -162,17 +166,15 @@ class BookmarkAdapter(
     }
 
     private fun getBookSpineItem(href: Url): String? {
-        for (link in publication.tableOfContents) {
-            if (link.url().isEquivalent(href)) {
-                return link.outlineTitle
+        // Only real titles: a section without one would otherwise show its file name.
+        fun find(links: List<org.readium.r2.shared.publication.Link>): String? {
+            for (link in links) {
+                if (link.url().isEquivalent(href) && !link.title.isNullOrBlank()) return link.title
+                find(link.children)?.let { return it }
             }
+            return null
         }
-        for (link in publication.readingOrder) {
-            if (link.url().isEquivalent(href)) {
-                return link.outlineTitle
-            }
-        }
-        return null
+        return find(publication.tableOfContents) ?: find(publication.readingOrder)
     }
 }
 

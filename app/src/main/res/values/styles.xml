@@ -27,7 +27,7 @@
         <item name="colorOnSurfaceVariant">@color/crea_on_surface_variant</item>
         <item name="colorOutline">@color/crea_outline</item>
         <item name="colorOutlineVariant">@color/crea_outline_variant</item>
-        <item name="android:fontFamily">sans</item>
+        <item name="android:fontFamily">@font/nunito</item>
         <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
         <item name="android:navigationBarColor">@color/transparent</item>
         <item name="android:enforceNavigationBarContrast" tools:targetApi="29">false</item>
@@ -59,6 +59,33 @@
         <item name="actionBarStyle">@style/Widget.Crea.ActionBar</item>
         <item name="bottomSheetDialogTheme">@style/ThemeOverlay.Crea.BottomSheetDialog</item>
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.Crea.Dialog</item>
+    </style>
+
+    <!-- The reader keeps the book's own background; only its bars use the glass look -->
+    <style name="AppTheme.Reader" parent="AppTheme">
+        <item name="actionBarStyle">@style/Widget.Crea.ReaderActionBar</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.Crea.BottomSheetDialog</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Crea.Dialog</item>
+    </style>
+
+    <style name="Widget.Crea.ReaderActionBar" parent="Widget.Material3.ActionBar.Solid">
+        <item name="background">@drawable/bg_reader_bar</item>
+        <item name="backgroundStacked">@drawable/bg_reader_bar</item>
+        <item name="height">44dp</item>
+        <item name="elevation">0dp</item>
+        <item name="titleTextStyle">@style/TextAppearance.Crea.ActionBarTitle</item>
+    </style>
+
+    <style name="Widget.Crea.SettingsSection" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingStart">6dp</item>
+        <item name="android:paddingTop">28dp</item>
+        <item name="android:paddingBottom">12dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleSmall</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:accessibilityHeading" tools:targetApi="p">true</item>
     </style>
 
     <style name="Widget.Crea.ActionBar" parent="Widget.Material3.ActionBar.Solid">

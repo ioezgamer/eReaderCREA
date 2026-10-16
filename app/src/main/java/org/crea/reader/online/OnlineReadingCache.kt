@@ -27,6 +27,23 @@ class OnlineReadingCache(
 
     fun ensureDir(): File = dir.apply { mkdirs() }
 
+    /** Space taken by the temporary copies, in bytes. */
+    fun sizeBytes(): Long = dir.listFiles()?.filter { it.isFile }.orEmpty().sumOf { it.length() }
+
+    /**
+     * Deletes every temporary copy that is not being downloaded right now. Returns the bytes freed.
+     * [protectedFiles] (a book that is open) are kept.
+     */
+    fun clear(protectedFiles: Set<File> = emptySet()): Long {
+        val keep = protectedFiles.map { it.absolutePath }.toSet()
+        var freed = 0L
+        dir.listFiles()?.filter { it.isFile && !it.name.endsWith(PARTIAL_SUFFIX) && it.absolutePath !in keep }?.forEach {
+            val size = it.length()
+            if (it.delete()) freed += size
+        }
+        return freed
+    }
+
     fun touch(file: File) {
         file.setLastModified(System.currentTimeMillis())
     }

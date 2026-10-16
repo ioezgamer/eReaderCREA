@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Space the floating navigation bar takes over each screen. On Android 12+ content scrolls
+         under the glass bar, so lists and floating buttons keep this much clear at the bottom. -->
+    <dimen name="fab_bottom_margin">20dp</dimen>
+    <dimen name="list_bottom_padding">24dp</dimen>
+    <dimen name="scroll_bottom_padding">20dp</dimen>
+</resources>

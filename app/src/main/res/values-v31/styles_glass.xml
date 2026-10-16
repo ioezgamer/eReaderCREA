@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+: panels and dialogs blur what is behind their window (real glass) -->
+    <style name="ThemeOverlay.Crea.BottomSheetDialog" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/Widget.Crea.BottomSheet</item>
+        <item name="android:windowBlurBehindEnabled">true</item>
+        <item name="android:windowBlurBehindRadius">20dp</item>
+    </style>
+
+    <style name="ThemeOverlay.Crea.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="dialogCornerRadius">32dp</item>
+        <item name="colorSurfaceContainerHigh">@color/glass_sheet</item>
+        <item name="android:windowBlurBehindEnabled">true</item>
+        <item name="android:windowBlurBehindRadius">20dp</item>
+    </style>
+</resources>

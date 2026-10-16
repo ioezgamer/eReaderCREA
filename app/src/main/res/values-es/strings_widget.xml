@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_continue_name">Continuar leyendo</string>
+    <string name="widget_continue_description">Vuelve a los libros que estás leyendo. Cambia su tamaño para ver más.</string>
+    <string name="widget_continue_empty">Elige un libro para empezar a leer</string>
+    <string name="widget_continue_header">Continuar leyendo</string>
+    <string name="widget_stats_name">Estadísticas de lectura</string>
+    <string name="widget_stats_description">Tu tiempo de lectura, páginas y racha.</string>
+    <string name="widget_stats_today">Hoy</string>
+    <string name="widget_stats_minutes">min</string>
+    <string name="widget_stats_pages">Páginas hoy</string>
+    <string name="widget_stats_streak">Racha</string>
+    <plurals name="widget_stats_streak_days">
+        <item quantity="one">%1$d día</item>
+        <item quantity="other">%1$d días</item>
+    </plurals>
+    <string name="widget_stats_finished">Libros terminados</string>
+</resources>

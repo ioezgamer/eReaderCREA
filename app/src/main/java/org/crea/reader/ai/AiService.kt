@@ -1,9 +1,11 @@
 package org.crea.reader.ai
 
 import android.content.Context
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
@@ -53,6 +55,20 @@ class AiAvailability(
     private val _userEnabled = MutableStateFlow(preferences.getBoolean(KEY_ENABLED, true))
     val userEnabled: StateFlow<Boolean> = _userEnabled.asStateFlow()
 
+    private val _readerEnabled = MutableStateFlow(preferences.getBoolean(KEY_READER, true))
+    private val _catalogEnabled = MutableStateFlow(preferences.getBoolean(KEY_CATALOG, true))
+
+    /** The person allows AI in the reader: explain, summarise, teacher guide. */
+    val readerEnabled: StateFlow<Boolean> = _readerEnabled.asStateFlow()
+
+    /** The person allows AI to prepare the catalog cards (summary, categories, level). */
+    val catalogEnabled: StateFlow<Boolean> = _catalogEnabled.asStateFlow()
+
+    private val _status = MutableStateFlow<AiStatus?>(null)
+
+    /** What the server said the last time it was asked (null: never asked, or no answer). */
+    val status: StateFlow<AiStatus?> = _status.asStateFlow()
+
     private val _available = MutableStateFlow(false)
 
     /** True when AI buttons may be shown. */
@@ -62,6 +78,39 @@ class AiAvailability(
     private var lastOk = false
 
     val configured: Boolean get() = client.configured
+
+    /** True when AI buttons may be shown in the reader. */
+    val readerAvailable: Flow<Boolean> = combine(available, readerEnabled) { on, allowed -> on && allowed }
+
+    /** The AI server needs the Google account that Drive uses to know who is asking. */
+    fun isDriveConnected(): Boolean = driveConnected()
+
+    fun readerOn(): Boolean = _available.value && _readerEnabled.value
+
+    fun catalogOn(): Boolean = _available.value && _catalogEnabled.value
+
+    fun setReaderEnabled(enabled: Boolean) {
+        preferences.edit().putBoolean(KEY_READER, enabled).apply()
+        _readerEnabled.value = enabled
+    }
+
+    fun setCatalogEnabled(enabled: Boolean) {
+        preferences.edit().putBoolean(KEY_CATALOG, enabled).apply()
+        _catalogEnabled.value = enabled
+    }
+
+    /** Address used to reach the server (null when this build has none and none was typed). */
+    fun activeServer(): String? = client.activeServer()
+
+    /** Address typed in Ajustes, if any. */
+    fun savedServer(): String? = client.savedServer()
+
+    /** Uses [url] (already validated) from now on; null goes back to the address built into the app. */
+    suspend fun changeServer(url: String?) {
+        client.saveServer(url)
+        _status.value = null
+        refresh(force = true)
+    }
 
     fun setUserEnabled(enabled: Boolean) {
         preferences.edit().putBoolean(KEY_ENABLED, enabled).apply()
@@ -79,6 +128,7 @@ class AiAvailability(
         if (!force && age < (if (lastOk) OK_TTL_MS else FAILED_TTL_MS)) return
         lastCheck = System.currentTimeMillis()
         val status = client.status()
+        _status.value = status
         lastOk = status?.available == true
         _available.value = lastOk
     }
@@ -92,6 +142,8 @@ class AiAvailability(
 
     private companion object {
         const val KEY_ENABLED = "enabled"
+        const val KEY_READER = "reader_enabled"
+        const val KEY_CATALOG = "catalog_enabled"
         const val OK_TTL_MS = 10 * 60 * 1000L
         const val FAILED_TTL_MS = 2 * 60 * 1000L
     }

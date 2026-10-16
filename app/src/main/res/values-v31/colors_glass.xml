@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Slightly translucent: enough for the blur behind the window to show on devices that support it, without letting the page text ghost through where it does not -->
+    <color name="glass_sheet">#E8F8FAFF</color>
+</resources>
