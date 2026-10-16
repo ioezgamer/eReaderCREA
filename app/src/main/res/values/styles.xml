@@ -71,6 +71,7 @@
     <style name="Widget.Crea.ReaderActionBar" parent="Widget.Material3.ActionBar.Solid">
         <item name="background">@drawable/bg_reader_bar</item>
         <item name="backgroundStacked">@drawable/bg_reader_bar</item>
+        <item name="height">44dp</item>
         <item name="elevation">0dp</item>
         <item name="titleTextStyle">@style/TextAppearance.Crea.ActionBarTitle</item>
     </style>

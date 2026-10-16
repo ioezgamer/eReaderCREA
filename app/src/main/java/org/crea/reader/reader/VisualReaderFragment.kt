@@ -41,7 +41,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -235,6 +238,7 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
         }
     }
 
+    @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
     @Composable
     private fun BoxScope.PageIndicator() {
         val positions by produceState<List<Locator>>(emptyList(), publication) {
@@ -252,6 +256,7 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
 
         val barsVisible = ComposeWindowInsets.statusBars.getTop(LocalDensity.current) > 0
         var dragging by remember { mutableStateOf<Float?>(null) }
+        val sliderInteraction = remember { MutableInteractionSource() }
         val shown = dragging?.roundToInt()?.coerceIn(1, total) ?: current
         val label = stringResource(R.string.page_indicator, shown, total)
         val barSize by (requireContext().applicationContext as Application).readerLook.barSize.collectAsState()
@@ -263,7 +268,7 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
         val realGlass = remember { GlassSupport.effectsEnabled(requireContext()) }
         val backdrop = rememberViewBackdrop(listOf(binding.fragmentReaderContainer))
         val glassSurface = liquidGlassSurfaceColor(alpha = 0.6f)
-        val barShape = RoundedCornerShape(topStart = (24 * k).dp, topEnd = (24 * k).dp)
+        val barShape = RoundedCornerShape(0.dp)
 
         if (barsVisible) {
             Column(
@@ -274,10 +279,10 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                         if (realGlass) Modifier.liquidGlass(backdrop, barShape, glassSurface)
                         else Modifier.background(Brush.verticalGradient(listOf(glassTop, glassBottom)))
                     )
-                    .padding(horizontal = (16 * k).dp, vertical = (4 * k).dp),
+                    .padding(horizontal = (16 * k).dp, vertical = (2 * k).dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(label, color = onGlass, fontSize = (13 * k).sp)
+                Text(label, color = onGlass, fontSize = (11 * k).sp)
                 if (total > 1) {
                     Slider(
                         value = dragging ?: current.toFloat(),
@@ -290,9 +295,25 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                             dragging = null
                         },
                         valueRange = 1f..total.toFloat(),
+                        interactionSource = sliderInteraction,
+                        thumb = {
+                            SliderDefaults.Thumb(
+                                interactionSource = sliderInteraction,
+                                thumbSize = DpSize((12 * k).dp, (12 * k).dp),
+                            )
+                        },
+                        track = { state ->
+                            SliderDefaults.Track(
+                                sliderState = state,
+                                modifier = Modifier.height((3 * k).dp),
+                                thumbTrackGapSize = 0.dp,
+                                trackInsideCornerSize = 0.dp,
+                                drawStopIndicator = null,
+                            )
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height((48 * k).dp.coerceAtLeast(40.dp))
+                            .height((26 * k).dp.coerceAtLeast(24.dp))
                     )
                 }
             }
