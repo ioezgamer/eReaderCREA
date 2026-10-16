@@ -84,7 +84,7 @@ struct CREACatalogScreen: View {
                                     Button("Descargar \(selected.count)") { confirmBatch = true }.disabled(selected.isEmpty)
                                 }
                             }
-                            if ai.canUse && auth.communityAuthorized {
+                            if ai.canUseForCatalog && auth.communityAuthorized {
                                 Button { Task { await catalog.synchronizeInsights(ai: ai, generate: true) } } label: { Label(catalog.generatingInsights ? "Creando fichas…" : "Crear y compartir fichas faltantes", systemImage: "sparkles") }.disabled(catalog.generatingInsights)
                             }
                             if let message = catalog.insightStatus { Text(message).font(.caption) }

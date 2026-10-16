@@ -1,5 +1,19 @@
 # Historial de cambios
 
+## iOS 0.12.0 - 2026-10-16
+
+Paridad con la sesión «Rediseño Liquid Glass» de Android (PR #8):
+
+- **Estadísticas de lectura** (tiempo, páginas y racha por día) guardadas solo en el dispositivo; se ven en Ajustes y desde el lector.
+- **Panel «Aspecto»** como tarjeta compacta arriba a la derecha, con grupos desplegables (texto, márgenes, papel, tipo de letra, brillo, tamaño de barras) y atajos: escuchar, agregar nota, resumir capítulo, guía docente, exportar notas y estadísticas.
+- **Brillo del lector** (Automático o manual; se restaura al salir) y **tamaño de las barras** (pequeñas, medianas, grandes).
+- **Barra inferior delgada** con página actual y deslizador; barra superior con el título del libro.
+- **Índice del lector**: mensajes cuando una pestaña está vacía, lista de páginas generada y marcadores con capítulo, página y fecha.
+- **Exportar notas** del libro a Markdown (hoja para compartir).
+- **Tipografía Nunito** en la interfaz y «vidrio líquido» híbrido (Liquid Glass real en iOS 26, material translúcido antes).
+- **Ajustes**: tamaño de barras, estadísticas, lecturas temporales con limpieza, IA con interruptor general, del lector y de las fichas del catálogo, usos que quedan hoy, «Comprobar ahora» y servidor propio (solo https).
+- **Widgets de inicio**: Continuar leyendo (pequeño, mediano y alto con hasta 3 libros) y Estadísticas (pequeño y mediano). Siguen el tema del sistema, se actualizan con el progreso y abren el libro donde te quedaste (`creareader://book/<id>`). Requieren el App Group `group.org.crea.reader.ios`.
+
 ## iOS 0.11.0 - 2026-10-13
 
 - Paridad con Android 0.9.4 (`release/0.9.3`, commit `6681144`): categorías jerárquicas, filtros por descendientes, categoría local y actualización de la categoría de Drive al mover el libro; elección de carpeta al subir.

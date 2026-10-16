@@ -66,3 +66,15 @@ Una compilación correcta no sustituye estas pruebas ni demuestra paridad comple
 | Fichas IA compartidas | Contrato JSON Android con valores omitidos, versión por MD5/fecha, caché, búsqueda/autor/categorías y generación optativa de hasta 6 por actualización | Cuenta de CREA, cuota y permiso Drive. El control ETag no es una transacción entre Android/iOS |
 
 Prueba física adicional: actualizar un EPUB cambiado mientras su lector conserva una nota; cerrar/reabrir y verificar notas, marcadores y posición. Repetir descarga con pérdida de conexión, cancelación, falta de espacio, cambio de cuenta y cierre forzado. Confirmar que no se pierde la copia anterior si el checksum falla.
+
+## Sesión «Rediseño Liquid Glass» (iOS 0.12.0)
+
+| Android (PR #8) | iOS | Diferencias / verificación |
+| --- | --- | --- |
+| Estadísticas, racha y widgets | `CREAReadingStats`, `CREAStatsView`, extensión `CREAWidgets` | Widgets compartidos por App Group; el servidor de firma debe permitirlo. Probar en dispositivo. |
+| Panel Aspecto, brillo, barras | `CREAAppearancePanel`, `CREAReaderLook` | Brillo con `UIScreen.brightness` (Auto = valor del sistema). |
+| Índice, páginas, marcadores | `EPUBToolsSheet` | Las páginas siempre se generan desde las posiciones de Readium. PDF conserva su panel actual. |
+| Exportar notas | `CREANotesExport` | Markdown vía hoja de compartir. |
+| IA: interruptores y usos | `CREAAISettingsView` | iOS mantiene la lista de servidores autorizados (se envía el token de Google): «servidor propio» solo https **y** autorizado. |
+| Nunito, Liquid Glass | `CREAGlass`, `Fonts/Nunito.ttf` | Nunito es variable: comprobar peso en dispositivo. Los iconos Icons8 PNG de Android no se portaron: iOS usa SF Symbols. |
+| Voz de lectura | `CREAVoiceSettings` (ya en la app) | iOS no abre los ajustes de voz del sistema; se eligen dentro de la app. |

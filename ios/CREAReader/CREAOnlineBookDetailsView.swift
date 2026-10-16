@@ -199,7 +199,7 @@ struct CREAOnlineBookDetailsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
 
-                if ai.canUse || aiInfo != nil {
+                if ai.canUseForCatalog || aiInfo != nil {
                     VStack(alignment: .leading, spacing: 12) {
                         Label("Ficha inteligente con Claude", systemImage: "sparkles")
                             .font(.headline).foregroundStyle(CREAStyle.blue)
@@ -221,7 +221,7 @@ struct CREAOnlineBookDetailsView: View {
                         if let aiMessage {
                             Text(aiMessage).font(.footnote).foregroundStyle(.red)
                         }
-                        if ai.canUse {
+                        if ai.canUseForCatalog {
                             Button {
                                 Task {
                                     guard !aiLoading else { return }

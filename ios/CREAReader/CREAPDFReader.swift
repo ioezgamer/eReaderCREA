@@ -114,6 +114,8 @@ struct PDFReaderScreen: View {
     var initialProgress: Double = 0
     var onLocator: ((String) -> Void)? = nil
     @StateObject private var model = CREAPDFModel()
+    @State private var session = CREAReadingSession()
+    @State private var pageCounter = CREAPageTurnCounter()
     @ObservedObject private var annotations = CREAAnnotationStore.shared
     @State private var tools = false
     @State private var query = ""
@@ -128,7 +130,9 @@ struct PDFReaderScreen: View {
             else { ProgressView("Abriendo PDF…") }
         }.navigationTitle(title).navigationBarTitleDisplayMode(.inline)
             .task(id: url) { await model.load(url, progress: initialProgress, onProgress: onProgress, onLocator: onLocator) }
-            .onDisappear { model.close() }
+            .onAppear { session.start() }
+            .onChange(of: model.page) { _, page in pageCounter.onPosition(page) }
+            .onDisappear { model.close(); session.stop() }
             .onChange(of: model.failure) { _, value in
                 if model.ready, let value { message = value; model.failure = nil }
             }

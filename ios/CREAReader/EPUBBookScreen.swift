@@ -20,6 +20,12 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
     @Published var bookHash = ""
     @Published var selectedAnnotation: CREAAnnotation?
     @Published var metadata = ""
+    @Published var positionCount = 0
+    @Published var currentPosition = 1
+    @Published var positions: [Locator] = []
+    let session = CREAReadingSession()
+    let pageCounter = CREAPageTurnCounter()
+    var bookTitle = ""
     private var speech: PublicationSpeechSynthesizer?
     private let voiceDelegate = CREAVoiceEngineDelegate()
     private var searchGeneration = UUID()
@@ -27,6 +33,10 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
 
     func go(_ locator: Locator) async { _ = await navigator?.go(to: locator) }
     func go(_ link: ReadiumShared.Link) async { _ = await navigator?.go(to: link) }
+    func goToPosition(_ number: Int) async {
+        guard number >= 1, number <= positions.count else { return }
+        await go(positions[number - 1])
+    }
     func goToPercent(_ fraction: Double) async {
         guard let publication, let positions = try? await publication.positions().get(), !positions.isEmpty else { return }
         let index = min(positions.count - 1, max(0, Int(fraction * Double(positions.count - 1))))
@@ -185,6 +195,8 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
             case .success(let publication):
                 self.publication = publication
                 contents = (try? await publication.tableOfContents().get()) ?? []
+                positions = (try? await publication.positions().get()) ?? []
+                positionCount = positions.count
                 metadata = "\(publication.metadata.title ?? url.lastPathComponent)\n\(publication.metadata.authors.map { $0.name }.joined(separator: ", "))"
                 let delegate = voiceDelegate
                 speech = PublicationSpeechSynthesizer(publication: publication, engineFactory: { AVTTSEngine(delegate: delegate) })
@@ -194,7 +206,11 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
                     let initial = lastLocation.flatMap { try? Locator(jsonString: $0) }
                     let reader = try EPUBNavigatorViewController(publication: publication, initialLocation: initial)
                     let observer = CREALocationObserver(url: url, onProgress: onProgress, onLocator: onLocator, persistFileLocator: persistFileLocator,
-                        onSelection: { [weak self] locator in self?.annotationSelection = locator })
+                        onSelection: { [weak self] locator in self?.annotationSelection = locator },
+                        onPosition: { [weak self] position in
+                            self?.currentPosition = position
+                            self?.pageCounter.onPosition(position)
+                        })
                     locationObserver = observer
                     reader.delegate = observer
                     navigator = reader
@@ -219,6 +235,11 @@ struct EPUBBookScreen: View {
     @ObservedObject var ai: CREAReaderAI
     var isTemporaryOnline: Bool = false
     @State private var showAI = false
+    @State private var aiTool = "pasaje"
+    @State private var showAppearance = false
+    @State private var showStats = false
+    @State private var exportFile: URL?
+    @ObservedObject private var look = CREAReaderLook.shared
     @StateObject private var model = EPUBBookModel()
     @ObservedObject private var annotations = CREAAnnotationStore.shared
     @State private var showTools = false
@@ -238,6 +259,21 @@ struct EPUBBookScreen: View {
     private func applyPreferences() {
         model.applyPreferences(fontSize: fontSize, scroll: scroll, darkMode: darkMode, sepia: sepia, lineHeight: lineHeight, margins: margins, font: font)
     }
+    private func runShortcut(_ shortcut: CREAReaderShortcut) {
+        showAppearance = false
+        switch shortcut {
+        case .listen: model.toggleSpeech()
+        case .addNote: model.preserveAnnotationSelection(); showHighlight = true
+        case .summarize: model.preservePassageSelection(); aiTool = "resumen"; showAI = true
+        case .teacherGuide: model.preservePassageSelection(); aiTool = "docentes"; showAI = true
+        case .exportNotes:
+            let items = annotations.items(for: model.bookHash)
+            if items.isEmpty { feedback = "Todavía no hay marcadores ni notas para exportar." }
+            else if let file = CREANotesExport.file(bookTitle: title, items: items) { exportFile = file }
+            else { feedback = "No se pudo preparar el archivo de notas." }
+        case .stats: showStats = true
+        }
+    }
     var body: some View {
         Group {
             if let navigator = model.navigator {
@@ -251,12 +287,16 @@ struct EPUBBookScreen: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
                     .task(id: url) {
+                model.bookTitle = title
                 await model.load(url: url, initialLocatorJSON: initialLocatorJSON, onProgress: onProgress, onLocator: onLocator, persistFileLocator: !isTemporaryOnline)
                 applyPreferences()
             }
+            .onAppear { look.enter(); model.session.start() }
             .sheet(isPresented: $showAI) {
-                CREAAIReaderSheet(ai: ai, reader: model, bookTitle: title)
+                CREAAIReaderSheet(ai: ai, reader: model, bookTitle: title, initialTool: aiTool)
             }
+            .sheet(isPresented: $showStats) { NavigationStack { CREAStatsView().toolbar { Button("Cerrar") { showStats = false } } } }
+            .sheet(item: $exportFile) { file in CREAShareSheet(items: [file]) }
             .sheet(isPresented: $showTools) { EPUBToolsSheet(model: model) }
             .sheet(isPresented: $showHighlight) {
                 NavigationStack {
@@ -286,8 +326,19 @@ struct EPUBBookScreen: View {
                 Button("Aceptar") { feedback = nil }
             } message: { Text(feedback ?? "") }
             .onChange(of: annotations.records) { _, _ in model.refreshDecorations() }
-            .onDisappear { model.stopSpeech() }
-            .safeAreaInset(edge: .bottom) {
+            .onDisappear { model.stopSpeech(); model.session.stop(); look.exit() }
+            .overlay(alignment: .topTrailing) {
+                if showAppearance {
+                    CREAAppearancePanel(fontSize: $fontSize, margins: $margins, lineHeight: $lineHeight, darkMode: $darkMode, sepia: $sepia, font: $font, scroll: $scroll,
+                                        look: look, canUseAI: ai.canUseInReader, onShortcut: runShortcut)
+                        .padding(.top, 6).padding(.trailing, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.easeOut(duration: 0.2), value: showAppearance)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 0) {
+                CREAReaderBottomBar(model: model, size: look.barSize)
                 if model.speechStarted {
                     HStack(spacing: 24) {
                         Button { model.previousSpeech() } label: { Label("Anterior", systemImage: "backward.end") }
@@ -295,6 +346,7 @@ struct EPUBBookScreen: View {
                         Button { model.nextSpeech() } label: { Label("Siguiente", systemImage: "forward.end") }
                         Button { model.stopSpeech() } label: { Label("Detener", systemImage: "stop.fill") }
                     }.labelStyle(.iconOnly).frame(minHeight: 44).padding().background(.regularMaterial)
+                }
                 }
             }
             .toolbar {
@@ -308,35 +360,21 @@ struct EPUBBookScreen: View {
                     .disabled(model.navigator == nil)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if ai.canUse {
+                    if ai.canUseInReader {
                         Button {
                             model.preservePassageSelection()
-                            showAI = true
+                            aiTool = "pasaje"; showAI = true
                         } label: {
-                            Label("Claude", systemImage: "sparkles")
+                            Label("Claude", systemImage: "sparkles").imageScale(look.barSize.imageScale)
                         }
                         .accessibilityLabel("Abrir asistente de Claude para el libro")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button("Reducir letra", systemImage: "textformat.size.smaller") {
-                            fontSize = max(0.8, fontSize - 0.2)
-                        }
-                        Button("Aumentar letra", systemImage: "textformat.size.larger") {
-                            fontSize = min(2.5, fontSize + 0.2)
-                        }
-                        Toggle("Desplazamiento vertical", isOn: $scroll)
-                        Toggle("Modo oscuro del libro", isOn: $darkMode)
-                        Toggle("Fondo sepia", isOn: $sepia)
-                        Picker("Fuente", selection: $font) { Text("Serif").tag("Serif"); Text("Sans").tag("Sans") }
-                        Button("Aumentar interlineado") { lineHeight = min(2.5, lineHeight + 0.2) }
-                        Button("Reducir interlineado") { lineHeight = max(1, lineHeight - 0.2) }
-                        Button("Aumentar márgenes") { margins = min(3, margins + 0.25) }
-                        Button("Reducir márgenes") { margins = max(0.25, margins - 0.25) }
-                    } label: {
-                        Image(systemName: "textformat.size")
+                    Button { showAppearance.toggle() } label: {
+                        Image(systemName: "textformat.size").imageScale(look.barSize.imageScale)
                     }
+                    .accessibilityLabel("Aspecto")
                 }
             }
             .onChange(of: fontSize) { _, _ in applyPreferences() }
@@ -397,11 +435,31 @@ struct EPUBToolsSheet: View {
     @State private var tab = "Índice"
     @State private var percent = 0.0
     @State private var edit: CREAAnnotation?
+
+    private static let dateFormat: DateFormatter = {
+        let f = DateFormatter(); f.dateStyle = .medium; f.timeStyle = .none; return f
+    }()
+
+    private func empty(_ title: String, _ icon: String, _ detail: String) -> some View {
+        ContentUnavailableView(LocalizedStringKey(title), systemImage: icon, description: Text(LocalizedStringKey(detail)))
+    }
+
+    /// Chapter, page and date of a saved item, from the locator it was saved with.
+    private func detail(_ item: CREAAnnotation) -> String {
+        var parts: [String] = []
+        if let locator = try? Locator(jsonString: item.locatorJSON) {
+            if let chapter = locator.title, !chapter.isEmpty, chapter != item.title { parts.append(chapter) }
+            if let position = locator.locations.position { parts.append("Página \(position)") }
+        }
+        parts.append(Self.dateFormat.string(from: item.updatedAt))
+        return parts.joined(separator: " · ")
+    }
+
     var body: some View {
         NavigationStack {
             VStack {
                 Picker("Herramienta", selection: $tab) {
-                    ForEach(["Índice", "Buscar", "Notas", "Ficha"], id: \.self) { Text($0) }
+                    ForEach(["Índice", "Páginas", "Buscar", "Notas", "Ficha"], id: \.self) { Text(LocalizedStringKey($0)) }
                 }.pickerStyle(.segmented).padding(.horizontal)
                 if tab == "Índice" {
                     List {
@@ -409,7 +467,29 @@ struct EPUBToolsSheet: View {
                             Slider(value: $percent, in: 0...1)
                             Button("Ir al \(Int(percent * 100))%") { Task { await model.goToPercent(percent); dismiss() } }
                         }
-                        EPUBContentsRows(links: model.contents) { link in Task { await model.go(link); dismiss() } }
+                        if model.contents.isEmpty {
+                            empty("Este libro no trae índice", "list.bullet", "Usa la pestaña Páginas para moverte por el libro.")
+                        } else {
+                            EPUBContentsRows(links: model.contents) { link in Task { await model.go(link); dismiss() } }
+                        }
+                    }
+                } else if tab == "Páginas" {
+                    if model.positions.isEmpty {
+                        empty("Sin páginas disponibles", "doc.text", "Este libro no permite calcular páginas.")
+                    } else {
+                        List {
+                            Section {
+                                ForEach(Array(model.positions.enumerated()), id: \.offset) { index, locator in
+                                    Button { Task { await model.go(locator); dismiss() } } label: {
+                                        HStack {
+                                            Text("Página \(index + 1)").foregroundStyle(index + 1 == model.currentPosition ? CREAStyle.blue : Color.primary)
+                                            Spacer()
+                                            if let chapter = locator.title, !chapter.isEmpty { Text(chapter).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+                                        }
+                                    }
+                                }
+                            } footer: { Text("Lista de páginas generada a partir del texto del libro.") }
+                        }
                     }
                 } else if tab == "Buscar" {
                     List {
@@ -429,17 +509,22 @@ struct EPUBToolsSheet: View {
                         if model.results.count >= 500 { Text("Se muestran los primeros 500 resultados. Usa un texto más específico.") }
                     }
                 } else if tab == "Notas" {
-                    List {
-                        ForEach(annotations.items(for: model.bookHash)) { item in
-                            VStack(alignment: .leading) {
-                                Button {
-                                    if let locator = try? Locator(jsonString: item.locatorJSON) { Task { await model.go(locator); dismiss() } }
-                                } label: { Label(item.title, systemImage: item.kind == "bookmark" ? "bookmark" : "highlighter").lineLimit(3) }
-                                if !item.note.isEmpty { Text(item.note).font(.caption) }
-                                Button("Editar nota") { edit = item }.font(.caption)
-                            }.swipeActions { Button("Eliminar", role: .destructive) { annotations.remove(item) } }
+                    let items = annotations.items(for: model.bookHash)
+                    if items.isEmpty {
+                        empty("Sin marcadores ni notas", "bookmark", "Guarda un marcador o resalta un texto y aparecerá aquí.")
+                    } else {
+                        List {
+                            ForEach(items) { item in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Button {
+                                        if let locator = try? Locator(jsonString: item.locatorJSON) { Task { await model.go(locator); dismiss() } }
+                                    } label: { Label(item.title, systemImage: item.kind == "bookmark" ? "bookmark" : "highlighter").lineLimit(3) }
+                                    Text(detail(item)).font(.caption).foregroundStyle(.secondary)
+                                    if !item.note.isEmpty { Text(item.note).font(.caption) }
+                                    Button("Editar nota") { edit = item }.font(.caption)
+                                }.swipeActions { Button("Eliminar", role: .destructive) { annotations.remove(item) } }
+                            }
                         }
-                        if annotations.items(for: model.bookHash).isEmpty { Text("Todavía no hay marcadores ni notas") }
                     }
                 } else {
                     ScrollView { Text(model.metadata).frame(maxWidth: .infinity, alignment: .leading).padding() }
@@ -477,7 +562,9 @@ final class CREALocationObserver: EPUBNavigatorDelegate {
     let onLocator: (String) -> Void
     let persistFileLocator: Bool
     let onSelection: (Locator) -> Void
-    init(url: URL, onProgress: @escaping (Double) -> Void, onLocator: @escaping (String) -> Void, persistFileLocator: Bool, onSelection: @escaping (Locator) -> Void = { _ in }) {
+    let onPosition: (Int) -> Void
+    init(url: URL, onProgress: @escaping (Double) -> Void, onLocator: @escaping (String) -> Void, persistFileLocator: Bool, onSelection: @escaping (Locator) -> Void = { _ in }, onPosition: @escaping (Int) -> Void = { _ in }) {
+        self.onPosition = onPosition
         self.url = url
         self.onProgress = onProgress
         self.onLocator = onLocator
@@ -500,5 +587,6 @@ final class CREALocationObserver: EPUBNavigatorDelegate {
         if let progression = locator.locations.totalProgression {
             onProgress(max(0, min(1, progression)))
         }
+        if let position = locator.locations.position { onPosition(position) }
     }
 }
