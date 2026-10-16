@@ -6,7 +6,10 @@
 
 package org.crea.reader
 
+import android.content.Intent
 import android.os.Bundle
+import org.crea.reader.reader.ReaderActivityContract
+import org.crea.reader.widget.WidgetIntents
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -58,6 +61,31 @@ class MainActivity : AppCompatActivity() {
         if (GlassSupport.realBlur) LiquidNavHost.install(this, glassBar)
 
         viewModel.channel.receive(this) { handleEvent(it) }
+        handleWidgetIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleWidgetIntent(intent)
+    }
+
+    /** A home-screen widget asked for a book or for the statistics. */
+    private fun handleWidgetIntent(intent: Intent?) {
+        val bookId = intent?.getLongExtra(WidgetIntents.EXTRA_OPEN_BOOK, 0L) ?: 0L
+        if (bookId != 0L) {
+            intent?.removeExtra(WidgetIntents.EXTRA_OPEN_BOOK)
+            lifecycleScope.launch {
+                val app = application as Application
+                app.readerRepository.open(bookId).onSuccess {
+                    startActivity(ReaderActivityContract().createIntent(this@MainActivity, ReaderActivityContract.Arguments(bookId)))
+                }
+            }
+        }
+        if (intent?.getBooleanExtra(WidgetIntents.EXTRA_OPEN_STATS, false) == true) {
+            intent.removeExtra(WidgetIntents.EXTRA_OPEN_STATS)
+            runCatching { navController.navigate(R.id.navigation_stats) }
+        }
     }
 
     override fun onStart() {

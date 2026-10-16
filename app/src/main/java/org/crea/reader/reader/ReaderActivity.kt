@@ -135,6 +135,12 @@ open class ReaderActivity : AppCompatActivity() {
         return supportFragmentManager.findFragmentByTag(READER_FRAGMENT_TAG) as BaseReaderFragment?
     }
 
+    override fun onStop() {
+        super.onStop()
+        // Reading time and pages changed: refresh the statistics widget.
+        org.crea.reader.widget.WidgetUpdater.refreshAll(this)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         // Publish where the reader stopped so the other devices (and the catalog) see it soon.

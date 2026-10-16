@@ -22,7 +22,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
+import org.crea.reader.widget.WidgetUpdater
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -197,6 +199,13 @@ class Application : android.app.Application() {
         coroutineScope.launch {
             val books = booksState.filterNotNull().first()
             CoverImages.warmUp(books.map { it.cover })
+        }
+        // Keep the home-screen widgets in step with the library and reading progress.
+        coroutineScope.launch {
+            @OptIn(kotlinx.coroutines.FlowPreview::class)
+            booksState.filterNotNull()
+                .debounce(1500)
+                .collect { WidgetUpdater.refreshAll(this@Application) }
         }
 
         driveCatalogState = driveCatalogDao.observeAll()
