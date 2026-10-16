@@ -113,22 +113,39 @@ final class CREAReaderAI: ObservableObject {
     private var lastCheck: Date = .distantPast
     private var lastSuccessfulCheck = false
 
+    @Published private(set) var readerEnabled: Bool
+    @Published private(set) var catalogEnabled: Bool
     private static let enabledKey = "crea.reader.ai.enabled"
+    private static let readerKey = "crea.reader.ai.reader"
+    private static let catalogKey = "crea.reader.ai.catalog"
     private static let urlKey = "crea.reader.ai.baseURL"
 
     init() {
         enabled = UserDefaults.standard.bool(forKey: Self.enabledKey)
+        readerEnabled = UserDefaults.standard.object(forKey: Self.readerKey) as? Bool ?? true
+        catalogEnabled = UserDefaults.standard.object(forKey: Self.catalogKey) as? Bool ?? true
         let compiled = Bundle.main.object(forInfoDictionaryKey: "CREAAIBaseURL") as? String ?? ""
         serverURL = UserDefaults.standard.string(forKey: Self.urlKey) ?? compiled
     }
 
     var isConfigured: Bool { endpoint != nil }
     var canUse: Bool { enabled && isConfigured && GIDSignIn.sharedInstance.currentUser != nil && available }
+    /// Master switch plus the per-area switch: the reader's tools and the catalog's book cards.
+    var canUseInReader: Bool { canUse && readerEnabled }
+    var canUseForCatalog: Bool { canUse && catalogEnabled }
+
+    func setReaderEnabled(_ value: Bool) { readerEnabled = value; UserDefaults.standard.set(value, forKey: Self.readerKey) }
+    func setCatalogEnabled(_ value: Bool) { catalogEnabled = value; UserDefaults.standard.set(value, forKey: Self.catalogKey) }
 
     /// Restrict the OAuth token destination. Only the organization's hostname or a
     /// CREA Reader AI deployment on Render/Cloud Run is accepted. Never follow redirects.
-    private var endpoint: URL? {
-        guard let url = URL(string: serverURL.trimmingCharacters(in: .whitespacesAndNewlines)),
+    private var endpoint: URL? { Self.endpoint(for: serverURL) }
+
+    /// True when `value` is an https address this app may send the Google token to.
+    nonisolated static func isAcceptableServer(_ value: String) -> Bool { endpoint(for: value) != nil }
+
+    nonisolated static func endpoint(for value: String) -> URL? {
+        guard let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
               url.scheme?.lowercased() == "https",
               url.user == nil, url.password == nil,
               url.query == nil, url.fragment == nil,

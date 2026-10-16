@@ -32,7 +32,7 @@ workflows:
                              check=True, stdout=subprocess.DEVNULL)
           PY
           (cd ios && xcodegen generate)
-          xcrun swiftc -frontend -parse ios/CREAReader/*.swift
+          xcrun swiftc -frontend -parse ios/CREAReader/*.swift ios/Shared/*.swift ios/CREAWidgets/*.swift
       - name: Compile for physical iPhone and iPad without signing
         script: |
           #!/bin/bash

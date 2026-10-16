@@ -368,7 +368,7 @@ final class CREADriveCatalog: ObservableObject {
         if folderID == nil { await synchronize() }
         guard folderID != nil else { return }
         await ai.refresh()
-        guard ai.canUse, GIDSignIn.sharedInstance.currentUser?.grantedScopes?.contains("https://www.googleapis.com/auth/drive") == true else { return }
+        guard ai.canUseForCatalog, GIDSignIn.sharedInstance.currentUser?.grantedScopes?.contains("https://www.googleapis.com/auth/drive") == true else { return }
         let owner = GIDSignIn.sharedInstance.currentUser?.userID
         let pending = books.filter { insight(for: $0) == nil }.prefix(6)
         var created: [CREASharedInsightIndex.Entry] = []

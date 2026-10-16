@@ -7,6 +7,11 @@ struct CREAAIReaderSheet: View {
     @ObservedObject var reader: EPUBBookModel
     let bookTitle: String
 
+    init(ai: CREAReaderAI, reader: EPUBBookModel, bookTitle: String, initialTool: String = "pasaje") {
+        self.ai = ai; self.reader = reader; self.bookTitle = bookTitle
+        _tool = State(initialValue: initialTool)
+    }
+
     @Environment(\.dismiss) private var dismiss
     @State private var tool = "pasaje"
     @State private var mode: CREAAIMode = .explain
@@ -158,6 +163,7 @@ struct CREAAIReaderSheet: View {
             }
             .task {
                 if let picked = reader.selectedPassage() { inputText = picked.text }
+                if tool != "pasaje" && chapterText.isEmpty { await loadChapter() }
                 await ai.refresh()
             }
             .onChange(of: tool) { _, selected in
@@ -219,7 +225,12 @@ struct CREAAIReaderSheet: View {
 struct CREAAISettingsView: View {
     @ObservedObject var ai: CREAReaderAI
     @State private var enteredURL = ""
-    @State private var enabled = false
+    @State private var urlError: String?
+
+    private static let labels: [(key: String, name: String)] = [
+        ("explain", "Explicar pasajes"), ("chapter_summary", "Resumen de capítulo"),
+        ("teacher_questions", "Guía docente"), ("book_info", "Fichas del catálogo")
+    ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
@@ -232,21 +243,12 @@ struct CREAAISettingsView: View {
             ))
             Text("La IA es opcional. Se conecta al servidor seguro de CREA, nunca directamente a Anthropic. No guarda claves API en el iPhone.")
                 .font(.footnote).foregroundStyle(.secondary)
-            TextField("https://crea-reader-ai-xxxx.onrender.com", text: $enteredURL)
-                .textInputAutocapitalization(.never)
-                .keyboardType(.URL)
-                .autocorrectionDisabled()
-                .textFieldStyle(.roundedBorder)
-                .accessibilityLabel("Dirección HTTPS del servidor CREA Reader AI")
-            Button("Guardar dirección del servidor", systemImage: "checkmark.circle") {
-                ai.setServerURL(enteredURL.trimmingCharacters(in: .whitespacesAndNewlines))
-                if ai.enabled { Task { await ai.refresh(force: true) } }
-            }
-            .disabled(enteredURL == ai.serverURL)
+            Toggle("En el lector", isOn: Binding(get: { ai.readerEnabled }, set: { ai.setReaderEnabled($0) })).disabled(!ai.enabled)
+            Toggle("En las fichas del catálogo", isOn: Binding(get: { ai.catalogEnabled }, set: { ai.setCatalogEnabled($0) })).disabled(!ai.enabled)
             Button {
                 Task { await ai.refresh(force: true) }
             } label: {
-                Label("Comprobar conexión con Claude", systemImage: "arrow.clockwise")
+                Label("Comprobar ahora", systemImage: "arrow.clockwise")
             }
             .disabled(!ai.enabled || ai.loadingStatus)
             if ai.loadingStatus { ProgressView("Consultando disponibilidad…") }
@@ -255,6 +257,38 @@ struct CREAAISettingsView: View {
                     .font(.footnote).foregroundStyle(.green)
             } else if let reason = ai.availabilityMessage {
                 Text(reason).font(.footnote).foregroundStyle(.secondary)
+            }
+            if ai.available && !ai.remaining.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Usos que quedan hoy").font(.footnote.bold())
+                    ForEach(Self.labels.filter { ai.remaining[$0.key] != nil }, id: \.key) { item in
+                        LabeledContent(LocalizedStringKey(item.name), value: "\(ai.remaining[item.key] ?? 0)").font(.footnote)
+                    }
+                }
+            }
+            DisclosureGroup("Servidor propio") {
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("https://crea-reader-ai-xxxx.onrender.com", text: $enteredURL)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.URL)
+                        .autocorrectionDisabled()
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityLabel("Dirección HTTPS del servidor CREA Reader AI")
+                    Button("Guardar dirección del servidor", systemImage: "checkmark.circle") {
+                        let value = enteredURL.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !value.isEmpty && !CREAReaderAI.isAcceptableServer(value) {
+                            urlError = "Solo se aceptan direcciones https de un servidor CREA Reader AI autorizado."
+                            return
+                        }
+                        urlError = nil
+                        ai.setServerURL(value)
+                        if ai.enabled { Task { await ai.refresh(force: true) } }
+                    }
+                    .disabled(enteredURL == ai.serverURL)
+                    if let urlError { Text(urlError).font(.footnote).foregroundStyle(.red) }
+                    Text("Se envía tu sesión de Google a este servidor, por eso solo se aceptan direcciones https de servidores CREA Reader AI.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             Text("Necesitas iniciar sesión con una cuenta Google autorizada por CREA. El administrador del servidor controla modelos, créditos y límites de uso.")
                 .font(.caption).foregroundStyle(.secondary)

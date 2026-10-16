@@ -20,9 +20,14 @@ targets:
         UILaunchStoryboardName: LaunchScreen
         GIDClientID: 101673121950-e6jb7e03imhbts9dc98em5gof37ebkn8.apps.googleusercontent.com
         CREAAIBaseURL: https://crea-reader-ai.onrender.com
+        UIAppFonts:
+          - Nunito.ttf
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - com.googleusercontent.apps.101673121950-e6jb7e03imhbts9dc98em5gof37ebkn8
+          - CFBundleURLName: org.crea.reader.widgets
+            CFBundleURLSchemes:
+              - creareader
         BGTaskSchedulerPermittedIdentifiers:
           - org.crea.reader.ios.refresh
         UIBackgroundModes:
@@ -45,9 +50,17 @@ targets:
             UTTypeTagSpecification:
               public.filename-extension: [cbz]
               public.mime-type: application/vnd.comicbook+zip
+    entitlements:
+      path: CREAReader/CREAReader.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.org.crea.reader.ios
     sources:
       - path: CREAReader
+      - path: Shared
     dependencies:
+      - target: CREAWidgets
+        embed: true
       - package: Readium
         product: ReadiumShared
       - package: Readium
@@ -66,10 +79,35 @@ targets:
         INFOPLIST_KEY_UIFileSharingEnabled: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         CODE_SIGN_STYLE: Automatic
-        MARKETING_VERSION: 0.11.0
+        MARKETING_VERSION: 0.12.0
         CURRENT_PROJECT_VERSION: 1
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: NO
+  CREAWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: CREAWidgets
+      - path: Shared
+    entitlements:
+      path: CREAWidgets/CREAWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.org.crea.reader.ios
+    info:
+      path: CREAWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: CREA Reader
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.crea.reader.ios.widgets
+        GENERATE_INFOPLIST_FILE: YES
+        MARKETING_VERSION: 0.12.0
+        CURRENT_PROJECT_VERSION: 1
+        CODE_SIGN_STYLE: Automatic
+        SKIP_INSTALL: YES
   CREAReaderTests:
     type: bundle.unit-test
     platform: iOS
@@ -89,6 +127,7 @@ schemes:
     build:
       targets:
         CREAReader: all
+        CREAWidgets: all
         CREAReaderTests: [test]
     test:
       targets:

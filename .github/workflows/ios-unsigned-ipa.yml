@@ -47,7 +47,7 @@ jobs:
           cd ios
           xcodegen generate
       - name: Swift syntax check
-        run: xcrun swiftc -frontend -parse ios/CREAReader/*.swift
+        run: xcrun swiftc -frontend -parse ios/CREAReader/*.swift ios/Shared/*.swift ios/CREAWidgets/*.swift
       - name: Build for physical iOS devices without signing
         env:
           GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}

@@ -10,7 +10,7 @@ import UserNotifications
 struct CREAReaderApp: App {
     @UIApplicationDelegateAdaptor(CREADownloadAppDelegate.self) private var downloadsDelegate
     init() { CREABackgroundSync.register(); CREABackgroundDownloads.shared.activate() }
-    var body: some Scene { WindowGroup { ReaderHomeView() } }
+    var body: some Scene { WindowGroup { ReaderHomeView().creaInterfaceFont() } }
 }
 
 enum CREAStyle {
@@ -208,6 +208,7 @@ struct LocalBook: Identifiable, Codable, Hashable {
     }
     private func persist() {
         if let data = try? JSONEncoder().encode(books) { UserDefaults.standard.set(data, forKey: storeKey) }
+        CREAWidgetBridge.refresh()
     }
 }
 
@@ -284,6 +285,8 @@ struct ReaderHomeView: View {
     @State private var selectedCollection: String?
     @State private var showCollectionManager = false
     @ObservedObject private var annotations = CREAAnnotationStore.shared
+    @ObservedObject private var look = CREAReaderLook.shared
+    @State private var temporarySize: Int64 = 0
     @AppStorage("crea.reader.theme") private var theme = "Sistema"
     @AppStorage("crea.reader.language") private var language = "es"
     @AppStorage("crea.reader.autoSync") private var autoSync = false
@@ -339,6 +342,11 @@ struct ReaderHomeView: View {
         .environment(\.locale, Locale(identifier: language))
         .onOpenURL { url in
             if GIDSignIn.sharedInstance.handle(url) { return }
+            if url.scheme == CREAWidgetBridge.scheme, url.host == "book",
+               let id = UUID(uuidString: url.lastPathComponent),
+               let book = library.books.first(where: { $0.id == id }) {
+                tab = .library; open(book); return
+            }
             guard url.isFileURL else { return }
             tab = .library
             Task { await imports.run([url]) }
@@ -909,7 +917,11 @@ struct ReaderHomeView: View {
             Form {
                 Section("Apariencia") {
                     Picker("Idioma", selection: $language) { Text("Español").tag("es"); Text("English").tag("en") }
+                    Picker("Tamaño de las barras del lector", selection: $look.barSize) {
+                        ForEach(CREABarSize.allCases) { Text(LocalizedStringKey($0.title)).tag($0) }
+                    }
                     NavigationLink("Lectura en voz alta") { CREAVoiceSettings() }
+                    NavigationLink("Estadísticas de lectura") { CREAStatsView() }
                     Picker("Tema", selection: $theme) {
                         Text("Sistema").tag("Sistema")
                         Text("Claro").tag("Claro")
@@ -923,6 +935,9 @@ struct ReaderHomeView: View {
                     }
                 }
                 Section("Almacenamiento") {
+                    LabeledContent("Lecturas temporales", value: ByteCountFormatter.string(fromByteCount: temporarySize, countStyle: .file))
+                    Button("Limpiar lecturas temporales", systemImage: "trash") { CREATemporaryStorage.clear(); temporarySize = CREATemporaryStorage.size() }
+                        .disabled(temporarySize == 0)
                     LabeledContent("Libros guardados", value: "\(library.books.count)")
                     LabeledContent("Formato EPUB", value: "\(library.books.filter { $0.kind == "EPUB" }.count)")
                     LabeledContent("Formato PDF", value: "\(library.books.filter { $0.kind == "PDF" }.count)")
@@ -995,6 +1010,7 @@ struct ReaderHomeView: View {
                 }
             }
             .navigationTitle("Ajustes")
+            .onAppear { temporarySize = CREATemporaryStorage.size() }
         }
     }
 }
