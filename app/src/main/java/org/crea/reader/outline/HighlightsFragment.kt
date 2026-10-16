@@ -70,7 +70,10 @@ class HighlightsFragment : Fragment() {
         }
 
         viewModel.highlights
-            .onEach { highlightAdapter.submitList(it) }
+            .onEach {
+                highlightAdapter.submitList(it)
+                binding.showEmpty(it.isEmpty(), R.string.outline_empty_highlights)
+            }
             .launchIn(viewLifecycleOwner.lifecycleScope)
     }
 

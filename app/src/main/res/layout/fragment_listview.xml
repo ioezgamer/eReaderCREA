@@ -17,6 +17,18 @@
         android:layout_height="match_parent"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
+    <!-- Shown instead of a blank screen when the list has nothing in it. -->
+    <TextView
+        android:id="@+id/empty_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:gravity="center"
+        android:lineSpacingExtra="4dp"
+        android:padding="32dp"
+        android:paddingTop="72dp"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone" />
+
 </FrameLayout>
-
-

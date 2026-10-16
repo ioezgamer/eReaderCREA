@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="outline_empty_contents">Este libro no tiene tabla de contenido.</string>
+    <string name="outline_empty_bookmarks">Aún no guardaste marcadores en este libro.</string>
+    <string name="outline_empty_highlights">Aún no hay notas ni resaltados. Selecciona texto en la página para resaltarlo o agregar una nota.</string>
+    <string name="outline_empty_landmarks">Este libro no define puntos de referencia.</string>
+    <string name="outline_empty_pages">Este libro no tiene números de página.</string>
+    <string name="outline_page_number">Página %1$d</string>
+    <string name="outline_chapter_progress">%1$d%% del capítulo</string>
+    <string name="outline_untitled">Sección sin título</string>
+</resources>

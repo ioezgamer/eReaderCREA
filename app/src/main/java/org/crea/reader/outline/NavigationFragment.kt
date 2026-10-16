@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.*
 import org.readium.r2.shared.publication.Link
 import org.readium.r2.shared.publication.Publication
+import org.crea.reader.R
 import org.crea.reader.databinding.FragmentListviewBinding
 import org.crea.reader.databinding.ItemRecycleNavigationBinding
 import org.crea.reader.reader.ReaderViewModel
@@ -81,6 +82,7 @@ class NavigationFragment : Fragment() {
             )
         }
         navAdapter.submitList(flatLinks)
+        binding.showEmpty(flatLinks.isEmpty(), requireArguments().getInt(EMPTY_ARG, 0))
     }
 
     private fun onLinkSelected(link: Link) {
@@ -95,10 +97,12 @@ class NavigationFragment : Fragment() {
     companion object {
 
         private const val LINKS_ARG = "links"
+        private const val EMPTY_ARG = "empty"
 
-        fun newInstance(links: List<Link>) =
+        fun newInstance(links: List<Link>, @androidx.annotation.StringRes emptyText: Int = 0) =
             NavigationFragment().apply {
                 arguments = Bundle().apply {
+                    putInt(EMPTY_ARG, emptyText)
                     putParcelableArrayList(
                         LINKS_ARG,
                         if (links is ArrayList<Link>) links else ArrayList(links)
@@ -177,3 +181,9 @@ fun childrenOf(parent: Pair<Int, Link>): MutableList<Pair<Int, Link>> {
     return children
 }
 
+
+/** Shows [text] centred instead of a blank list when there is nothing to list. */
+fun FragmentListviewBinding.showEmpty(isEmpty: Boolean, @androidx.annotation.StringRes text: Int) {
+    emptyView.visibility = if (isEmpty && text != 0) View.VISIBLE else View.GONE
+    if (text != 0) emptyView.setText(text)
+}

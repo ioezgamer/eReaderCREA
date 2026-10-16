@@ -153,7 +153,7 @@ open class ReaderActivity : AppCompatActivity() {
         title = when (currentFragment) {
             is OutlineFragment -> model.publication.metadata.title
             is DrmManagementFragment -> getString(R.string.title_fragment_drm_management)
-            else -> null
+            else -> model.publication.metadata.title
         }
 
         // The back arrow is always available: it closes the outline/DRM screens or the book itself.

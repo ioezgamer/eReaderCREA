@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="outline_empty_contents">This book has no table of contents.</string>
+    <string name="outline_empty_bookmarks">You have not saved any bookmarks in this book yet.</string>
+    <string name="outline_empty_highlights">No notes or highlights yet. Select text on the page to highlight it or add a note.</string>
+    <string name="outline_empty_landmarks">This book does not define reference points.</string>
+    <string name="outline_empty_pages">This book has no page numbers.</string>
+    <string name="outline_page_number">Page %1$d</string>
+    <string name="outline_chapter_progress">%1$d%% of the chapter</string>
+    <string name="outline_untitled">Untitled section</string>
+</resources>
