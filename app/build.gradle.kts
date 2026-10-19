@@ -25,14 +25,15 @@ android {
         applicationId = "org.crea.reader"
         minSdk = 24
         targetSdk = 37
-        versionCode = 27
-        versionName = "0.9.9"
+        versionCode = 28
+        versionName = "1.0.0"
         // Address of the AI server (see server/README.md). Empty = AI features do not exist in this build.
         buildConfigField("String", "AI_BASE_URL", "\"${project.findProperty("aiBaseUrl") ?: "https://crea-reader-ai.onrender.com"}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Every CREA tablet is ARM: the x86 libraries only go into debug builds, for the emulator.
         ndk.abiFilters += listOf("armeabi-v7a", "arm64-v8a")
     }
+
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -64,6 +65,8 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // Native symbols go into the bundle so Play Console can read native crashes.
+            ndk.debugSymbolLevel = "SYMBOL_TABLE"
             // Store builds use the upload key; fall back to the debug key only when asked for
             // (-PsignWithDebugKey) or when keystore.properties is missing.
             signingConfig = if (!signWithDebugKey && keystoreProperties.containsKey("storeFile")) {

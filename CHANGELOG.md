@@ -1,5 +1,16 @@
 # Historial de cambios
 
+## 1.0.0 - 2026-10-19
+
+Primera versión para Google Play.
+
+- **Diseño de vidrio líquido** en la barra flotante, el lector y los paneles, con iconos nuevos.
+- **Panel Aspecto del lector**: tamaño de texto, márgenes, papel, tipo de letra, brillo y tamaño de las barras en una tarjeta compacta.
+- **Ajustes completos**: modo claro, oscuro o del sistema, idioma, voz de lectura y asistente de IA opcional.
+- **Estadísticas de lectura**, widgets de inicio («Continuar leyendo» y «Estadísticas») y exportación de notas.
+- Se incluyen los símbolos de depuración nativos para analizar fallos en Google Play.
+- La política de privacidad aclara que, con el asistente de IA activado, el servidor comprueba la cuenta de Google y cuenta los usos diarios por cuenta.
+
 ## 0.9.9 - 2026-10-13
 
 - **Se quita el efecto de hoja de papel** (0.9.6 a 0.9.8): el pase de página vuelve al de antes, con la transición animada normal al tocar los bordes o deslizar. Se mantienen los números de página y la corrección del índice.
