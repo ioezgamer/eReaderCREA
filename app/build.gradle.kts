@@ -25,13 +25,16 @@ android {
         applicationId = "org.crea.reader"
         minSdk = 24
         targetSdk = 37
-        versionCode = 29
-        versionName = "1.1.0"
+        versionCode = 30
+        versionName = "1.1.1"
         // Address of the AI server (see server/README.md). Empty = AI features do not exist in this build.
         buildConfigField("String", "AI_BASE_URL", "\"${project.findProperty("aiBaseUrl") ?: "https://crea-reader-ai.onrender.com"}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Every CREA tablet is ARM: the x86 libraries only go into debug builds, for the emulator.
         ndk.abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        // `-PdevInstall` installs a separate copy (org.crea.reader.dev) next to the one from Google Play,
+        // to try a build on a tablet without uninstalling it. Drive does not work in that copy.
+        if (project.hasProperty("devInstall")) applicationIdSuffix = ".dev"
     }
 
 

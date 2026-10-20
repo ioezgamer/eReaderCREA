@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 1.1.1 - 2026-10-20
+
+- **Corrige el parpadeo del texto al leer en voz alta**: el efecto de vidrio de la barra del lector copiaba la página en cada cuadro y hacía desaparecer media página en cuadros alternos. En el lector, la barra usa ahora un fondo translúcido.
+- **Resaltado suave de la frase que se lee**: amarillo claro en papel claro y sepia, azul oscuro en papel oscuro, en lugar del rojo que tapaba el texto.
+
 ## 1.1.0 - 2026-10-20
 
 - **Voz natural (ElevenLabs)** para la lectura en voz alta: los libros se leen con una voz humana. Se activa o desactiva en Ajustes > Lectura.

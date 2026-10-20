@@ -106,7 +106,6 @@ import org.crea.reader.reader.tts.TtsPreferencesBottomSheetDialogFragment
 import org.crea.reader.reader.tts.TtsViewModel
 import org.crea.reader.stats.PageTurnCounter
 import org.crea.reader.stats.ReadingSession
-import org.crea.reader.ui.glass.GlassSupport
 import org.crea.reader.ui.glass.liquidGlass
 import org.crea.reader.ui.glass.liquidGlassSurfaceColor
 import org.crea.reader.ui.glass.rememberViewBackdrop
@@ -261,12 +260,14 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
         val label = stringResource(R.string.page_indicator, shown, total)
         val barSize by (requireContext().applicationContext as Application).readerLook.barSize.collectAsState()
         val k = barSize.relative
-        val glassTop = colorResource(R.color.glass_nav_top)
-        val glassBottom = colorResource(R.color.glass_nav)
+        val glassTop = colorResource(R.color.reader_bar_top)
+        val glassBottom = colorResource(R.color.reader_bar_bottom)
         val onGlass = colorResource(R.color.crea_on_surface)
         // Real Liquid Glass over the book where the device allows it; the translucent gradient otherwise.
-        val realGlass = remember { GlassSupport.effectsEnabled(requireContext()) }
-        val backdrop = rememberViewBackdrop(listOf(binding.fragmentReaderContainer))
+        // No real blur over the book: copying the page's WebView into the glass on every frame makes
+        // half of the page vanish in alternate frames (visible flicker while reading aloud).
+        val realGlass = false
+        val backdrop = if (realGlass) rememberViewBackdrop(listOf(binding.fragmentReaderContainer)) else null
         val glassSurface = liquidGlassSurfaceColor(alpha = 0.6f)
         val barShape = RoundedCornerShape(0.dp)
 
@@ -276,7 +277,7 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .then(
-                        if (realGlass) Modifier.liquidGlass(backdrop, barShape, glassSurface)
+                        if (backdrop != null) Modifier.liquidGlass(backdrop, barShape, glassSurface)
                         else Modifier.background(Brush.verticalGradient(listOf(glassTop, glassBottom)))
                     )
                     .padding(horizontal = (16 * k).dp, vertical = (2 * k).dp),
@@ -326,7 +327,7 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                     .align(Alignment.BottomEnd)
                     .padding(8.dp)
                     .then(
-                        if (realGlass) Modifier.liquidGlass(backdrop, RoundedCornerShape((10 * k).dp), glassSurface, blur = 6.dp, lensHeight = 6.dp, lensAmount = 8.dp)
+                        if (backdrop != null) Modifier.liquidGlass(backdrop, RoundedCornerShape((10 * k).dp), glassSurface, blur = 6.dp, lensHeight = 6.dp, lensAmount = 8.dp)
                         else Modifier.background(glassBottom, RoundedCornerShape((10 * k).dp))
                     )
                     .padding(horizontal = (8 * k).dp, vertical = (2 * k).dp)
@@ -438,12 +439,25 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                             Decoration(
                                 id = "tts",
                                 locator = it,
-                                style = Decoration.Style.Highlight(tint = Color.RED)
+                                style = Decoration.Style.Highlight(tint = spokenTint())
                             )
                         }
                         navigator.applyDecorations(listOfNotNull(decoration), "tts")
                     }
             }
+        }
+    }
+
+    /**
+     * Soft colour behind the sentence being read: the text is drawn on top of it, so it has to
+     * stay readable with dark text (light and sepia pages) and with light text (dark pages).
+     */
+    private fun spokenTint(): Int {
+        val theme = (navigator as? org.readium.r2.navigator.epub.EpubNavigatorFragment)?.settings?.value?.theme
+        return if (theme == org.readium.r2.navigator.preferences.Theme.DARK) {
+            Color.rgb(0x1F, 0x3A, 0x5F)
+        } else {
+            Color.rgb(0xFF, 0xE8, 0x9C)
         }
     }
 
