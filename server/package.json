@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node src/index.js",
     "mock": "MOCK_AI=1 AUTH_MODE=mock node src/index.js",
-    "test": "node --test test/service.test.js"
+    "test": "node --test test/service.test.js test/voice.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

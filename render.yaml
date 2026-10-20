@@ -24,3 +24,12 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
+      # Voz natural (ElevenLabs). La clave se pega en el panel de Render, nunca aquí.
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
+      - key: VOICE_MONTHLY_CHARS
+        value: "400000"
+      - key: VOICE_DEVICE_DAILY_CHARS
+        value: "60000"

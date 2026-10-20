@@ -44,6 +44,7 @@ import org.crea.reader.domain.Bookshelf
 import org.crea.reader.domain.CoverStorage
 import org.crea.reader.domain.PublicationRetriever
 import org.crea.reader.reader.ReaderRepository
+import org.crea.reader.reader.tts.NaturalVoice
 import org.crea.reader.ai.AiAvailability
 import org.crea.reader.ai.AiClient
 import org.crea.reader.ai.AiService
@@ -112,6 +113,9 @@ class Application : android.app.Application() {
         private set
 
     lateinit var aiService: AiService
+
+    /** Natural voice (ElevenLabs) for reading aloud; the device voice is used whenever it cannot. */
+    lateinit var naturalVoice: NaturalVoice
         private set
 
     lateinit var insightsDao: InsightsDao
@@ -215,6 +219,7 @@ class Application : android.app.Application() {
         insightsDao = database.insightsDao()
         val aiClient = AiClient(this, deviceId = { syncStateStore.deviceId })
         aiService = AiService(aiClient, AiAvailability(this, aiClient) { syncStateStore.isEnabled })
+        naturalVoice = NaturalVoice(this, aiClient) { syncStateStore.isEnabled }
         insightsState = insightsDao.observeAll().map { list -> list.associateBy { it.driveFileId } }
             .stateIn(coroutineScope, SharingStarted.Eagerly, emptyMap())
         deviceReadingsStore = DeviceReadingsStore(this)

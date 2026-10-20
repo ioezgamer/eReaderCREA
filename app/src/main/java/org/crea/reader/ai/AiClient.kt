@@ -34,7 +34,27 @@ sealed class AiResult {
     enum class Kind { NO_CONNECTION, SIGN_IN, BUSY, REFUSED, ERROR }
 }
 
-data class AiStatus(val available: Boolean, val reason: String?, val remaining: Map<String, Int>)
+data class AiStatus(
+    val available: Boolean,
+    val reason: String?,
+    val remaining: Map<String, Int>,
+    /** Natural voice (ElevenLabs): whether the server can read aloud right now, and why not. */
+    val voiceAvailable: Boolean = false,
+    val voiceReason: String? = null,
+)
+
+sealed class VoiceResult {
+    class Audio(val mp3: ByteArray) : VoiceResult()
+
+    /** Switched off, out of credits or over budget: read with the device voice for a good while. */
+    data class Unavailable(val reason: String?) : VoiceResult()
+
+    /** Daily limit of this device. */
+    data object LimitReached : VoiceResult()
+
+    /** No connection, no Drive account, busy or any other error: try again later. */
+    data object Failed : VoiceResult()
+}
 
 /**
  * Talks to the CREA Reader AI server, which holds the Anthropic key. The app only sends the content
@@ -72,6 +92,8 @@ class AiClient(
             available = body["available"]?.jsonPrimitive?.booleanOrNull == true,
             reason = body["reason"]?.jsonPrimitive?.contentOrNull,
             remaining = (body["remaining"] as? JsonObject)?.mapValues { it.value.jsonPrimitive.int }.orEmpty(),
+            voiceAvailable = (body["voice"] as? JsonObject)?.get("available")?.jsonPrimitive?.booleanOrNull == true,
+            voiceReason = (body["voice"] as? JsonObject)?.get("reason")?.jsonPrimitive?.contentOrNull,
         )
     }
 
@@ -92,6 +114,56 @@ class AiClient(
                 else -> AiResult.Failed(AiResult.Kind.ERROR)
             }
         }
+    }
+
+    /**
+     * Audio (MP3) of [text] read by the natural voice. Short timeouts: when the voice is slow or
+     * missing, reading goes on with the device voice instead of leaving a silence.
+     */
+    suspend fun speech(text: String, language: String?): VoiceResult = withContext(Dispatchers.IO) {
+        if (!configured) return@withContext VoiceResult.Unavailable("not_configured")
+        val token = accessToken() ?: return@withContext VoiceResult.Unavailable("needs_drive")
+        val payload = buildJsonObject {
+            put("text", text)
+            if (language != null) put("language", language)
+        }
+        val connection = (URI(baseUrl.trimEnd('/') + "/v1/voice").toURL().openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 6_000
+            readTimeout = 15_000
+            doOutput = true
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("X-Device-Id", deviceId())
+            setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+            setRequestProperty("Accept", "audio/mpeg")
+        }
+        try {
+            connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
+            val status = connection.responseCode
+            if (status == 200) return@withContext VoiceResult.Audio(connection.inputStream.use { it.readBytes() })
+            val json = connection.errorStream?.bufferedReader()?.use { it.readText() }
+                ?.let { runCatching { Json.parseToJsonElement(it).jsonObject }.getOrNull() }
+            val code = json?.get("code")?.jsonPrimitive?.contentOrNull
+            when {
+                status == 503 && code == "unavailable" -> VoiceResult.Unavailable(json.get("reason")?.jsonPrimitive?.contentOrNull)
+                status == 429 && code == "daily_limit" -> VoiceResult.LimitReached
+                else -> VoiceResult.Failed
+            }
+        } catch (_: IOException) {
+            VoiceResult.Failed
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    /** The Google token Drive already has (the server uses it to check the account), or null. */
+    private suspend fun accessToken(): String? = try {
+        when (val auth = DriveAuthorizationProvider(context).requestToken()) {
+            is DriveAuthorizationProvider.TokenResult.Authorized -> auth.accessToken
+            is DriveAuthorizationProvider.TokenResult.ConsentRequired -> null
+        }
+    } catch (_: Exception) {
+        null
     }
 
     private sealed class Raw {

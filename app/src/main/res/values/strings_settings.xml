@@ -12,6 +12,15 @@
     <string name="settings_section_reading">Reading</string>
     <string name="settings_voice_title">Reading voice</string>
     <string name="settings_voice_detail">Opens the device voice settings to choose the voice and speed.</string>
+    <string name="settings_natural_voice_title">Natural voice (ElevenLabs)</string>
+    <string name="settings_natural_voice_detail">Reads aloud with a human-sounding voice. Needs a connection and the Drive account connected. Without a connection or once the credits run out, reading goes on with the device voice without stopping.</string>
+    <string name="settings_natural_voice_on">Available: books are read with the natural voice</string>
+    <string name="settings_natural_voice_off">Off: the device voice is used</string>
+    <string name="settings_natural_voice_no_server">Not available in this version</string>
+    <string name="settings_natural_voice_needs_drive">Connect Drive to use it; meanwhile the device voice is used</string>
+    <string name="settings_natural_voice_unavailable">Out of credits or paused: the device voice is used</string>
+    <string name="settings_natural_voice_unreachable">Cannot reach the server: the device voice is used</string>
+    <string name="settings_natural_voice_checking">Checking…</string>
     <string name="settings_voice_unavailable">This device cannot open the voice settings from here.</string>
 
     <string name="settings_section_ai">Artificial intelligence</string>

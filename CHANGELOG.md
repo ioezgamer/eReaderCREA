@@ -1,5 +1,12 @@
 # Historial de cambios
 
+## 1.1.0 - 2026-10-20
+
+- **Voz natural (ElevenLabs)** para la lectura en voz alta: los libros se leen con una voz humana. Se activa o desactiva en Ajustes > Lectura.
+- **Nunca deja de leer**: sin conexión, sin la cuenta de Drive, al llegar al límite diario o cuando se acaban los créditos, cada frase se lee con la voz del dispositivo, sin cortarse.
+- El audio de cada frase se guarda en el dispositivo (hasta 60 MB), así que volver a escuchar un pasaje no gasta créditos.
+- La clave de ElevenLabs vive solo en el servidor de CREA, con tope mensual de caracteres y límite diario por dispositivo.
+
 ## 1.0.0 - 2026-10-19
 
 Primera versión para Google Play.

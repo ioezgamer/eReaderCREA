@@ -28,6 +28,7 @@ import org.crea.reader.Application
 import org.crea.reader.BuildConfig
 import org.crea.reader.R
 import org.crea.reader.ThemeMode
+import org.crea.reader.reader.tts.NaturalVoice
 import org.crea.reader.ai.AiAvailability
 import org.crea.reader.ai.AiServerUrl
 import org.crea.reader.databinding.FragmentSettingsBinding
@@ -114,6 +115,41 @@ class SettingsFragment : Fragment() {
     private fun bindReading() {
         row(binding.settingsVoiceRow, R.drawable.ic_baseline_headphones_24, R.string.settings_voice_title, getString(R.string.settings_voice_detail))
             .root.setOnClickListener { openVoiceSettings() }
+
+        val voice = app.naturalVoice
+        binding.settingsNaturalVoiceSwitch.setOnCheckedChangeListener { _, checked ->
+            if (updating) return@setOnCheckedChangeListener
+            voice.setEnabled(checked)
+            if (checked) viewLifecycleOwner.lifecycleScope.launch { voice.check() }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { if (voice.enabled.value) voice.check() }
+                launch { voice.enabled.collect { renderNaturalVoice(voice) } }
+                launch { voice.serverState.collect { renderNaturalVoice(voice) } }
+            }
+        }
+    }
+
+    private fun renderNaturalVoice(voice: NaturalVoice) {
+        val view = _binding ?: return
+        val on = voice.enabled.value
+        updating = true
+        view.settingsNaturalVoiceSwitch.isChecked = on
+        updating = false
+        view.settingsNaturalVoiceStatus.setText(
+            when {
+                !on -> R.string.settings_natural_voice_off
+                !voice.configured -> R.string.settings_natural_voice_no_server
+                !voice.isDriveConnected() -> R.string.settings_natural_voice_needs_drive
+                else -> when (voice.serverState.value) {
+                    NaturalVoice.ServerState.AVAILABLE -> R.string.settings_natural_voice_on
+                    NaturalVoice.ServerState.UNAVAILABLE -> R.string.settings_natural_voice_unavailable
+                    NaturalVoice.ServerState.UNREACHABLE -> R.string.settings_natural_voice_unreachable
+                    else -> R.string.settings_natural_voice_checking
+                }
+            }
+        )
     }
 
     private fun openVoiceSettings() {

@@ -102,3 +102,20 @@ Página web con el avance de lectura de las personas inscritas: resumen (lectore
 1. En Google Cloud (proyecto `crea-reader`) → *APIs y servicios → Credenciales → Crear credenciales → ID de cliente de OAuth*, tipo **Aplicación web**. En *Orígenes autorizados de JavaScript* pon la dirección de Render (y `http://localhost:8787` para pruebas). No requiere facturación.
 2. En la pantalla de consentimiento, tipo **Interno** (solo la organización) y el alcance `drive.readonly`.
 3. En Render, variable `GOOGLE_CLIENT_ID` = el ID de cliente. Sin ella el panel solo ofrece los datos de ejemplo (`/admin/?demo`).
+
+## Voz natural (ElevenLabs)
+
+La lectura en voz alta puede usar una voz natural de ElevenLabs. Igual que con Claude, **la clave vive solo en el servidor**: la app pide el audio de cada frase a `POST /v1/voice` y, si el servidor no puede (sin clave, sin créditos, tope alcanzado, sin conexión), la app sigue leyendo esa frase con la voz del dispositivo, sin cortarse.
+
+Variables (en el panel de Render):
+
+| Variable | Para qué | Por defecto |
+|---|---|---|
+| `ELEVENLABS_API_KEY` | Clave de ElevenLabs. Sin ella la voz natural está apagada. | (vacía) |
+| `ELEVENLABS_VOICE_ID` | Voz a usar (cópiala de la biblioteca de voces de ElevenLabs; elige una en español). | voz prediseñada multilingüe |
+| `ELEVENLABS_MODEL` | Modelo. Flash v2.5 es el más rápido y gasta la mitad de créditos por carácter. | `eleven_flash_v2_5` |
+| `VOICE_MONTHLY_CHARS` | Tope de caracteres al mes para todo el servidor. | `400000` |
+| `VOICE_DEVICE_DAILY_CHARS` | Tope diario por tablet (~60 000 ≈ 1 hora de lectura). | `60000` |
+| `VOICE_ENABLED` | `false` apaga la voz natural sin quitar la clave. | `true` |
+
+Si ElevenLabs responde que no quedan créditos, el servidor deja de pedir audio durante `SUSPEND_HOURS` (6 h) y todas las tablets usan la voz del dispositivo. La app guarda el audio de cada frase (hasta 60 MB), así que repetir un pasaje no gasta créditos.

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createAuthenticator } from "./auth.js";
 import { createService, loadConfig } from "./service.js";
 import { createStore } from "./store.js";
+import { createVoice, loadVoiceConfig } from "./voice.js";
 
 const MAX_BODY = 160 * 1024;
 const ADMIN_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public", "admin");
@@ -46,7 +47,7 @@ function serveAdmin(url, response) {
   return response.end();
 }
 
-export function createServer({ config, service, authenticate }) {
+export function createServer({ config, service, authenticate, voice }) {
   const send = (response, status, body) => {
     const text = JSON.stringify(body);
     response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -79,7 +80,21 @@ export function createServer({ config, service, authenticate }) {
       const deviceId = String(request.headers["x-device-id"] ?? "").slice(0, 80) || "sin-id";
 
       if (request.method === "GET" && url.pathname === "/v1/status") {
-        return send(response, 200, { ok: true, ...(await service.status(user, deviceId)) });
+        const voiceStatus = voice ? await voice.status(deviceId) : { available: false, reason: "disabled" };
+        return send(response, 200, { ok: true, ...(await service.status(user, deviceId)), voice: voiceStatus });
+      }
+      if (request.method === "POST" && url.pathname === "/v1/voice") {
+        if (!voice) throw new service.ServiceError(503, "unavailable", "Voz natural no disponible", { reason: "disabled" });
+        let body;
+        try {
+          body = JSON.parse(await readBody(request));
+        } catch (error) {
+          if (error instanceof service.ServiceError) throw error;
+          throw new service.ServiceError(400, "invalid_json", "JSON no válido");
+        }
+        const audio = await voice.speak(deviceId, body.text, body.language);
+        response.writeHead(200, { "content-type": "audio/mpeg", "content-length": audio.length, "cache-control": "no-store" });
+        return response.end(audio);
       }
       if (request.method === "POST" && url.pathname === "/v1/ask") {
         let body;
@@ -108,8 +123,9 @@ if (fileURLToPath(import.meta.url) === path.resolve(process.argv[1] ?? "")) {
   const store = await createStore();
   const service = createService({ config, store });
   const authenticate = createAuthenticator({ config });
+  const voice = createVoice({ config: loadVoiceConfig(), store, ServiceError: service.ServiceError });
   const port = Number(process.env.PORT || 8787);
-  createServer({ config, service, authenticate }).listen(port, () => {
+  createServer({ config, service, authenticate, voice }).listen(port, () => {
     console.log(`CREA Reader AI escuchando en :${port} (mock=${config.mock}, auth=${config.authMode}, modelo=${config.models.fast})`);
   });
 }

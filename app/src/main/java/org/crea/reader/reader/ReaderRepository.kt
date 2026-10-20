@@ -36,6 +36,7 @@ import org.crea.reader.online.OnlineBookIds
 import org.crea.reader.online.OnlineReadingCache
 import org.crea.reader.domain.PublicationError
 import org.crea.reader.reader.preferences.AndroidTtsPreferencesManagerFactory
+import org.crea.reader.reader.tts.HybridTtsEngineProvider
 import org.crea.reader.reader.preferences.EpubPreferencesManagerFactory
 import org.crea.reader.reader.preferences.ExoPlayerPreferencesManagerFactory
 import org.crea.reader.reader.preferences.PdfiumPreferencesManagerFactory
@@ -279,10 +280,10 @@ class ReaderRepository(
     ): TtsInitData? {
         val preferencesManager = AndroidTtsPreferencesManagerFactory(preferencesDataStore)
             .createPreferenceManager(bookId)
-        val navigatorFactory = TtsNavigatorFactory(
-            application,
-            publication
-        ) ?: return null
+        // The natural voice (ElevenLabs) reads when it can; the device voice takes over otherwise.
+        val naturalVoice = (application as org.crea.reader.Application).naturalVoice
+        val engineProvider = HybridTtsEngineProvider(application, naturalVoice)
+        val navigatorFactory = TtsNavigatorFactory(application, publication, engineProvider) ?: return null
         return TtsInitData(mediaServiceFacade, navigatorFactory, preferencesManager)
     }
 
