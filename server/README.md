@@ -112,10 +112,13 @@ Variables (en el panel de Render):
 | Variable | Para qué | Por defecto |
 |---|---|---|
 | `ELEVENLABS_API_KEY` | Clave de ElevenLabs. Sin ella la voz natural está apagada. | (vacía) |
-| `ELEVENLABS_VOICE_ID` | Voz a usar (cópiala de la biblioteca de voces de ElevenLabs; elige una en español). | voz prediseñada multilingüe |
+| `ELEVENLABS_VOICE_ID` | Voz principal (cópiala de «Mis voces» en ElevenLabs; elige una en español). | la primera de `ELEVENLABS_VOICES` |
+| `ELEVENLABS_VOICES` | Voces que se pueden elegir en Ajustes de la app, como `id=Nombre, id=Nombre`. Solo estas (y la principal) se pueden usar. Cada voz tiene que estar agregada a «Mis voces». | solo la principal |
 | `ELEVENLABS_MODEL` | Modelo. Flash v2.5 es el más rápido y gasta la mitad de créditos por carácter. | `eleven_flash_v2_5` |
 | `VOICE_MONTHLY_CHARS` | Tope de caracteres al mes para todo el servidor. | `400000` |
 | `VOICE_DEVICE_DAILY_CHARS` | Tope diario por tablet (~60 000 ≈ 1 hora de lectura). | `60000` |
 | `VOICE_ENABLED` | `false` apaga la voz natural sin quitar la clave. | `true` |
+
+Si una voz de la lista deja de existir en la cuenta, esa frase se lee con la voz principal. Si la clave o la voz principal están mal, el servidor deja de intentarlo 10 minutos (`VOICE_MISCONFIGURED_MINUTES`) y Ajustes muestra el motivo en la tablet.
 
 Si ElevenLabs responde que no quedan créditos, el servidor deja de pedir audio durante `SUSPEND_HOURS` (6 h) y todas las tablets usan la voz del dispositivo. La app guarda el audio de cada frase (hasta 60 MB), así que repetir un pasaje no gasta créditos.

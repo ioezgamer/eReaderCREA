@@ -92,7 +92,7 @@ export function createServer({ config, service, authenticate, voice }) {
           if (error instanceof service.ServiceError) throw error;
           throw new service.ServiceError(400, "invalid_json", "JSON no válido");
         }
-        const audio = await voice.speak(deviceId, body.text, body.language);
+        const audio = await voice.speak(deviceId, body.text, body.language, body.voice);
         response.writeHead(200, { "content-type": "audio/mpeg", "content-length": audio.length, "cache-control": "no-store" });
         return response.end(audio);
       }

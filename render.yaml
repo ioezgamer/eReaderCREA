@@ -29,6 +29,9 @@ services:
         sync: false
       - key: ELEVENLABS_VOICE_ID
         sync: false
+      # Voces que se pueden elegir en la app: "id=Nombre, id=Nombre".
+      - key: ELEVENLABS_VOICES
+        sync: false
       - key: VOICE_MONTHLY_CHARS
         value: "400000"
       - key: VOICE_DEVICE_DAILY_CHARS

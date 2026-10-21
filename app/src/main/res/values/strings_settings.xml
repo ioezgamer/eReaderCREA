@@ -21,6 +21,16 @@
     <string name="settings_natural_voice_unavailable">Out of credits or paused: the device voice is used</string>
     <string name="settings_natural_voice_unreachable">Cannot reach the server: the device voice is used</string>
     <string name="settings_natural_voice_checking">Checking…</string>
+    <string name="settings_natural_voice_choose">Voice: %1$s</string>
+    <string name="settings_natural_voice_choose_title">Choose the natural voice</string>
+    <string name="settings_natural_voice_sample">Listen</string>
+    <string name="settings_natural_voice_sample_text">Hello. This is how your books will sound when read aloud with this voice.</string>
+    <string name="settings_natural_voice_sample_failed">The sample cannot be played right now. Check the connection and try again.</string>
+    <string name="settings_natural_voice_no_credits">Out of ElevenLabs credits: the device voice is used</string>
+    <string name="settings_natural_voice_budget">Monthly limit reached: the device voice is used</string>
+    <string name="settings_natural_voice_misconfigured">The ElevenLabs key or model is not valid: check them in Render</string>
+    <string name="settings_natural_voice_voice_not_found">The main voice is not in ElevenLabs \"My voices\"</string>
+    <string name="settings_natural_voice_daily_limit">Daily limit of this tablet reached: back tomorrow</string>
     <string name="settings_voice_unavailable">This device cannot open the voice settings from here.</string>
 
     <string name="settings_section_ai">Artificial intelligence</string>

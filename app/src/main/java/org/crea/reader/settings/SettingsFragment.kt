@@ -2,6 +2,7 @@ package org.crea.reader.settings
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.provider.Settings
 import android.text.format.Formatter
@@ -122,13 +123,65 @@ class SettingsFragment : Fragment() {
             voice.setEnabled(checked)
             if (checked) viewLifecycleOwner.lifecycleScope.launch { voice.check() }
         }
+        binding.settingsNaturalVoiceChoose.setOnClickListener { chooseNaturalVoice(voice) }
+        binding.settingsNaturalVoiceSample.setOnClickListener { playNaturalVoiceSample(voice) }
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { if (voice.enabled.value) voice.check() }
                 launch { voice.enabled.collect { renderNaturalVoice(voice) } }
                 launch { voice.serverState.collect { renderNaturalVoice(voice) } }
+                launch { voice.voices.collect { renderNaturalVoice(voice) } }
+                launch { voice.selectedVoice.collect { renderNaturalVoice(voice) } }
             }
         }
+    }
+
+    private fun chooseNaturalVoice(voice: NaturalVoice) {
+        val options = voice.voices.value
+        if (options.isEmpty()) return
+        val current = options.indexOf(voice.currentVoice).coerceAtLeast(0)
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.settings_natural_voice_choose_title)
+            .setSingleChoiceItems(options.map { it.name }.toTypedArray(), current) { dialog, which ->
+                voice.selectVoice(options[which].id)
+                dialog.dismiss()
+                playNaturalVoiceSample(voice)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private var samplePlayer: MediaPlayer? = null
+
+    /** Plays a short sentence with the chosen voice (costs a few characters the first time, then it is cached). */
+    private fun playNaturalVoiceSample(voice: NaturalVoice) {
+        val view = _binding ?: return
+        view.settingsNaturalVoiceSample.isEnabled = false
+        viewLifecycleOwner.lifecycleScope.launch {
+            val file = voice.sample(getString(R.string.settings_natural_voice_sample_text))
+            _binding?.settingsNaturalVoiceSample?.isEnabled = true
+            if (file == null) {
+                Toast.makeText(requireContext(), R.string.settings_natural_voice_sample_failed, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            stopNaturalVoiceSample()
+            samplePlayer = runCatching {
+                MediaPlayer().apply {
+                    setDataSource(file.path)
+                    setOnCompletionListener { stopNaturalVoiceSample() }
+                    prepare()
+                    start()
+                }
+            }.getOrNull()
+        }
+    }
+
+    private fun stopNaturalVoiceSample() {
+        samplePlayer?.let { player ->
+            runCatching { player.stop() }
+            player.release()
+        }
+        samplePlayer = null
     }
 
     private fun renderNaturalVoice(voice: NaturalVoice) {
@@ -144,12 +197,24 @@ class SettingsFragment : Fragment() {
                 !voice.isDriveConnected() -> R.string.settings_natural_voice_needs_drive
                 else -> when (voice.serverState.value) {
                     NaturalVoice.ServerState.AVAILABLE -> R.string.settings_natural_voice_on
-                    NaturalVoice.ServerState.UNAVAILABLE -> R.string.settings_natural_voice_unavailable
+                    NaturalVoice.ServerState.UNAVAILABLE -> when (voice.serverReason.value) {
+                        "no_credits", "suspended" -> R.string.settings_natural_voice_no_credits
+                        "budget" -> R.string.settings_natural_voice_budget
+                        "misconfigured" -> R.string.settings_natural_voice_misconfigured
+                        "voice_not_found" -> R.string.settings_natural_voice_voice_not_found
+                        "disabled" -> R.string.settings_natural_voice_no_server
+                        else -> R.string.settings_natural_voice_unavailable
+                    }
                     NaturalVoice.ServerState.UNREACHABLE -> R.string.settings_natural_voice_unreachable
                     else -> R.string.settings_natural_voice_checking
                 }
             }
         )
+        // Voice choice: only once the server has said which voices it offers.
+        val current = voice.currentVoice
+        view.settingsNaturalVoiceChoice.isVisible = on && current != null
+        if (current != null) view.settingsNaturalVoiceChoose.text = getString(R.string.settings_natural_voice_choose, current.name)
+        view.settingsNaturalVoiceChoose.isEnabled = voice.voices.value.size > 1
     }
 
     private fun openVoiceSettings() {
@@ -345,6 +410,11 @@ class SettingsFragment : Fragment() {
         row.rowTitle.setText(title)
         row.rowDetail.text = detail
         return row
+    }
+
+    override fun onStop() {
+        stopNaturalVoiceSample()
+        super.onStop()
     }
 
     override fun onDestroyView() {

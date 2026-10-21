@@ -1,5 +1,11 @@
 # Historial de cambios
 
+## 1.2.0 - 2026-10-21
+
+- **Selector de voz natural** en Ajustes > Lectura: se elige entre las voces aprobadas en el servidor (variable `ELEVENLABS_VOICES` en Render) y se puede escuchar una muestra antes de leer.
+- **Ajustes explica por qué no suena la voz natural**: sin créditos, tope mensual, clave o modelo no válidos, o voz principal que no está en «Mis voces».
+- Servidor: solo considera «sin créditos» los códigos exactos de ElevenLabs; una clave inválida o una voz que falta pausan la voz natural 10 minutos en lugar de reintentar en cada frase, y si una voz de la lista ya no existe se lee con la principal.
+
 ## 1.1.1 - 2026-10-20
 
 - **Corrige el parpadeo del texto al leer en voz alta**: el efecto de vidrio de la barra del lector copiaba la página en cada cuadro y hacía desaparecer media página en cuadros alternos. En el lector, la barra usa ahora un fondo translúcido.

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import org.crea.reader.ai.AiClient
+import org.crea.reader.ai.VoiceOption
 import org.crea.reader.ai.VoiceResult
 import timber.log.Timber
 
@@ -46,6 +47,25 @@ class NaturalVoice(
     private val _serverState = MutableStateFlow(ServerState.UNKNOWN)
     val serverState: StateFlow<ServerState> = _serverState.asStateFlow()
 
+    private val _serverReason = MutableStateFlow<String?>(null)
+
+    /** Why the server cannot read aloud (no_credits, misconfigured, voice_not_found, budget...). */
+    val serverReason: StateFlow<String?> = _serverReason.asStateFlow()
+
+    private val _voices = MutableStateFlow<List<VoiceOption>>(emptyList())
+
+    /** Voices approved on the server, the main one first (empty until the server is asked). */
+    val voices: StateFlow<List<VoiceOption>> = _voices.asStateFlow()
+
+    private val _selectedVoice = MutableStateFlow(preferences.getString(KEY_VOICE, null))
+
+    /** Voice chosen in Ajustes (null: the server's main voice). */
+    val selectedVoice: StateFlow<String?> = _selectedVoice.asStateFlow()
+
+    /** The voice that will actually be used: the chosen one if the server still offers it. */
+    val currentVoice: VoiceOption?
+        get() = _voices.value.firstOrNull { it.id == _selectedVoice.value } ?: _voices.value.firstOrNull()
+
     @Volatile
     private var pausedUntil = 0L
 
@@ -58,6 +78,10 @@ class NaturalVoice(
         if (!client.configured || !driveConnected()) return
         _serverState.value = ServerState.CHECKING
         val status = client.status()
+        if (status != null) {
+            _voices.value = status.voices
+            _serverReason.value = status.voiceReason
+        }
         _serverState.value = when {
             status == null -> ServerState.UNREACHABLE
             status.voiceAvailable -> ServerState.AVAILABLE.also { retryNow() }
@@ -69,6 +93,19 @@ class NaturalVoice(
         preferences.edit().putBoolean(KEY_ENABLED, enabled).apply()
         _enabled.value = enabled
         if (enabled) retryNow()
+    }
+
+    /** Reads with [voiceId] from now on (null: the server's main voice). */
+    fun selectVoice(voiceId: String?) {
+        preferences.edit().apply { if (voiceId == null) remove(KEY_VOICE) else putString(KEY_VOICE, voiceId) }.apply()
+        _selectedVoice.value = voiceId
+        retryNow()
+    }
+
+    /** A short sample of the current voice, to try it in Ajustes (null if it cannot be heard now). */
+    suspend fun sample(text: String): File? {
+        retryNow()
+        return audioFor(text, "es")
     }
 
     /** Forget a previous failure (for example after checking the server again in Ajustes). */
@@ -83,12 +120,13 @@ class NaturalVoice(
 
     /** MP3 file with [text] read aloud, or null to read it with the device voice. */
     suspend fun audioFor(text: String, language: String?): File? = withContext(Dispatchers.IO) {
-        val file = File(cacheDir, key(text, language) + ".mp3")
+        val voice = currentVoice?.id
+        val file = File(cacheDir, key(text, language, voice) + ".mp3")
         if (file.length() > 0) {
             file.setLastModified(System.currentTimeMillis())
             return@withContext file
         }
-        when (val result = client.speech(text, language)) {
+        when (val result = client.speech(text, language, voice)) {
             is VoiceResult.Audio -> {
                 cacheDir.mkdirs()
                 val partial = File(cacheDir, file.name + ".part")
@@ -98,7 +136,13 @@ class NaturalVoice(
                 trimCache()
                 file
             }
-            is VoiceResult.Unavailable -> pause(LONG_PAUSE, result.reason ?: "unavailable")
+            is VoiceResult.Unavailable -> {
+                _serverReason.value = result.reason
+                _serverState.value = ServerState.UNAVAILABLE
+                // Out of credits or over budget lasts; a key or voice to fix in Render, less.
+                val long = result.reason in setOf("no_credits", "suspended", "budget")
+                pause(if (long) LONG_PAUSE else MEDIUM_PAUSE, result.reason ?: "unavailable")
+            }
             VoiceResult.LimitReached -> pause(LONG_PAUSE, "daily_limit")
             VoiceResult.Failed -> pause(SHORT_PAUSE, "no_connection")
         }
@@ -116,9 +160,9 @@ class NaturalVoice(
         return null
     }
 
-    private fun key(text: String, language: String?): String {
+    private fun key(text: String, language: String?, voice: String?): String {
         val server = client.activeServer().orEmpty()
-        val digest = MessageDigest.getInstance("SHA-256").digest("$server|$language|$text".toByteArray())
+        val digest = MessageDigest.getInstance("SHA-256").digest("$server|$voice|$language|$text".toByteArray())
         return digest.joinToString("") { "%02x".format(it) }.take(40)
     }
 
@@ -136,7 +180,9 @@ class NaturalVoice(
 
     companion object {
         private const val KEY_ENABLED = "natural_voice"
+        private const val KEY_VOICE = "natural_voice_id"
         private const val SHORT_PAUSE = 2 * 60 * 1000L
+        private const val MEDIUM_PAUSE = 10 * 60 * 1000L
         private const val LONG_PAUSE = 30 * 60 * 1000L
         private const val MAX_CACHE_BYTES = 60L * 1024 * 1024
     }

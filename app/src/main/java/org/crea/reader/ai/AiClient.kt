@@ -7,6 +7,7 @@ import java.net.URI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -41,7 +42,13 @@ data class AiStatus(
     /** Natural voice (ElevenLabs): whether the server can read aloud right now, and why not. */
     val voiceAvailable: Boolean = false,
     val voiceReason: String? = null,
+    /** Voices the server allows choosing, the main one first. */
+    val voices: List<VoiceOption> = emptyList(),
+    val defaultVoice: String? = null,
 )
+
+/** A natural voice approved on the server (Render, ELEVENLABS_VOICES). */
+data class VoiceOption(val id: String, val name: String)
 
 sealed class VoiceResult {
     class Audio(val mp3: ByteArray) : VoiceResult()
@@ -94,6 +101,12 @@ class AiClient(
             remaining = (body["remaining"] as? JsonObject)?.mapValues { it.value.jsonPrimitive.int }.orEmpty(),
             voiceAvailable = (body["voice"] as? JsonObject)?.get("available")?.jsonPrimitive?.booleanOrNull == true,
             voiceReason = (body["voice"] as? JsonObject)?.get("reason")?.jsonPrimitive?.contentOrNull,
+            voices = ((body["voice"] as? JsonObject)?.get("voices") as? JsonArray).orEmpty().mapNotNull { item ->
+                val voice = item as? JsonObject ?: return@mapNotNull null
+                val id = voice["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                VoiceOption(id, voice["name"]?.jsonPrimitive?.contentOrNull ?: id)
+            },
+            defaultVoice = (body["voice"] as? JsonObject)?.get("defaultVoice")?.jsonPrimitive?.contentOrNull,
         )
     }
 
@@ -120,12 +133,13 @@ class AiClient(
      * Audio (MP3) of [text] read by the natural voice. Short timeouts: when the voice is slow or
      * missing, reading goes on with the device voice instead of leaving a silence.
      */
-    suspend fun speech(text: String, language: String?): VoiceResult = withContext(Dispatchers.IO) {
+    suspend fun speech(text: String, language: String?, voice: String? = null): VoiceResult = withContext(Dispatchers.IO) {
         if (!configured) return@withContext VoiceResult.Unavailable("not_configured")
         val token = accessToken() ?: return@withContext VoiceResult.Unavailable("needs_drive")
         val payload = buildJsonObject {
             put("text", text)
             if (language != null) put("language", language)
+            if (voice != null) put("voice", voice)
         }
         val connection = (URI(baseUrl.trimEnd('/') + "/v1/voice").toURL().openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
