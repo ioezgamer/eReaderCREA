@@ -118,15 +118,18 @@ class NaturalVoice(
     fun shouldTry(): Boolean =
         _enabled.value && client.configured && driveConnected() && SystemClock.elapsedRealtime() >= pausedUntil
 
-    /** MP3 file with [text] read aloud, or null to read it with the device voice. */
-    suspend fun audioFor(text: String, language: String?): File? = withContext(Dispatchers.IO) {
+    /**
+     * MP3 file with [text] read aloud, or null to read it with the device voice. [previous] is the
+     * sentence read just before (if the reading is continuous), so the voice keeps its intonation.
+     */
+    suspend fun audioFor(text: String, language: String?, previous: String? = null): File? = withContext(Dispatchers.IO) {
         val voice = currentVoice?.id
         val file = File(cacheDir, key(text, language, voice) + ".mp3")
         if (file.length() > 0) {
             file.setLastModified(System.currentTimeMillis())
             return@withContext file
         }
-        when (val result = client.speech(text, language, voice)) {
+        when (val result = client.speech(text, language, voice, previous)) {
             is VoiceResult.Audio -> {
                 cacheDir.mkdirs()
                 val partial = File(cacheDir, file.name + ".part")
@@ -162,7 +165,7 @@ class NaturalVoice(
 
     private fun key(text: String, language: String?, voice: String?): String {
         val server = client.activeServer().orEmpty()
-        val digest = MessageDigest.getInstance("SHA-256").digest("$server|$voice|$language|$text".toByteArray())
+        val digest = MessageDigest.getInstance("SHA-256").digest("v2|$server|$voice|$language|$text".toByteArray())
         return digest.joinToString("") { "%02x".format(it) }.take(40)
     }
 

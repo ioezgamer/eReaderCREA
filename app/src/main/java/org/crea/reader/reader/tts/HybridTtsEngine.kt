@@ -45,6 +45,9 @@ class HybridTtsEngine(
     private var player: MediaPlayer? = null
     private var playing: TtsEngine.RequestId? = null
 
+    /** The sentence read just before, sent as context so the voice continues the reading's intonation. */
+    private var lastSpoken: String? = null
+
     override val voices: Set<AndroidTtsEngine.Voice> get() = device.voices
 
     override val settings: StateFlow<AndroidTtsSettings> get() = device.settings
@@ -60,12 +63,14 @@ class HybridTtsEngine(
     }
 
     override fun speak(requestId: TtsEngine.RequestId, text: String, language: Language?) {
+        val previous = lastSpoken
+        lastSpoken = text
         if (!natural.shouldTry() || text.isBlank()) {
             device.speak(requestId, text, language)
             return
         }
         job = scope.launch {
-            val file = natural.audioFor(text, language?.code?.substringBefore('-')?.lowercase())
+            val file = natural.audioFor(text, language?.code?.substringBefore('-')?.lowercase(), previous)
             if (!isActive) return@launch
             if (file == null) {
                 device.speak(requestId, text, language)
@@ -117,6 +122,8 @@ class HybridTtsEngine(
     }
 
     override fun stop() {
+        // After a pause or a jump the next sentence does not follow the last one.
+        lastSpoken = null
         job?.cancel()
         job = null
         val interrupted = playing

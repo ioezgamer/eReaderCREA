@@ -127,3 +127,50 @@ test("si la voz elegida ya no existe en la cuenta, lee con la principal", async 
   assert.equal(audio.toString(), "ID3principal");
   assert.equal(api.calls.length, 2);
 });
+
+function chainedElevenLabs() {
+  let next = 0;
+  return () => new Response(Buffer.from("ID3audio"), { status: 200, headers: { "request-id": `req${++next}` } });
+}
+
+test("cada frase lleva la anterior y encadena los audios previos de la misma tablet", async () => {
+  const { voice, api } = setup({ respond: chainedElevenLabs() });
+  await voice.speak("dev1", "Primera frase.", "es");
+  await voice.speak("dev1", "Segunda frase.", "es", undefined, "Primera frase.");
+  await voice.speak("dev1", "Tercera frase.", "es", undefined, "Segunda frase.");
+  await voice.speak("dev1", "Cuarta frase.", "es", undefined, "Tercera frase.");
+  await voice.speak("dev1", "Quinta frase.", "es", undefined, "Cuarta frase.");
+  assert.equal(api.calls[0].body.previous_text, undefined);
+  assert.equal(api.calls[0].body.previous_request_ids, undefined);
+  assert.equal(api.calls[1].body.previous_text, "Primera frase.");
+  assert.deepEqual(api.calls[1].body.previous_request_ids, ["req1"]);
+  assert.deepEqual(api.calls[2].body.previous_request_ids, ["req1", "req2"]);
+  assert.deepEqual(api.calls[4].body.previous_request_ids, ["req2", "req3", "req4"], "como mucho 3");
+});
+
+test("tras un salto (la frase anterior no es la última leída) solo manda el texto, sin encadenar", async () => {
+  const { voice, api } = setup({ respond: chainedElevenLabs() });
+  await voice.speak("dev1", "Capítulo uno.", "es");
+  await voice.speak("dev2", "Otra tablet.", "es", undefined, "Capítulo uno.");
+  await voice.speak("dev1", "Capítulo cinco.", "es", undefined, "Final del capítulo cuatro.");
+  assert.equal(api.calls[1].body.previous_request_ids, undefined, "no mezcla tablets");
+  assert.equal(api.calls[2].body.previous_text, "Final del capítulo cuatro.");
+  assert.equal(api.calls[2].body.previous_request_ids, undefined);
+});
+
+test("con eleven_v3 manda el contexto pero no encadena (no lo admite)", async () => {
+  const { voice, api } = setup({ env: { ELEVENLABS_MODEL: "eleven_v3" }, respond: chainedElevenLabs() });
+  await voice.speak("dev1", "Uno.", "es");
+  await voice.speak("dev1", "Dos.", "es", undefined, "Uno.");
+  assert.equal(api.calls[1].body.previous_text, "Uno.");
+  assert.equal(api.calls[1].body.previous_request_ids, undefined);
+});
+
+test("los ajustes de expresividad de Render se mandan con valores válidos", async () => {
+  const { voice, api } = setup({ env: { VOICE_STABILITY: "0.4", VOICE_STYLE: "0.15", VOICE_SPEED: "3", VOICE_SPEAKER_BOOST: "true" } });
+  await voice.speak("dev1", "Hola.", "es");
+  assert.deepEqual(api.calls[0].body.voice_settings, { stability: 0.4, similarity_boost: 0.75, style: 0.15, speed: 1.2, use_speaker_boost: true });
+  const plain = setup();
+  await plain.voice.speak("dev1", "Hola.", "es");
+  assert.equal(plain.api.calls[0].body.voice_settings, undefined, "sin variables usa los ajustes de la voz");
+});

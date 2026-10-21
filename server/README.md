@@ -117,7 +117,14 @@ Variables (en el panel de Render):
 | `ELEVENLABS_MODEL` | Modelo. Flash v2.5 es el más rápido y gasta la mitad de créditos por carácter. | `eleven_flash_v2_5` |
 | `VOICE_MONTHLY_CHARS` | Tope de caracteres al mes para todo el servidor. | `400000` |
 | `VOICE_DEVICE_DAILY_CHARS` | Tope diario por tablet (~60 000 ≈ 1 hora de lectura). | `60000` |
+| `VOICE_STABILITY` | 0 a 1. Más baja = más expresiva y variada; más alta = más pareja y monótona. Para libros, 0,35–0,45. | la de la voz |
+| `VOICE_STYLE` | 0 a 1. Exagera el estilo de la voz; más de 0,3 suena teatral y tarda más. | la de la voz |
+| `VOICE_SIMILARITY` | 0 a 1. Cuánto se parece a la voz original. | 0,75 |
+| `VOICE_SPEED` | 0,7 a 1,2. Velocidad propia de la voz (la de la app se aplica encima). | 1 |
+| `VOICE_SPEAKER_BOOST` | `true`/`false`. Refuerza el parecido con la voz original. | la de la voz |
 | `VOICE_ENABLED` | `false` apaga la voz natural sin quitar la clave. | `true` |
+
+**Lectura natural entre frases**: la app pide el audio frase a frase, y con cada una manda la frase que acaba de leer. El servidor la pasa a ElevenLabs como `previous_text` y además encadena los audios anteriores de esa tablet (`previous_request_ids`, hasta 3 de las últimas 2 horas), así la entonación continúa la lectura en vez de empezar de cero en cada frase. Esto no gasta créditos extra. Con `eleven_v3` solo se manda el texto anterior, porque ese modelo no admite el encadenado.
 
 Si una voz de la lista deja de existir en la cuenta, esa frase se lee con la voz principal. Si la clave o la voz principal están mal, el servidor deja de intentarlo 10 minutos (`VOICE_MISCONFIGURED_MINUTES`) y Ajustes muestra el motivo en la tablet.
 

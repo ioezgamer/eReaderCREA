@@ -32,6 +32,11 @@ services:
       # Voces que se pueden elegir en la app: "id=Nombre, id=Nombre".
       - key: ELEVENLABS_VOICES
         sync: false
+      # Expresividad: más baja la estabilidad = más expresiva; el estilo exagera la forma de hablar.
+      - key: VOICE_STABILITY
+        value: "0.4"
+      - key: VOICE_STYLE
+        value: "0.15"
       - key: VOICE_MONTHLY_CHARS
         value: "400000"
       - key: VOICE_DEVICE_DAILY_CHARS

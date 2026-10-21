@@ -8,6 +8,11 @@
 
 const API = "https://api.elevenlabs.io/v1/text-to-speech/";
 const MAX_TEXT = 1200;
+// Contexto que se manda con cada frase para que la entonación continúe la lectura.
+const MAX_PREVIOUS_TEXT = 600;
+// ElevenLabs encadena como mucho 3 audios anteriores, de las últimas 2 horas.
+const STITCH_MAX = 3;
+const STITCH_TTL_MS = 2 * 3_600_000;
 const DEFAULT_VOICE = "21m00Tcm4TlvDq8ikWAM";
 const VOICE_ID = /^[A-Za-z0-9]{10,40}$/;
 
@@ -39,7 +44,32 @@ export function loadVoiceConfig(env = process.env) {
     suspendHours: Number(env.SUSPEND_HOURS || 6),
     // Clave o voz mal puestas: se deja de insistir un rato, hasta que alguien lo corrija en Render.
     misconfiguredMinutes: Number(env.VOICE_MISCONFIGURED_MINUTES || 10),
+    voiceSettings: loadVoiceSettings(env),
   };
+}
+
+/**
+ * Expresividad de la voz (opcional): VOICE_STABILITY (más bajo = más expresiva), VOICE_STYLE,
+ * VOICE_SIMILARITY, VOICE_SPEED y VOICE_SPEAKER_BOOST. Sin ninguna, se usan los ajustes de la voz.
+ */
+function loadVoiceSettings(env) {
+  const number = (name, min, max) => {
+    const value = Number(env[name]);
+    return env[name] !== undefined && env[name] !== "" && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : undefined;
+  };
+  const settings = {
+    stability: number("VOICE_STABILITY", 0, 1),
+    similarity_boost: number("VOICE_SIMILARITY", 0, 1),
+    style: number("VOICE_STYLE", 0, 1),
+    speed: number("VOICE_SPEED", 0.7, 1.2),
+  };
+  if (env.VOICE_SPEAKER_BOOST === "true" || env.VOICE_SPEAKER_BOOST === "false") {
+    settings.use_speaker_boost = env.VOICE_SPEAKER_BOOST === "true";
+  }
+  const defined = Object.fromEntries(Object.entries(settings).filter(([, value]) => value !== undefined));
+  if (Object.keys(defined).length === 0) return null;
+  // Si solo se ajusta una parte, el resto queda en valores de narración razonables.
+  return { stability: 0.5, similarity_boost: 0.75, ...defined };
 }
 
 /** Lee el código de error de ElevenLabs ({ detail: { status | code } }), si lo hay. */
@@ -56,6 +86,27 @@ export function createVoice({ config, store, ServiceError, fetchImpl = fetch, no
   const day = () => now().toISOString().slice(0, 10);
   const month = () => now().toISOString().slice(0, 7);
   const voiceById = (id) => config.voices.find((voice) => voice.id === id);
+  // Últimos audios de cada tablet y voz ({ id, text, at }), solo en memoria, para encadenar frases.
+  const recent = new Map();
+  const stitching = !config.model.startsWith("eleven_v3");
+
+  /** Ids de los audios que terminan en la frase [previousText] (la que la tablet acaba de leer). */
+  function previousIds(key, previousText) {
+    const list = recent.get(key);
+    if (!list || !previousText) return [];
+    const fresh = list.filter((item) => now().getTime() - item.at < STITCH_TTL_MS);
+    const last = fresh.map((item) => item.text).lastIndexOf(previousText);
+    if (last < 0) return [];
+    return fresh.slice(Math.max(0, last - STITCH_MAX + 1), last + 1).map((item) => item.id);
+  }
+
+  function remember(key, id, text) {
+    if (!id) return;
+    const list = (recent.get(key) ?? []).slice(-(STITCH_MAX * 2 - 1));
+    list.push({ id, text, at: now().getTime() });
+    recent.set(key, list);
+    if (recent.size > 500) recent.delete(recent.keys().next().value);
+  }
 
   async function unavailableReason() {
     if (!config.enabled) return "disabled";
@@ -79,7 +130,7 @@ export function createVoice({ config, store, ServiceError, fetchImpl = fetch, no
   }
 
   /** Devuelve el audio MP3 de [text], o lanza un ServiceError que la app entiende como "usa la voz del dispositivo". */
-  async function speak(deviceId, rawText, rawLanguage, rawVoice) {
+  async function speak(deviceId, rawText, rawLanguage, rawVoice, rawPrevious) {
     const text = String(rawText ?? "").trim();
     if (!text) throw new ServiceError(400, "invalid_input", "Texto vacío");
     if (text.length > MAX_TEXT) throw new ServiceError(413, "too_large", "Texto demasiado largo");
@@ -94,29 +145,43 @@ export function createVoice({ config, store, ServiceError, fetchImpl = fetch, no
       throw new ServiceError(429, "daily_limit", "Límite diario de voz natural alcanzado");
     }
 
-    let response = await request(voice, text, language);
+    const previous = String(rawPrevious ?? "").trim();
+    const context = { previousText: previous ? previous.slice(-MAX_PREVIOUS_TEXT) : undefined };
+    let usedVoice = voice;
+    let response = await request(voice, text, language, { ...context, previousIds: previousIds(`${deviceId}|${voice}`, previous) });
     // Si una voz de la lista ya no existe en la cuenta, se lee con la principal en vez de fallar.
     if (!response.ok && voice !== config.voiceId) {
       const body = await response.clone().text().catch(() => "");
       if (errorCode(body) === "voice_not_found" || response.status === 404) {
         console.error(`La voz ${voice} no está en la cuenta de ElevenLabs; se usa la principal.`);
-        response = await request(config.voiceId, text, language);
+        usedVoice = config.voiceId;
+        response = await request(usedVoice, text, language, { ...context, previousIds: previousIds(`${deviceId}|${usedVoice}`, previous) });
       }
     }
     if (!response.ok) throw await translateError(response);
 
+    remember(`${deviceId}|${usedVoice}`, response.headers.get("request-id"), text);
     const audio = Buffer.from(await response.arrayBuffer());
     await store.increment(`voice_day/${day()}/${deviceId}`, { chars: text.length });
     await store.increment(`voice_month/${month()}`, { chars: text.length, calls: 1 });
     return audio;
   }
 
-  async function request(voice, text, language) {
+  async function request(voice, text, language, { previousText, previousIds = [] } = {}) {
+    const body = {
+      text,
+      model_id: config.model,
+      ...(language ? { language_code: language } : {}),
+      ...(config.voiceSettings ? { voice_settings: config.voiceSettings } : {}),
+      // Lo leído justo antes: así la frase continúa la entonación en vez de sonar como un comienzo.
+      ...(previousText ? { previous_text: previousText } : {}),
+      ...(stitching && previousIds.length > 0 ? { previous_request_ids: previousIds } : {}),
+    };
     try {
       return await fetchImpl(`${API}${encodeURIComponent(voice)}?output_format=${config.outputFormat}`, {
         method: "POST",
         headers: { "xi-api-key": config.apiKey, "content-type": "application/json", accept: "audio/mpeg" },
-        body: JSON.stringify({ text, model_id: config.model, ...(language ? { language_code: language } : {}) }),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(20_000),
       });
     } catch {

@@ -1,5 +1,11 @@
 # Historial de cambios
 
+## 1.3.0 - 2026-10-21
+
+- **Lectura más natural con la voz de ElevenLabs**: cada frase se pide junto con la que se acaba de leer, y el servidor encadena los audios anteriores de la tablet, así la entonación continúa como en una lectura real en vez de empezar de cero en cada frase. No gasta créditos extra.
+- **Expresividad ajustable desde Render** (`VOICE_STABILITY`, `VOICE_STYLE`, `VOICE_SIMILARITY`, `VOICE_SPEED`, `VOICE_SPEAKER_BOOST`), sin publicar otra versión de la app.
+- El audio guardado de versiones anteriores se vuelve a pedir con la entonación nueva.
+
 ## 1.2.0 - 2026-10-21
 
 - **Selector de voz natural** en Ajustes > Lectura: se elige entre las voces aprobadas en el servidor (variable `ELEVENLABS_VOICES` en Render) y se puede escuchar una muestra antes de leer.

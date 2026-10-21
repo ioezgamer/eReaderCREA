@@ -133,13 +133,15 @@ class AiClient(
      * Audio (MP3) of [text] read by the natural voice. Short timeouts: when the voice is slow or
      * missing, reading goes on with the device voice instead of leaving a silence.
      */
-    suspend fun speech(text: String, language: String?, voice: String? = null): VoiceResult = withContext(Dispatchers.IO) {
+    suspend fun speech(text: String, language: String?, voice: String? = null, previousText: String? = null): VoiceResult = withContext(Dispatchers.IO) {
         if (!configured) return@withContext VoiceResult.Unavailable("not_configured")
         val token = accessToken() ?: return@withContext VoiceResult.Unavailable("needs_drive")
         val payload = buildJsonObject {
             put("text", text)
             if (language != null) put("language", language)
             if (voice != null) put("voice", voice)
+            // Only the end of the previous sentence is needed for the intonation.
+            if (!previousText.isNullOrBlank()) put("previousText", previousText.takeLast(600))
         }
         val connection = (URI(baseUrl.trimEnd('/') + "/v1/voice").toURL().openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
