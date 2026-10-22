@@ -322,7 +322,7 @@ async function fetchDrive() {
     try { return JSON.parse(await drive(`files/${f.id}`, { alt: "media", supportsAllDrives: true }, true)); } catch { return null; }
   });
   for (const p of loaded) if (p && typeof p === "object") profiles.push(p);
-  // Perfiles de lector (app 1.4+): uno por persona, con su grupo, en cualquier tablet.
+  // Perfiles de lector (app 1.4+): uno por persona, con su grupo, en cualquier dispositivo.
   const readerProfiles = (await pool(perf, 6, async (f) => {
     try { return JSON.parse(await drive(`files/${f.id}`, { alt: "media", supportsAllDrives: true }, true)); } catch { return null; }
   })).filter((p) => p && typeof p === "object" && !p.deleted);
@@ -338,8 +338,40 @@ function streakOf(days) {
   while (set.has(key(d))) { n++; d.setDate(d.getDate() - 1); }
   return n;
 }
+const DEVICE_GROUP = "Compartido por dispositivo";
+/**
+ * Junta las dos fuentes, sin perder ninguna: los perfiles de lector (app 1.4+, una fila por persona)
+ * y lo que cada dispositivo comparte con «Compartir mi lectura» (versiones anteriores y dispositivos
+ * donde nadie eligió perfil). Cada dispositivo aparece como una fila del grupo «Compartido por dispositivo».
+ */
 function buildModel(input) {
-  return input.readerProfiles?.length ? buildPeopleModel(input) : buildDeviceModel(input);
+  const devices = buildDeviceModel(input);
+  if (!input.readerProfiles?.length) return devices;
+  const people = buildPeopleModel(input);
+  const readers = [...people.readers, ...devices.readers.map((r) => ({ ...r, id: "dev-" + r.id, group: DEVICE_GROUP, device: true }))];
+  const now = Date.now();
+  return {
+    ...people,
+    source: "both",
+    readers,
+    books: bookCatalog(readers, input.books),
+    optedOut: devices.optedOut,
+    devices: devices.readers.length,
+    groups: buildGroups(readers, now),
+  };
+}
+/** Estadística de cada libro a partir de las lecturas de todas las filas. */
+function bookCatalog(readers, books) {
+  const stats = new Map();
+  for (const r of readers) for (const x of r.readings) {
+    const b = stats.get(x.id) || { id: x.id, title: x.title, author: x.author, readers: 0, finished: 0, sum: 0 };
+    b.readers++; b.sum += x.percent; if (x.percent >= DONE) b.finished++;
+    stats.set(x.id, b);
+  }
+  const catalog = [...books.values()].map((b) => ({ ...(stats.get(b.id) || { id: b.id, readers: 0, finished: 0, sum: 0 }), title: b.title, author: b.author }));
+  for (const b of stats.values()) if (!books.has(b.id)) catalog.push(b);
+  for (const b of catalog) b.avg = b.readers ? Math.round(b.sum / b.readers) : 0;
+  return catalog;
 }
 /** Una persona por perfil de lector, con su grupo. Quien ocultó su lectura cuenta en los totales, sin nombre. */
 function buildPeopleModel({ readerProfiles, books }) {
@@ -379,7 +411,7 @@ function buildPeopleModel({ readerProfiles, books }) {
 function buildGroups(readers, now) {
   const byKey = new Map();
   for (const r of readers) {
-    const k = r.group === NO_GROUP ? "" : groupKey(r.group);
+    const k = r.group === NO_GROUP ? "" : r.group === DEVICE_GROUP ? "~dispositivos" : groupKey(r.group);
     const g = byKey.get(k) || { key: k, name: r.group, members: [] };
     g.members.push(r); byKey.set(k, g);
   }
@@ -400,7 +432,8 @@ function buildGroups(readers, now) {
       last: Math.max(0, ...g.members.map((m) => m.last)),
       top: [...books.values()].sort((a, b) => b.readers - a.readers || b.finished - a.finished).slice(0, 5),
     };
-  }).sort((a, b) => (a.key === "") - (b.key === "") || b.active - a.active || b.members.length - a.members.length);
+  }).sort((a, b) => rank(a) - rank(b) || b.active - a.active || b.members.length - a.members.length);
+  function rank(g) { return g.name === DEVICE_GROUP ? 2 : g.key === "" ? 1 : 0; }
 }
 function buildDeviceModel({ profiles, books }) {
   const now = Date.now();
@@ -446,13 +479,15 @@ function demoData() {
   profiles.push({ userId: "x1", nickname: "", active: false, readings: [] }, { userId: "x2", nickname: "", active: false, readings: [] });
   // Los mismos lectores como perfiles de la app 1.4+, repartidos en grupos.
   const groups = ["Club martes", "Club jueves", "Lectores de 9.º", ""];
-  const readerProfiles = profiles.filter((p) => p.active).map((p, i) => ({
+  // En el ejemplo, 16 personas ya usan perfiles y el resto sigue compartiendo por dispositivo.
+  const migrated = profiles.filter((p) => p.active).slice(0, 16);
+  const readerProfiles = migrated.map((p, i) => ({
     id: p.userId, nickname: p.nickname, group: groups[i % groups.length], hidden: i === 5,
     days: Array.from({ length: Math.floor(rnd() * 6) }, (_, d) => new Date(now - d * DAY).toISOString().slice(0, 10)),
     history: p.readings.map((r) => ({ key: "drive:" + r.driveFileId, driveFileId: r.driveFileId, title: books.get(r.driveFileId)?.title, percent: r.percent,
       openedAt: r.updatedAt, progressAt: r.updatedAt, finishedAt: r.percent >= DONE ? r.updatedAt : null })),
   }));
-  return { profiles, books, readerProfiles };
+  return { profiles: profiles.filter((p) => !migrated.includes(p)), books, readerProfiles };
 }
 
 /* ---------- mosaico ---------- */
@@ -510,8 +545,10 @@ function render() {
   $("#updated").textContent = "Actualizado " + new Date(m.loadedAt).toLocaleTimeString("es-NI", { hour: "2-digit", minute: "2-digit" });
   $("#banners").innerHTML =
     (state.demo ? `<p class="note demo"><b>Datos de ejemplo.</b> Entra con Google para ver a las personas lectoras reales.</p>` : "") +
-    (m.source === "people"
-      ? `<p class="note">Cada persona lectora es un perfil de la app (apodo y grupo, sin correo), con lo que leyó en cualquier tablet.${m.hidden ? ` ${plural(m.hidden, "persona pidió", "personas pidieron")} ocultar su lectura: cuenta en los totales, sin su apodo.` : ""}</p>`
+    (m.source === "both"
+      ? `<p class="note">Se juntan dos fuentes: los <b>perfiles de lector</b> (app 1.4 o posterior: apodo y grupo, sin correo, con lo que leyó en cualquier dispositivo) y lo que ${plural(m.devices, "dispositivo comparte", "dispositivos comparten")} con <b>«Compartir mi lectura»</b>, que aparece en el grupo «${DEVICE_GROUP}». Una misma persona puede contar en las dos mientras se pasa a los perfiles.${m.hidden ? ` ${plural(m.hidden, "persona pidió", "personas pidieron")} ocultar su lectura: cuenta en los totales, sin su apodo.` : ""}</p>`
+      : m.source === "people"
+      ? `<p class="note">Cada persona lectora es un perfil de la app (apodo y grupo, sin correo), con lo que leyó en cualquier dispositivo.${m.hidden ? ` ${plural(m.hidden, "persona pidió", "personas pidieron")} ocultar su lectura: cuenta en los totales, sin su apodo.` : ""}</p>`
       : `<p class="note">Aquí aparecen solo quienes activaron <b>«Compartir mi lectura»</b> en la app${m.optedOut ? ` (${plural(m.optedOut, "persona dejó", "personas dejaron")} de compartir y no se muestran)` : ""}. Se ve el avance de su dispositivo, con apodo y sin correo. Con la app 1.4 o posterior verás a cada persona y su grupo.</p>`);
   ({ summary: renderSummary, groups: renderGroups, readers: renderReaders, books: renderBooks })[state.view](c, m);
 }
@@ -601,14 +638,14 @@ function activityChart(R) {
 
 function renderGroups(c, m) {
   const G = m.groups || [];
-  if (m.source !== "people") {
-    c.innerHTML = `<p class="empty">Los grupos aparecen cuando las tablets usan la app 1.4 o posterior y las personas eligen su grupo en su perfil.</p>`;
+  if (m.source === "devices") {
+    c.innerHTML = `<p class="empty">Los grupos aparecen cuando los dispositivos usan la app 1.4 o posterior y las personas eligen su grupo en su perfil.</p>`;
     return;
   }
   if (!G.length) { c.innerHTML = `<p class="empty">Todavía no hay perfiles de lector.</p>`; return; }
   c.innerHTML = `
     <section class="hero">
-      <h1 class="lede">${esc(plural(G.filter((g) => g.key).length, "grupo de lectura", "grupos de lectura"))} con ${esc(plural(m.readers.length, "persona", "personas"))}.</h1>
+      <h1 class="lede">${esc(plural(G.filter((g) => g.key && g.name !== DEVICE_GROUP).length, "grupo de lectura", "grupos de lectura"))} con ${esc(plural(m.readers.filter((r) => !r.device).length, "persona", "personas"))}.</h1>
       <p class="sub">Quién lee en cada grupo, cuánto avanzan y qué libros les gustan: una pista para elegir libros para la biblioteca física.</p>
     </section>
     ${G.map((g) => `
@@ -641,20 +678,20 @@ function renderReaders(c, m) {
     <div class="tools">
       <input id="q" type="search" placeholder="Buscar por apodo" aria-label="Buscar por apodo" value="${esc(state.q)}">
       <select id="status" aria-label="Filtrar por estado"><option value="all">Todos</option><option value="active">Activos (7 días)</option><option value="slow">Poco activos (30 días)</option><option value="idle">Inactivos</option></select>
-      ${m.source === "people" ? `<select id="group" aria-label="Filtrar por grupo"><option value="all">Todos los grupos</option>${(m.groups || []).map((g) => `<option value="${esc(g.key)}">${esc(g.name)}</option>`).join("")}</select>` : ""}
+      ${m.source !== "devices" ? `<select id="group" aria-label="Filtrar por grupo"><option value="all">Todos los grupos</option>${(m.groups || []).map((g) => `<option value="${esc(g.key)}">${esc(g.name)}</option>`).join("")}</select>` : ""}
     </div>
     <div class="table-wrap"><table><thead><tr>
-      <th data-k="name">Lector</th>${m.source === "people" ? `<th data-k="group">Grupo</th>` : ""}<th data-k="status">Estado</th><th data-k="inProgress" class="num">En curso</th><th data-k="finished" class="num">Terminados</th><th data-k="avg">Avance medio</th><th data-k="last" class="num">Última lectura</th>
+      <th data-k="name">Lector</th>${m.source !== "devices" ? `<th data-k="group">Grupo</th>` : ""}<th data-k="status">Estado</th><th data-k="inProgress" class="num">En curso</th><th data-k="finished" class="num">Terminados</th><th data-k="avg">Avance medio</th><th data-k="last" class="num">Última lectura</th>
     </tr></thead><tbody id="rows"></tbody></table></div>`;
   $("#status").value = state.status;
   const draw = () => {
     const q = state.q.trim().toLowerCase(); const { key, dir } = state.sort;
-    const inGroup = (r) => state.group === "all" || (r.group === NO_GROUP ? "" : groupKey(r.group)) === state.group;
+    const inGroup = (r) => state.group === "all" || (r.group === NO_GROUP ? "" : r.group === DEVICE_GROUP ? "~dispositivos" : groupKey(r.group)) === state.group;
     const list = m.readers.filter((r) => (state.status === "all" || r.status === state.status) && inGroup(r) && (!q || r.name.toLowerCase().includes(q)))
       .sort((a, b) => (typeof a[key] === "string" ? a[key].localeCompare(b[key], "es") : a[key] - b[key]) * dir);
     $("#rows").innerHTML = list.length ? list.map((r) => `<tr data-reader="${esc(r.id)}">
       <td><span class="person"><span class="piece ${pieceClass(r.name)}" style="--c:var(--${progVar(r.avg)})">${esc(initials(r.name))}</span>${esc(r.name)}</span></td>
-      ${m.source === "people" ? `<td>${esc(r.group)}</td>` : ""}<td><span class="status" style="--c:var(--${STATUS[r.status][0]})">${STATUS[r.status][1]}</span></td>
+      ${m.source !== "devices" ? `<td>${esc(r.group)}</td>` : ""}<td><span class="status" style="--c:var(--${STATUS[r.status][0]})">${STATUS[r.status][1]}</span></td>
       <td class="num">${r.inProgress}</td><td class="num">${r.finished}</td>
       <td><span class="mini"><i style="--c:var(--${progVar(r.avg)});width:${r.avg}%"></i></span>${r.avg} %</td>
       <td class="num">${esc(ago(r.last))}</td></tr>`).join("") : `<tr><td colspan="7" class="empty">Ningún lector coincide con la búsqueda.</td></tr>`;
