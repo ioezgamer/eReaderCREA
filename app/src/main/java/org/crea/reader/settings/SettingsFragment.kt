@@ -352,6 +352,7 @@ class SettingsFragment : Fragment() {
     // region Library
 
     private fun bindLibrary() {
+        renderReadersRow()
         row(binding.settingsDriveRow, R.drawable.ic_cloud_done, R.string.settings_drive_title, getString(R.string.settings_drive_detail))
             .root.setOnClickListener { findNavController().navigate(R.id.sync) }
 
@@ -404,6 +405,38 @@ class SettingsFragment : Fragment() {
     }
 
     // endregion
+
+    /** Group tablet (several readers) or one person: automatic, or forced here. */
+    private fun renderReadersRow() {
+        val readers = app.readers
+        val override = readers.modeOverride.value
+        val detail = when (override) {
+            true -> getString(R.string.settings_readers_group)
+            false -> getString(R.string.settings_readers_single)
+            null -> if (readers.isGroupTablet) {
+                getString(R.string.settings_readers_auto_group, app.syncStateStore.accountDevices)
+            } else {
+                getString(R.string.settings_readers_auto_single)
+            }
+        }
+        row(binding.settingsReadersRow, R.drawable.ic_nav_profile_outline, R.string.settings_readers_title, detail)
+            .root.setOnClickListener {
+                val options = arrayOf(
+                    getString(R.string.settings_readers_auto),
+                    getString(R.string.settings_readers_group),
+                    getString(R.string.settings_readers_single),
+                )
+                val checked = when (readers.modeOverride.value) { null -> 0; true -> 1; false -> 2 }
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.settings_readers_title)
+                    .setSingleChoiceItems(options, checked) { dialog, which ->
+                        readers.setModeOverride(when (which) { 1 -> true; 2 -> false; else -> null })
+                        dialog.dismiss()
+                        renderReadersRow()
+                    }
+                    .show()
+            }
+    }
 
     private fun row(row: ItemSettingsRowBinding, icon: Int, title: Int, detail: String): ItemSettingsRowBinding {
         row.rowIcon.setImageResource(icon)

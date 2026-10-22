@@ -66,6 +66,13 @@ class ReaderRepository(
     private val repository: MutableMap<Long, ReaderInitData> =
         mutableMapOf()
 
+    /** The open books as reader profiles know them (to record what each person reads). */
+    private val refs: MutableMap<Long, org.crea.reader.readers.BookRef> =
+        java.util.concurrent.ConcurrentHashMap()
+
+    private val readers: org.crea.reader.readers.ReaderStore
+        get() = (application as org.crea.reader.Application).readers
+
     private val mediaServiceFacade: MediaServiceFacade =
         MediaServiceFacade(application)
 
@@ -118,7 +125,9 @@ class ReaderRepository(
             )
         }
 
-        val initialLocator = source.progression
+        // A reader who already started this book (on any tablet) continues where they stopped.
+        val ownPosition = source.ref?.let { runCatching { readers.progressionFor(it.key) }.getOrNull() }
+        val initialLocator = (ownPosition ?: source.progression)
             ?.let { Locator.fromJSON(JSONObject(it)) }
 
         val readerInitData = when {
@@ -140,6 +149,10 @@ class ReaderRepository(
 
         return readerInitData.map {
             repository[bookId] = it
+            source.ref?.let { ref ->
+                refs[bookId] = ref
+                runCatching { readers.opened(ref) }
+            }
 
             if (it is MediaReaderInitData) {
                 mediaServiceFacade.openSession(bookId, it.mediaNavigator)
@@ -151,7 +164,15 @@ class ReaderRepository(
         val url: AbsoluteUrl,
         val mediaType: MediaType,
         val progression: String?,
+        val ref: org.crea.reader.readers.BookRef? = null,
     )
+
+    /** Records in the current reader's profile how far they are in [bookId]. */
+    fun recordProgress(bookId: Long, locator: Locator) {
+        val ref = refs[bookId] ?: return
+        val json = locator.toJSON().toString()
+        runCatching { readers.progressed(ref, json, org.crea.reader.utils.ReadingProgress.percent(json)) }
+    }
 
     /**
      * Where to read the book from: its file in "Mi biblioteca", or, for a negative [bookId], the
@@ -162,10 +183,16 @@ class ReaderRepository(
         if (OnlineBookIds.isOnline(bookId)) {
             val entry = driveCatalogDao.getByReaderId(bookId) ?: return null
             val mediaType = if (entry.format == "PDF") MediaType.PDF else MediaType.EPUB
-            return Source(onlineCache.fileFor(entry).toUrl(isDirectory = false), mediaType, entry.progression)
+            val ref = org.crea.reader.readers.BookRef(
+                key = "drive:${entry.driveFileId}",
+                title = entry.title,
+                author = entry.author,
+                driveFileId = entry.driveFileId,
+            )
+            return Source(onlineCache.fileFor(entry).toUrl(isDirectory = false), mediaType, entry.progression, ref)
         }
         val book = bookRepository.get(bookId) ?: return null
-        return Source(book.url, book.mediaType, book.progression)
+        return Source(book.url, book.mediaType, book.progression, book.toReaderRef())
     }
 
     /** Files of the online books that are currently open, so cache cleanup leaves them alone. */
@@ -288,6 +315,13 @@ class ReaderRepository(
     }
 
     fun close(bookId: Long) {
+        // What this reader just read reaches the other tablets soon, so they can continue anywhere.
+        if (refs.remove(bookId) != null) {
+            val app = application as org.crea.reader.Application
+            if (app.syncStateStore.isEnabled && app.readers.dirtyIds().isNotEmpty()) {
+                org.crea.reader.sync.SyncScheduler.runSoon(application)
+            }
+        }
         coroutineQueue.launch {
             Timber.v("Closing Publication $bookId.")
             when (val initData = repository.remove(bookId)) {
@@ -307,3 +341,8 @@ class ReaderRepository(
     }
 }
 
+/** How a book of "Mi biblioteca" is known in reader profiles. */
+fun org.crea.reader.data.model.Book.toReaderRef(): org.crea.reader.readers.BookRef? {
+    val key = org.crea.reader.readers.ReaderRules.keyFor(remoteFileId, contentHash) ?: return null
+    return org.crea.reader.readers.BookRef(key, title.orEmpty(), author, remoteFileId)
+}

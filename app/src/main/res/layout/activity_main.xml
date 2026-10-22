@@ -167,7 +167,7 @@
             android:layout_marginEnd="1dp"
             android:background="@drawable/bg_nav_item"
             android:clickable="true"
-            android:contentDescription="@string/title_community"
+            android:contentDescription="@string/profile_title"
             android:focusable="true"
             android:gravity="center"
             android:minWidth="48dp"
@@ -181,7 +181,7 @@
                 android:layout_height="26dp"
                 android:contentDescription="@null"
                 android:duplicateParentState="true"
-                android:src="@drawable/ic_nav_community"
+                android:src="@drawable/ic_nav_profile_outline"
                 app:tint="@color/nav_item" />
 
             <TextView
@@ -190,7 +190,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:duplicateParentState="true"
-                android:text="@string/title_community"
+                android:text="@string/profile_title"
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textAppearance="?attr/textAppearanceLabelLarge"

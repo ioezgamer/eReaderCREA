@@ -108,6 +108,16 @@
                 </LinearLayout>
             </FrameLayout>
 
+            <!-- Group tablets: "who is reading today?" (never required to read) -->
+            <androidx.compose.ui.platform.ComposeView
+                android:id="@+id/bookshelf_reader_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginEnd="16dp"
+                android:visibility="gone" />
+
             <!-- Resume the last book with one tap -->
             <LinearLayout
                 android:id="@+id/bookshelf_continue_card"

@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.navigation_bookshelf,
                 R.id.navigation_online_catalog,
                 R.id.navigation_catalog_list,
-                R.id.navigation_community,
+                R.id.navigation_profile,
                 R.id.navigation_settings
             )
         )
@@ -92,6 +92,8 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
         val app = application as Application
         SyncScheduler.runIfStale(this, app.syncStateStore.snapshot())
+        // On a group tablet a session left alone ends by itself (next person starts fresh).
+        app.readers.expireIfIdle()
         lifecycleScope.launch { app.aiService.availability.refresh() }
     }
 

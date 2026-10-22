@@ -1,5 +1,15 @@
 # Historial de cambios
 
+## 1.4.0 - 2026-10-22
+
+- **Perfiles de lector**: la pestaña «Comunidad» pasa a ser **Perfil**, con lo que cada persona ha leído (aparte de Mi biblioteca): Seguir leyendo (el último abierto primero), Leídos recientemente, Favoritos y Terminados. «Qué leen los demás» sigue dentro del Perfil.
+- **Tablets de grupo** (varias tablets con la misma cuenta): tarjeta «¿Quién lee hoy?» en Mi biblioteca. Un toque en tu nombre y tu lectura te espera en cualquier tablet; «Soy nuevo» pide solo un apodo y un dibujo (sin apellidos, correos ni fotos). Se puede leer sin elegir: lo leído pasa al perfil si luego eliges tu nombre.
+- **Devolver la tablet**: botón «Terminé»; la sesión también se cierra sola tras 30 minutos sin uso o al día siguiente.
+- **Sigue en cualquier tablet**: cada perfil se guarda en la carpeta de Drive (`crea-perfil-….json`) y al abrir un libro continúa donde esa persona lo dejó.
+- **Cuentas personales** (colaboradores): un perfil automático, sin elegir nombre.
+- Ajustes > Biblioteca > «Lectores en esta tablet»: automático (según cuántas tablets usan la cuenta), varias personas o una sola.
+- En el perfil: cambiar nombre o dibujo, ocultar la lectura a los demás, borrar el historial o eliminar el perfil.
+
 ## 1.3.0 - 2026-10-21
 
 - **Lectura más natural con la voz de ElevenLabs**: cada frase se pide junto con la que se acaba de leer, y el servidor encadena los audios anteriores de la tablet, así la entonación continúa como en una lectura real en vez de empezar de cero en cada frase. No gasta créditos extra.

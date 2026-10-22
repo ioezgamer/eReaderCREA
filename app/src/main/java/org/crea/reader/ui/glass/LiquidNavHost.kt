@@ -24,7 +24,7 @@ object LiquidNavHost {
         LiquidNavItem(R.drawable.ic_nav_library_outline, R.drawable.ic_nav_library_filled, R.string.title_bookshelf),
         LiquidNavItem(R.drawable.ic_nav_online_outline, R.drawable.ic_nav_online_filled, R.string.tab_online_catalog),
         LiquidNavItem(R.drawable.ic_nav_explore_outline, R.drawable.ic_nav_explore_filled, R.string.title_catalogs),
-        LiquidNavItem(R.drawable.ic_nav_community_outline, R.drawable.ic_nav_community_filled, R.string.title_community),
+        LiquidNavItem(R.drawable.ic_nav_profile_outline, R.drawable.ic_nav_profile_filled, R.string.profile_title),
         LiquidNavItem(R.drawable.ic_nav_settings_outline, R.drawable.ic_nav_settings_filled, R.string.title_settings),
     )
 

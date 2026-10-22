@@ -300,6 +300,25 @@ class GoogleDriveRestClient(
         ) { bytes.inputStream() }
     }
 
+    /** Reader profiles (see [org.crea.reader.readers.ReaderProfile]) stored in the shared folder. */
+    suspend fun listReaderFiles(folderId: String): List<DriveFile> =
+        list(
+            query = "'$folderId' in parents and trashed = false and name contains '$READER_PREFIX'",
+            spaces = "drive",
+        ).filter { it.name.startsWith(READER_PREFIX) }
+
+    suspend fun uploadReader(folderId: String, name: String, value: String, existingFileId: String?): DriveFile {
+        val bytes = value.toByteArray(Charsets.UTF_8)
+        return upload(
+            name = name,
+            size = bytes.size.toLong(),
+            mimeType = "application/json",
+            parentId = folderId,
+            existingFileId = existingFileId,
+            appProperties = mapOf("kind" to "reader"),
+        ) { bytes.inputStream() }
+    }
+
     suspend fun listByName(folderId: String, name: String): List<DriveFile> =
         list(
             query = "'$folderId' in parents and trashed = false and name = '${name.replace("'", "\'")}'",
@@ -418,6 +437,7 @@ class GoogleDriveRestClient(
     companion object {
         const val APP_DATA_FOLDER = "appDataFolder"
         const val COMMUNITY_PREFIX = "crea-lector-"
+        const val READER_PREFIX = "crea-perfil-"
         const val FOLDER_MIME = "application/vnd.google-apps.folder"
         private const val API = "https://www.googleapis.com/drive/v3"
         private const val UPLOAD = "https://www.googleapis.com/upload/drive/v3"

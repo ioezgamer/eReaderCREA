@@ -6,6 +6,7 @@
 
 package org.crea.reader.bookshelf
 
+import org.crea.reader.reader.toReaderRef
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
@@ -30,7 +31,11 @@ class BookshelfViewModel(application: Application) : AndroidViewModel(applicatio
     val annotatedIds = app.bookRepository.annotatedBookIds()
 
     fun setFavorite(bookId: Long, favorite: Boolean) {
-        viewModelScope.launch { app.bookRepository.setFavorite(bookId, favorite) }
+        viewModelScope.launch {
+            app.bookRepository.setFavorite(bookId, favorite)
+            // The person reading also keeps it among their own favourites.
+            app.bookRepository.get(bookId)?.toReaderRef()?.let { app.readers.setFavorite(it, favorite) }
+        }
     }
 
     val collections = app.bookRepository.collections()

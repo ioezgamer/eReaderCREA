@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Reader profile (outline) -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,12.25c2.35,0 4.25,-1.9 4.25,-4.25S14.35,3.75 12,3.75 7.75,5.65 7.75,8s1.9,4.25 4.25,4.25zM12,5.25c1.52,0 2.75,1.23 2.75,2.75S13.52,10.75 12,10.75 9.25,9.52 9.25,8 10.48,5.25 12,5.25zM12,13.5c-3.73,0 -7.5,1.83 -7.5,4.75v1.25c0,0.41 0.34,0.75 0.75,0.75h13.5c0.41,0 0.75,-0.34 0.75,-0.75v-1.25c0,-2.92 -3.77,-4.75 -7.5,-4.75zM18,18.75H6v-0.5c0,-1.69 2.75,-3.25 6,-3.25s6,1.56 6,3.25v0.5z" />
+</vector>

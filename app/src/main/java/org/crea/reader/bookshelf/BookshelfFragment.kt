@@ -46,6 +46,7 @@ import org.crea.reader.online.CategoryChips
 import org.crea.reader.online.CategoryPaths
 import org.crea.reader.opds.GridAutoFitLayoutManager
 import org.crea.reader.reader.ReaderActivityContract
+import org.crea.reader.reader.toReaderRef
 import org.crea.reader.sync.LibrarySyncEngine
 import org.crea.reader.sync.SyncScheduler
 import org.crea.reader.sync.SyncStateStore
@@ -149,8 +150,21 @@ class BookshelfFragment : Fragment() {
         }
         renderSyncState(app.syncStateStore.snapshot(), app.syncEngine.progress.value)
 
+        // Group tablets: "who is reading today?" (reading never waits for it).
+        binding.bookshelfReaderCard.setContent {
+            org.crea.reader.readers.ReaderSessionCard(app.readers, onOpenProfile = { findNavController().navigate(R.id.community) })
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    app.readers.expireIfIdle()
+                    combine(app.readers.activeId, app.readers.profiles, app.readers.modeOverride) { _, _, _ -> }
+                        .collect {
+                            binding.bookshelfReaderCard.isVisible = app.readers.isGroupTablet
+                            applyFilters()
+                        }
+                }
                 launch {
                     bookshelfViewModel.books.filterNotNull().collectLatest {
                         booksLoaded = true
@@ -236,6 +250,10 @@ class BookshelfFragment : Fragment() {
     }
 
     private fun renderContinueReading() {
+        if (app.readers.isGroupTablet) {
+            renderReaderContinue()
+            return
+        }
         val candidate = if (query.text.isBlank() && query.filter == LibraryFilter.ALL) {
             allBooks
                 .filter { BookshelfAdapter.progressPercent(it.progression) in 1 until LibraryRules.FINISHED_AT }
@@ -253,6 +271,33 @@ class BookshelfFragment : Fragment() {
         binding.continueProgress.setProgressCompat(progress, true)
         binding.continuePercent.text = getString(R.string.book_progress_label, progress)
         CoverImages.request(candidate.cover)
+            .placeholder(R.drawable.cover)
+            .into(binding.continueCover)
+    }
+
+    /**
+     * On a group tablet the last book read here may be somebody else's: "Continuar leyendo" shows
+     * the current reader's own last book (if it is in this library), and nothing for a guest.
+     */
+    private fun renderReaderContinue() {
+        val reader = app.readers.current()
+        val showing = query.text.isBlank() && query.filter == LibraryFilter.ALL
+        val match = if (reader == null || !showing) null else {
+            val byKey = allBooks.mapNotNull { book -> book.toReaderRef()?.let { it.key to book } }.toMap()
+            org.crea.reader.readers.ReaderRules.continueReading(reader).firstNotNullOfOrNull { entry ->
+                byKey[entry.key]?.let { entry to it }
+            }
+        }
+        continueBookId = match?.second?.id
+        binding.bookshelfContinueCard.isVisible = match != null
+        if (match == null) return
+        val (entry, book) = match
+        binding.continueTitle.text = book.title
+        binding.continueAuthor.text = book.author.orEmpty()
+        binding.continueAuthor.isVisible = !book.author.isNullOrBlank()
+        binding.continueProgress.setProgressCompat(entry.percent, true)
+        binding.continuePercent.text = getString(R.string.book_progress_label, entry.percent)
+        CoverImages.request(book.cover)
             .placeholder(R.drawable.cover)
             .into(binding.continueCover)
     }

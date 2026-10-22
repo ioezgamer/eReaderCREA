@@ -414,6 +414,10 @@
             android:text="@string/settings_section_library" />
 
         <include
+            android:id="@+id/settings_readers_row"
+            layout="@layout/item_settings_row" />
+
+        <include
             android:id="@+id/settings_drive_row"
             layout="@layout/item_settings_row" />
 

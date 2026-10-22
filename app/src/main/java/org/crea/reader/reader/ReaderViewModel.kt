@@ -113,6 +113,7 @@ class ReaderViewModel(
     fun saveProgression(locator: Locator) = viewModelScope.launch {
         Timber.v("Saving locator for book $bookId: $locator.")
         bookRepository.saveProgression(locator, bookId)
+        readerRepository.recordProgress(bookId, locator)
     }
 
     fun getBookmarks() = bookRepository.bookmarksForBook(bookId)

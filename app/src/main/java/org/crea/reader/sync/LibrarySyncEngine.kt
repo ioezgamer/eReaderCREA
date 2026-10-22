@@ -55,6 +55,7 @@ class LibrarySyncEngine(
     private val insightsDao: InsightsDao,
     private val insightsState: InsightsSyncState,
     private val ai: () -> AiService?,
+    private val readers: org.crea.reader.readers.ReaderSync? = null,
 ) {
     enum class Stage { CONNECTING, CHECKING, COVERS, UPLOADING, FINISHING }
 
@@ -246,6 +247,8 @@ class LibrarySyncEngine(
         val ownChanged = storedOwn == null || storedOwn.name != myName || storedOwn.readings != ownReadings
         val own = SyncedDevice(myId, myName, if (ownChanged) now else storedOwn.updatedAt, ownReadings)
         val finalDevices = (others + own).sortedBy { it.deviceId }
+        // Many tablets on one account means group tablets, where readers pick their profile.
+        stateStore.accountDevices = finalDevices.size
         readingsStore.replace(
             others.flatMap { device ->
                 device.readings.map { RemoteReading(device.deviceId, device.name, it.driveFileId, it.percent, it.updatedAt) }
@@ -271,6 +274,7 @@ class LibrarySyncEngine(
         }
 
         syncCommunity(drive, folderId, myId, user?.permissionId, ownReadings, live, now)
+        readers?.sync(drive, folderId)
 
         val result = Result(listing.size, now)
         stateStore.markSuccess(now, listing.size, summary.toSummary(), account)

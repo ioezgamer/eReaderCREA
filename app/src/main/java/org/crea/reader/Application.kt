@@ -114,6 +114,9 @@ class Application : android.app.Application() {
 
     lateinit var aiService: AiService
 
+    /** Reader profiles: who is reading on this tablet and what each person has read. */
+    lateinit var readers: org.crea.reader.readers.ReaderStore
+
     /** Natural voice (ElevenLabs) for reading aloud; the device voice is used whenever it cannot. */
     lateinit var naturalVoice: NaturalVoice
         private set
@@ -224,6 +227,11 @@ class Application : android.app.Application() {
             .stateIn(coroutineScope, SharingStarted.Eagerly, emptyMap())
         deviceReadingsStore = DeviceReadingsStore(this)
         communityStore = CommunityStore(this)
+        readers = org.crea.reader.readers.ReaderStore(
+            this,
+            accountDevices = { syncStateStore.accountDevices },
+            account = { syncStateStore.snapshot().account },
+        )
         syncEngine = LibrarySyncEngine(
             bookRepository,
             driveCatalogDao,
@@ -235,7 +243,8 @@ class Application : android.app.Application() {
             communityStore = communityStore,
             insightsDao = insightsDao,
             insightsState = InsightsSyncState(this),
-            ai = { aiService }
+            ai = { aiService },
+            readers = org.crea.reader.readers.ReaderSync(readers),
         )
         onlineBooks = OnlineBookManager(
             context = this,

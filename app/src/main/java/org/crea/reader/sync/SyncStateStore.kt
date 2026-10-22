@@ -28,6 +28,11 @@ class SyncStateStore(context: Context) {
         set(value) = update { putString(KEY_FOLDER_ID, value) }
 
     /** True once the pre-folder (hidden appData) links have been discarded. */
+    /** How many devices use this Google account (from the last sync): many means group tablets. */
+    var accountDevices: Int
+        get() = preferences.getInt(KEY_ACCOUNT_DEVICES, 0)
+        set(value) = preferences.edit().putInt(KEY_ACCOUNT_DEVICES, value).apply()
+
     var folderMigrated: Boolean
         get() = preferences.getBoolean(KEY_FOLDER_MIGRATED, false)
         set(value) = update { putBoolean(KEY_FOLDER_MIGRATED, value) }
@@ -144,6 +149,7 @@ class SyncStateStore(context: Context) {
         private const val KEY_ACCOUNT = "account"
         private const val KEY_FOLDER_ID = "folder_id"
         private const val KEY_FOLDER_MIGRATED = "folder_migrated"
+        private const val KEY_ACCOUNT_DEVICES = "account_devices"
         private const val KEY_ADDED = "last_added"
         private const val KEY_UPDATED = "last_updated"
         private const val KEY_UPLOADED = "last_uploaded"
