@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="readers_who_reads">Who is reading today?</string>
-    <string name="readers_who_reads_detail">Tap your name and your reading will wait for you on any tablet. Or just read without choosing.</string>
+    <string name="readers_who_reads_detail">Tap your name and your reading will wait for you on any device. Or just read without choosing.</string>
     <string name="readers_who_reads_keep">Want to keep what you just read? Tap your name and it goes to your profile.</string>
     <string name="readers_new">I\'m new</string>
     <string name="readers_search">Search</string>
@@ -20,10 +20,10 @@
     <string name="readers_change_name">Change my name</string>
     <string name="readers_search_title">Find your name</string>
     <string name="readers_search_hint">Type your name</string>
-    <string name="readers_finished_toast">Thanks for reading! The tablet is ready for the next person.</string>
+    <string name="readers_finished_toast">Thanks for reading! The device is ready for the next person.</string>
     <string name="profile_title">Profile</string>
     <string name="profile_guest_title">You are reading without a profile</string>
-    <string name="profile_guest_detail">Pick your name to keep what you read and continue on any tablet.</string>
+    <string name="profile_guest_detail">Pick your name to keep what you read and continue on any device.</string>
     <string name="profile_continue">Continue reading</string>
     <string name="profile_recent">Recently read</string>
     <string name="profile_favorites">Favourites</string>
@@ -32,26 +32,26 @@
     <string name="profile_stat_finished">finished</string>
     <string name="profile_stat_books">books opened</string>
     <string name="profile_stat_favorites">favourites</string>
-    <string name="profile_finish_button">I\'m done, hand the tablet back</string>
+    <string name="profile_finish_button">I\'m done, hand the device back</string>
     <string name="profile_community">What others are reading</string>
-    <string name="profile_community_detail">What is being read on the other tablets</string>
+    <string name="profile_community_detail">What is being read on the other devices</string>
     <string name="profile_options">Profile options</string>
     <string name="profile_edit">Change name or drawing</string>
     <string name="profile_hide">Hide my reading from others</string>
     <string name="profile_show">Show my reading to others</string>
     <string name="profile_clear">Clear my history</string>
-    <string name="profile_clear_confirm">What you read and your favourites will be cleared on every tablet. Your profile stays.</string>
+    <string name="profile_clear_confirm">What you read and your favourites will be cleared on every device. Your profile stays.</string>
     <string name="profile_delete">Delete my profile</string>
-    <string name="profile_delete_confirm">Your profile and history will be deleted on every tablet. This cannot be undone.</string>
+    <string name="profile_delete_confirm">Your profile and history will be deleted on every device. This cannot be undone.</string>
     <string name="profile_confirm">Yes, continue</string>
-    <string name="profile_not_here">This book is not on this tablet. Look for it in Explore or ask your facilitator.</string>
+    <string name="profile_not_here">This book is not on this device. Look for it in Explore or ask your facilitator.</string>
     <string name="profile_percent">%1$d %%</string>
     <string name="profile_finished_label">Finished</string>
     <string name="profile_personal_detail">What you read with your account, on all your devices</string>
-    <string name="settings_readers_title">Readers on this tablet</string>
-    <string name="settings_readers_auto_group">Automatic: several people (this account is used on %1$d tablets)</string>
+    <string name="settings_readers_title">Readers on this device</string>
+    <string name="settings_readers_auto_group">Automatic: several people (this account is used on %1$d devices)</string>
     <string name="settings_readers_auto_single">Automatic: one person</string>
-    <string name="settings_readers_group">Several people (group tablet)</string>
+    <string name="settings_readers_group">Several people (shared device)</string>
     <string name="settings_readers_single">One person</string>
     <string name="settings_readers_auto">Automatic</string>
     <string name="readers_group">Your reading group</string>

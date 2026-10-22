@@ -117,7 +117,7 @@
     <string name="title_community_screen">Qué leen los demás</string>
     <string name="community_nickname_hint">Apodo de este dispositivo</string>
     <string name="community_off_title">Comparte lo que lees</string>
-    <string name="community_off_detail">Ponle un apodo a este dispositivo (por ejemplo, «Tablet 3») y, si quieres, comparte qué libros lee y cuánto avanza con los demás dispositivos de tu carpeta de Drive. Cada dispositivo comparte por separado, así que puedes usar la misma cuenta en muchas tablets. A cambio verás qué leen los demás y recibirás recomendaciones. Nunca se comparte tu nombre ni tu correo, y puedes dejar de compartir cuando quieras.</string>
+    <string name="community_off_detail">Ponle un apodo a este dispositivo (por ejemplo, «Dispositivo 3» o «Teléfono de Ana») y, si quieres, comparte qué libros lee y cuánto avanza con los demás dispositivos de tu carpeta de Drive. Cada dispositivo comparte por separado, así que puedes usar la misma cuenta en muchos dispositivos. A cambio verás qué leen los demás y recibirás recomendaciones. Nunca se comparte tu nombre ni tu correo, y puedes dejar de compartir cuando quieras.</string>
     <string name="community_on_title">Este dispositivo comparte como «%1$s»</string>
     <string name="community_on_detail">Los demás dispositivos que comparten ven este apodo y cuánto avanzas aquí en cada libro. No se comparte tu correo ni tu nombre. Cambia el apodo abajo.</string>
     <string name="community_start">Compartir mi lectura</string>

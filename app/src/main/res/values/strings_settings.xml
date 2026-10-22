@@ -30,7 +30,7 @@
     <string name="settings_natural_voice_budget">Monthly limit reached: the device voice is used</string>
     <string name="settings_natural_voice_misconfigured">The ElevenLabs key or model is not valid: check them in Render</string>
     <string name="settings_natural_voice_voice_not_found">The main voice is not in ElevenLabs \"My voices\"</string>
-    <string name="settings_natural_voice_daily_limit">Daily limit of this tablet reached: back tomorrow</string>
+    <string name="settings_natural_voice_daily_limit">Daily limit of this device reached: back tomorrow</string>
     <string name="settings_voice_unavailable">This device cannot open the voice settings from here.</string>
 
     <string name="settings_section_ai">Artificial intelligence</string>

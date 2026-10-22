@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="readers_who_reads">¿Quién lee hoy?</string>
-    <string name="readers_who_reads_detail">Toca tu nombre y tu lectura te esperará en cualquier tablet. Si prefieres, lee sin elegir.</string>
+    <string name="readers_who_reads_detail">Toca tu nombre y tu lectura te esperará en cualquier dispositivo. Si prefieres, lee sin elegir.</string>
     <string name="readers_who_reads_keep">¿Quieres guardar lo que acabas de leer? Toca tu nombre y pasará a tu perfil.</string>
     <string name="readers_new">Soy nuevo</string>
     <string name="readers_search">Buscar</string>
@@ -20,10 +20,10 @@
     <string name="readers_change_name">Cambiar mi nombre</string>
     <string name="readers_search_title">Busca tu nombre</string>
     <string name="readers_search_hint">Escribe tu nombre</string>
-    <string name="readers_finished_toast">¡Gracias por leer! La tablet está lista para la siguiente persona.</string>
+    <string name="readers_finished_toast">¡Gracias por leer! El dispositivo está listo para la siguiente persona.</string>
     <string name="profile_title">Perfil</string>
     <string name="profile_guest_title">Estás leyendo sin perfil</string>
-    <string name="profile_guest_detail">Elige tu nombre para guardar lo que lees y seguir en cualquier tablet.</string>
+    <string name="profile_guest_detail">Elige tu nombre para guardar lo que lees y seguir en cualquier dispositivo.</string>
     <string name="profile_continue">Seguir leyendo</string>
     <string name="profile_recent">Leídos recientemente</string>
     <string name="profile_favorites">Favoritos</string>
@@ -32,26 +32,26 @@
     <string name="profile_stat_finished">terminados</string>
     <string name="profile_stat_books">libros abiertos</string>
     <string name="profile_stat_favorites">favoritos</string>
-    <string name="profile_finish_button">Terminé, devolver la tablet</string>
+    <string name="profile_finish_button">Terminé, devolver el dispositivo</string>
     <string name="profile_community">Qué leen los demás</string>
-    <string name="profile_community_detail">Lo que se lee en las demás tablets</string>
+    <string name="profile_community_detail">Lo que se lee en los demás dispositivos</string>
     <string name="profile_options">Opciones del perfil</string>
     <string name="profile_edit">Cambiar nombre o dibujo</string>
     <string name="profile_hide">Ocultar mi lectura a los demás</string>
     <string name="profile_show">Mostrar mi lectura a los demás</string>
     <string name="profile_clear">Borrar mi historial</string>
-    <string name="profile_clear_confirm">Se borrará lo que has leído y tus favoritos en todas las tablets. Tu perfil se mantiene.</string>
+    <string name="profile_clear_confirm">Se borrará lo que has leído y tus favoritos en todos los dispositivos. Tu perfil se mantiene.</string>
     <string name="profile_delete">Eliminar mi perfil</string>
-    <string name="profile_delete_confirm">Se eliminará tu perfil y tu historial en todas las tablets. No se puede deshacer.</string>
+    <string name="profile_delete_confirm">Se eliminará tu perfil y tu historial en todos los dispositivos. No se puede deshacer.</string>
     <string name="profile_confirm">Sí, continuar</string>
-    <string name="profile_not_here">Este libro no está en esta tablet. Búscalo en Explorar o pídeselo a tu facilitador.</string>
+    <string name="profile_not_here">Este libro no está en este dispositivo. Búscalo en Explorar o pídeselo a tu facilitador.</string>
     <string name="profile_percent">%1$d %%</string>
     <string name="profile_finished_label">Terminado</string>
     <string name="profile_personal_detail">Lo que lees con tu cuenta, en todos tus dispositivos</string>
-    <string name="settings_readers_title">Lectores en esta tablet</string>
-    <string name="settings_readers_auto_group">Automático: varias personas (esta cuenta se usa en %1$d tablets)</string>
+    <string name="settings_readers_title">Lectores en este dispositivo</string>
+    <string name="settings_readers_auto_group">Automático: varias personas (esta cuenta se usa en %1$d dispositivos)</string>
     <string name="settings_readers_auto_single">Automático: una sola persona</string>
-    <string name="settings_readers_group">Varias personas (tablet de grupo)</string>
+    <string name="settings_readers_group">Varias personas (dispositivo compartido)</string>
     <string name="settings_readers_single">Una sola persona</string>
     <string name="settings_readers_auto">Automático</string>
     <string name="readers_group">Tu grupo de lectura</string>

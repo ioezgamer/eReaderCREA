@@ -117,7 +117,7 @@
     <string name="title_community_screen">What others are reading</string>
     <string name="community_nickname_hint">Nickname for this device</string>
     <string name="community_off_title">Share what you read</string>
-    <string name="community_off_detail">Give this device a nickname (for example, “Tablet 3”) and, if you want, share which books it reads and how far it is with the other devices of your Drive folder. Each device shares on its own, so you can use the same account on many tablets. In return you see what the others read and get recommendations. Your name and e-mail are never shared, and you can stop at any time.</string>
+    <string name="community_off_detail">Give this device a nickname (for example, “Device 3” or “Ana\'s phone”) and, if you want, share which books it reads and how far it is with the other devices of your Drive folder. Each device shares on its own, so you can use the same account on many devices. In return you see what the others read and get recommendations. Your name and e-mail are never shared, and you can stop at any time.</string>
     <string name="community_on_title">This device shares as “%1$s”</string>
     <string name="community_on_detail">The other devices that share can see this nickname and how far you are in each book here. Your e-mail and name are not shared. Change the nickname below.</string>
     <string name="community_start">Share my reading</string>

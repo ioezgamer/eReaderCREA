@@ -51,6 +51,10 @@ data class CatalogRow(
 
     private val ownReadingAt: Long get() = local?.progressUpdatedAt ?: book.progressionAt
 
+    /** When this book was last opened on this device (downloaded or online), 0 if never. */
+    val lastOpenedHere: Long
+        get() = maxOf(local?.progressUpdatedAt ?: 0L, book.progressionAt)
+
     /** The overall percentage: the most recent reading on any of the account's devices. */
     val generalPercent: Int
         get() {
@@ -128,6 +132,13 @@ object CatalogRows {
                         .thenBy(collator) { it.book.title }
                 }
             )
+            .let { sorted -> if (words.isEmpty()) lastOpenedFirst(sorted) else sorted }
+    }
+
+    /** The book last opened on this device goes first, to continue it with one tap. */
+    private fun lastOpenedFirst(rows: List<CatalogRow>): List<CatalogRow> {
+        val last = rows.maxByOrNull { it.lastOpenedHere }?.takeIf { it.lastOpenedHere > 0 } ?: return rows
+        return listOf(last) + rows.filter { it !== last }
     }
 
     /** "García Márquez" and "garcia marquez" are the same search. */

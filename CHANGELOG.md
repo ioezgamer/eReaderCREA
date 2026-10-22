@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 1.5.1 - 2026-10-22
+
+- **Textos para cualquier dispositivo**: la app ya no habla solo de «tablet» («Terminé, devolver el dispositivo», «seguir en cualquier dispositivo», «Lectores en este dispositivo»…), porque también se usa en teléfonos y otros equipos.
+- **Catálogo en línea**: el último libro que abriste en este dispositivo (leído en línea o descargado) aparece primero, con cualquier orden elegido. Mientras buscas por texto se respeta el orden de la búsqueda.
+
 ## Panel web para facilitadores - 2026-10-22
 
 - El panel (`/admin` del servidor) lee los **perfiles de lector** de la carpeta de Drive (app 1.4 o posterior): una fila por persona, con su grupo, en vez de una por tablet. Sin perfiles, sigue mostrando los datos de «Compartir mi lectura» como antes.

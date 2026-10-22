@@ -108,6 +108,31 @@ class CatalogRowsTest {
     }
 
     @Test
+    fun theBookLastOpenedHereGoesFirstExceptWhileSearching() {
+        val readOnline = entry("c", "El principito", modifiedAt = 1).copy(progressionAt = 500)
+        val downloaded = local(1, "x", remoteFileId = "d").copy(progressUpdatedAt = 900)
+        val rows = CatalogRows.build(catalog.filter { it.driveFileId != "c" } + readOnline, listOf(downloaded))
+
+        assertEquals(
+            listOf("d", "b", "a", "c"),
+            CatalogRows.filterAndSort(rows, CatalogQuery(sort = CatalogSort.TITLE)).map { it.book.driveFileId }
+        )
+        assertEquals(
+            "d",
+            CatalogRows.filterAndSort(rows, CatalogQuery(sort = CatalogSort.RECENT)).first().book.driveFileId
+        )
+        assertEquals(
+            listOf("a"),
+            CatalogRows.filterAndSort(rows, CatalogQuery(text = "soledad")).map { it.book.driveFileId }
+        )
+        // Nothing opened yet: the chosen order stays as it is.
+        assertEquals(
+            listOf("b", "a", "c", "d"),
+            CatalogRows.filterAndSort(CatalogRows.build(catalog, emptyList()), CatalogQuery(sort = CatalogSort.TITLE)).map { it.book.driveFileId }
+        )
+    }
+
+    @Test
     fun listsCategoriesOnce() {
         val rows = CatalogRows.build(catalog + entry("e", "Otro", category = "Literatura"), emptyList())
         assertEquals(listOf("Literatura", "Matemáticas"), CatalogRows.categories(rows))
