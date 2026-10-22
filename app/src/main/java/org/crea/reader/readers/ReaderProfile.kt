@@ -24,6 +24,10 @@ data class ReaderProfile(
     val updatedAt: Long,
     /** The person asked not to appear in "what my group reads". */
     val hidden: Boolean = false,
+    /** Reading group ("Club martes"), chosen by the reader; null when they have none. */
+    val group: String? = null,
+    /** Days with reading (ISO dates, most recent last), for streaks and achievements. */
+    val days: List<String> = emptyList(),
     /** Removed: kept as a marker so other tablets drop it too. */
     val deleted: Boolean = false,
     val history: List<ReadEntry> = emptyList(),
@@ -71,6 +75,9 @@ object ReaderRules {
     /** Most books a profile remembers (the oldest are forgotten first). */
     const val MAX_HISTORY = 300
 
+    /** Most reading days a profile remembers. */
+    const val MAX_DAYS = 400
+
     fun keyFor(driveFileId: String?, contentHash: String?): String? = when {
         !driveFileId.isNullOrBlank() -> "drive:$driveFileId"
         !contentHash.isNullOrBlank() -> "local:$contentHash"
@@ -99,7 +106,7 @@ object ReaderRules {
             openedAt = maxOf(current.openedAt, now),
             finishedAt = finished,
         )
-        return profile.copy(history = upsert(profile.history, entry))
+        return profile.copy(history = upsert(profile.history, entry), days = withDay(profile.days, today(now)))
     }
 
     fun favorite(profile: ReaderProfile, book: BookRef, on: Boolean, now: Long): ReaderProfile {
@@ -125,6 +132,7 @@ object ReaderRules {
             deleted = a.deleted || b.deleted,
             history = trim(history),
             favorites = favorites.sortedBy { it.at },
+            days = (a.days + b.days).distinct().sorted().takeLast(MAX_DAYS),
         )
     }
 
@@ -142,6 +150,13 @@ object ReaderRules {
             finishedAt = listOfNotNull(x.finishedAt, y.finishedAt).minOrNull(),
         )
     }
+
+    private fun withDay(days: List<String>, day: String): List<String> =
+        if (days.lastOrNull() == day) days else (days + day).distinct().sorted().takeLast(MAX_DAYS)
+
+    /** The local date of [millis] as "2026-10-22". */
+    fun today(millis: Long): String =
+        java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()
 
     private fun upsert(history: List<ReadEntry>, entry: ReadEntry): List<ReadEntry> =
         trim(history.filter { it.key != entry.key } + entry)
@@ -162,6 +177,10 @@ object ReaderRules {
 
     fun favorites(profile: ReaderProfile?): List<FavoriteMark> =
         profile?.favorites.orEmpty().filter { it.on }.sortedByDescending { it.at }
+
+    /** Groups are written by hand: "Club Martes" and "club martes " are the same group. */
+    fun sameGroup(a: String?, b: String?): Boolean =
+        !a.isNullOrBlank() && !b.isNullOrBlank() && normalize(a) == normalize(b)
 
     /** Nicknames are compared without case or accents, so "Ana" and "ana" are the same person. */
     fun normalize(nickname: String): String =

@@ -52,8 +52,9 @@ fun ReaderSessionCard(store: ReaderStore, onOpenProfile: () -> Unit, modifier: M
     if (creating) {
         NewReaderDialog(
             sameNickname = store::sameNickname,
-            onCreate = { nickname, avatar, color ->
-                store.create(nickname, avatar, color)
+            groups = store.groups(),
+            onCreate = { nickname, avatar, color, group ->
+                store.create(nickname, avatar, color, group)
                 creating = false
                 syncSoon(context)
             },

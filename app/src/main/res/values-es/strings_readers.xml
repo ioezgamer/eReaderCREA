@@ -54,4 +54,32 @@
     <string name="settings_readers_group">Varias personas (tablet de grupo)</string>
     <string name="settings_readers_single">Una sola persona</string>
     <string name="settings_readers_auto">Automático</string>
+    <string name="readers_group">Tu grupo de lectura</string>
+    <string name="readers_no_group">Sin grupo</string>
+    <string name="readers_other_group">Otro…</string>
+    <string name="readers_group_name">Nombre del grupo (por ejemplo, Club martes)</string>
+    <string name="profile_group_label">Grupo: %1$s</string>
+    <string name="profile_streak">🔥 %1$d días seguidos leyendo</string>
+    <string name="profile_group_reading">Lo que lee %1$s</string>
+    <string name="profile_recommended">Recomendado para ti</string>
+    <string name="profile_reason_author">Porque leíste a %1$s</string>
+    <string name="profile_reason_category">Te gusta: %1$s</string>
+    <string name="profile_reason_new">Nuevo en el catálogo</string>
+    <plurals name="profile_reason_group">
+        <item quantity="one">Lo terminó alguien de tu grupo</item>
+        <item quantity="other">Lo terminaron %1$d de tu grupo</item>
+    </plurals>
+    <plurals name="profile_reason_popular">
+        <item quantity="one">Lo terminó %1$d lector</item>
+        <item quantity="other">Lo terminaron %1$d lectores</item>
+    </plurals>
+    <string name="profile_achievements">Logros (%1$d de %2$d)</string>
+    <string name="achievement_first_book">Primer libro terminado</string>
+    <string name="achievement_five_books">5 libros terminados</string>
+    <string name="achievement_ten_books">10 libros terminados</string>
+    <string name="achievement_streak_3">3 días seguidos</string>
+    <string name="achievement_streak_7">7 días seguidos</string>
+    <string name="achievement_three_authors">3 autores distintos</string>
+    <string name="achievement_first_favorite">Primer favorito</string>
+    <string name="achievement_explorer">10 libros abiertos</string>
 </resources>

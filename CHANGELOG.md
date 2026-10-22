@@ -1,5 +1,12 @@
 # Historial de cambios
 
+## 1.5.0 - 2026-10-22
+
+- **Grupos de lectura**: al crear el perfil (o en «Cambiar nombre o dibujo») cada lector elige su grupo («Club martes») o escribe uno nuevo. No hay nada que configurar antes: el grupo existe en cuanto alguien lo usa, y «club martes» y «Club Martes» son el mismo.
+- **Lo que lee mi grupo** en el Perfil: qué libro lee ahora cada persona del grupo y cuánto lleva (quien eligió «Ocultar mi lectura» no aparece). Un toque abre ese libro.
+- **Recomendado para ti**: hasta 8 libros del catálogo de Drive con el motivo («Porque leíste a Rubén Darío», «Te gusta: Poesía», «Lo terminaron 3 de tu grupo», «Nuevo en el catálogo»). Sin IA, sin conexión y sin repetir lo que ya abriste.
+- **Logros** sin puntos ni competencia: primer libro, 5 y 10 terminados, 3 y 7 días seguidos, 3 autores distintos, primer favorito y 10 libros abiertos. El Perfil muestra además la racha de días seguidos.
+
 ## 1.4.0 - 2026-10-22
 
 - **Perfiles de lector**: la pestaña «Comunidad» pasa a ser **Perfil**, con lo que cada persona ha leído (aparte de Mi biblioteca): Seguir leyendo (el último abierto primero), Leídos recientemente, Favoritos y Terminados. «Qué leen los demás» sigue dentro del Perfil.

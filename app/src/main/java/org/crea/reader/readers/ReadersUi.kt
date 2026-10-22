@@ -219,7 +219,8 @@ fun ActiveReaderBar(profile: ReaderProfile, onOpenProfile: () -> Unit, onFinish:
 @Composable
 fun NewReaderDialog(
     sameNickname: (String) -> List<ReaderProfile>,
-    onCreate: (nickname: String, avatar: Int, color: Int) -> Unit,
+    groups: List<String>,
+    onCreate: (nickname: String, avatar: Int, color: Int, group: String?) -> Unit,
     onItsMe: (ReaderProfile) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -227,6 +228,8 @@ fun NewReaderDialog(
     var avatar by remember { mutableStateOf((ReaderAvatars.EMOJIS.indices).random()) }
     val color = remember { (ReaderAvatars.COLORS.indices).random() }
     var duplicates by remember { mutableStateOf<List<ReaderProfile>>(emptyList()) }
+    // The group used last on this tablet is suggested: most people of a session share it.
+    var group by remember { mutableStateOf(groups.firstOrNull()) }
 
     if (duplicates.isNotEmpty()) {
         AlertDialog(
@@ -256,7 +259,7 @@ fun NewReaderDialog(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { onCreate(nickname.trim(), avatar, color) }) {
+                TextButton(onClick = { onCreate(nickname.trim(), avatar, color, group) }) {
                     Text(stringResource(R.string.readers_create_anyway))
                 }
             },
@@ -305,6 +308,7 @@ fun NewReaderDialog(
                         ) { Text(emoji, fontSize = 22.sp) }
                     }
                 }
+                GroupPicker(groups, group, onChange = { group = it })
             }
         },
         confirmButton = {
@@ -312,12 +316,62 @@ fun NewReaderDialog(
                 enabled = nickname.isNotBlank(),
                 onClick = {
                     val same = sameNickname(nickname)
-                    if (same.isEmpty()) onCreate(nickname.trim(), avatar, color) else duplicates = same
+                    if (same.isEmpty()) onCreate(nickname.trim(), avatar, color, group) else duplicates = same
                 },
             ) { Text(stringResource(R.string.readers_start)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
     )
+}
+
+/**
+ * Reading group: one tap on an existing group, "Sin grupo", or a new name typed once (for example
+ * by the first person of a new club). Groups are only names: there is nothing to set up beforehand.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun GroupPicker(groups: List<String>, selected: String?, onChange: (String?) -> Unit) {
+    var typing by remember { mutableStateOf(false) }
+    var typed by remember { mutableStateOf("") }
+    Text(
+        stringResource(R.string.readers_group),
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
+    )
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        androidx.compose.material3.FilterChip(
+            selected = selected == null && !typing,
+            onClick = { typing = false; onChange(null) },
+            label = { Text(stringResource(R.string.readers_no_group)) },
+        )
+        groups.forEach { name ->
+            androidx.compose.material3.FilterChip(
+                selected = !typing && selected != null && ReaderRules.sameGroup(selected, name),
+                onClick = { typing = false; onChange(name) },
+                label = { Text(name) },
+            )
+        }
+        androidx.compose.material3.FilterChip(
+            selected = typing,
+            onClick = { typing = true; onChange(typed.ifBlank { null }) },
+            label = { Text(stringResource(R.string.readers_other_group)) },
+        )
+    }
+    if (typing) {
+        OutlinedTextField(
+            value = typed,
+            onValueChange = {
+                typed = it.take(ReaderStore.MAX_GROUP)
+                onChange(typed.trim().ifBlank { null })
+            },
+            singleLine = true,
+            label = { Text(stringResource(R.string.readers_group_name)) },
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        )
+    }
 }
 
 /** Every reader of the tablets, with a search box (for when there are many). */

@@ -117,8 +117,9 @@ class ReaderStore(
     }
 
     /** "Soy nuevo": creates the profile and starts reading with it. */
-    fun create(nickname: String, avatar: Int, color: Int): ReaderProfile {
+    fun create(nickname: String, avatar: Int, color: Int, group: String? = null): ReaderProfile {
         val now = clock()
+        val cleanGroup = cleanGroup(group)
         val profile = ReaderProfile(
             id = UUID.randomUUID().toString().replace("-", "").take(16),
             nickname = nickname.trim().take(MAX_NICKNAME),
@@ -126,7 +127,9 @@ class ReaderStore(
             color = color,
             createdAt = now,
             updatedAt = now,
+            group = cleanGroup,
         )
+        cleanGroup?.let { preferences.edit().putString(KEY_LAST_GROUP, it).apply() }
         save(profile)
         select(profile.id)
         return profile
@@ -136,6 +139,27 @@ class ReaderStore(
     fun sameNickname(nickname: String): List<ReaderProfile> {
         val wanted = ReaderRules.normalize(nickname)
         return _profiles.value.filter { ReaderRules.normalize(it.nickname) == wanted }
+    }
+
+    /**
+     * Reading groups known on these tablets (from every profile), the one used last on this
+     * tablet first. Written as the first person who used it wrote it.
+     */
+    fun groups(): List<String> {
+        val byKey = LinkedHashMap<String, String>()
+        _profiles.value.sortedBy { it.createdAt }.forEach { profile ->
+            val name = profile.group?.takeIf { it.isNotBlank() } ?: return@forEach
+            byKey.putIfAbsent(ReaderRules.normalize(name), name)
+        }
+        val last = preferences.getString(KEY_LAST_GROUP, null)?.let { ReaderRules.normalize(it) }
+        return byKey.entries.sortedWith(compareBy<Map.Entry<String, String>> { it.key != last }.thenBy { it.value.lowercase() })
+            .map { it.value }
+    }
+
+    /** A typed group becomes the existing one when they only differ in case or accents. */
+    private fun cleanGroup(group: String?): String? {
+        val typed = group?.trim()?.take(MAX_GROUP)?.takeIf { it.isNotBlank() } ?: return null
+        return groups().firstOrNull { ReaderRules.sameGroup(it, typed) } ?: typed
     }
 
     /** "Terminé, devolver la tablet": the next person starts fresh. */
@@ -186,14 +210,29 @@ class ReaderStore(
 
     // region Profile settings
 
-    fun update(id: String, nickname: String? = null, avatar: Int? = null, color: Int? = null, hidden: Boolean? = null) {
+    fun update(
+        id: String,
+        nickname: String? = null,
+        avatar: Int? = null,
+        color: Int? = null,
+        hidden: Boolean? = null,
+        group: String? = null,
+        clearGroup: Boolean = false,
+    ) {
         val profile = byId(id) ?: return
+        val newGroup = when {
+            clearGroup -> null
+            group != null -> cleanGroup(group)
+            else -> profile.group
+        }
+        newGroup?.let { preferences.edit().putString(KEY_LAST_GROUP, it).apply() }
         save(
             profile.copy(
                 nickname = nickname?.trim()?.take(MAX_NICKNAME)?.ifBlank { null } ?: profile.nickname,
                 avatar = avatar ?: profile.avatar,
                 color = color ?: profile.color,
                 hidden = hidden ?: profile.hidden,
+                group = newGroup,
                 updatedAt = clock(),
             )
         )
@@ -327,6 +366,7 @@ class ReaderStore(
         const val GROUP_DEVICES = 3
         const val IDLE_MS = 30 * 60 * 1000L
         const val MAX_NICKNAME = 24
+        const val MAX_GROUP = 32
         const val GUEST_ID = "guest"
         const val PERSONAL_PREFIX = "cuenta-"
         private const val MAX_RECENT_HERE = 12
@@ -336,6 +376,7 @@ class ReaderStore(
         private const val KEY_DAY = "day"
         private const val KEY_RECENT = "recent_here"
         private const val KEY_MODE = "group_mode"
+        private const val KEY_LAST_GROUP = "last_group"
         private const val KEY_DIRTY = "dirty"
         private const val KEY_VERSION_PREFIX = "version_"
         private const val KEY_CLEARED_PREFIX = "cleared_"
