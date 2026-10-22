@@ -1,5 +1,12 @@
 # Historial de cambios
 
+## Panel web para facilitadores - 2026-10-22
+
+- El panel (`/admin` del servidor) lee los **perfiles de lector** de la carpeta de Drive (app 1.4 o posterior): una fila por persona, con su grupo, en vez de una por tablet. Sin perfiles, sigue mostrando los datos de «Compartir mi lectura» como antes.
+- Nueva pestaña **Grupos**: por cada grupo, cuántas personas leen, quién leyó en los últimos 7 días, avance medio, libros terminados (en total y este mes), qué lee ahora cada persona (con su racha de días) y los libros que más leen. Sirve para elegir libros para la biblioteca física.
+- **Lectores**: columna y filtro de grupo. El CSV incluye grupo y si el libro está terminado.
+- Quien eligió «Ocultar mi lectura» cuenta en los totales como «Lector reservado», sin su apodo.
+
 ## 1.5.0 - 2026-10-22
 
 - **Grupos de lectura**: al crear el perfil (o en «Cambiar nombre o dibujo») cada lector elige su grupo («Club martes») o escribe uno nuevo. No hay nada que configurar antes: el grupo existe en cuanto alguien lo usa, y «club martes» y «Club Martes» son el mismo.
