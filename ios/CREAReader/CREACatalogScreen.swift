@@ -43,11 +43,24 @@ struct CREACatalogScreen: View {
             let categoryMatch = category == nil || catalog.categories(for: book).contains { CREACategoryPaths.matches($0, selected: category) }
             return state && categoryMatch && CREACatalogRules.matches(text, query: search)
         }
-        return matches.sorted { a, b in
+        let sorted = matches.sorted { a, b in
             if sort == "Autor" { return CREACatalogRules.folded(catalog.insight(for: a)?.author ?? a.authorFromName ?? "") < CREACatalogRules.folded(catalog.insight(for: b)?.author ?? b.authorFromName ?? "") }
             if sort == "Cambios recientes" { return CREACatalogRules.milliseconds(a.modifiedTime) > CREACatalogRules.milliseconds(b.modifiedTime) }
             return CREACatalogRules.folded(catalog.title(for: a)) < CREACatalogRules.folded(catalog.title(for: b))
         }
+        // The book last opened on this device (read online or downloaded) goes first, with any order chosen.
+        // While searching by text the order of the search is kept.
+        guard search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let last = sorted.max(by: { lastOpened($0) < lastOpened($1) }), lastOpened(last) > 0,
+              let index = sorted.firstIndex(of: last) else { return sorted }
+        return [last] + sorted.enumerated().filter { $0.offset != index }.map { $0.element }
+    }
+
+    /// When this book was last opened on this device: downloaded copy or online reading (0 if never).
+    private func lastOpened(_ book: CREARemoteBook) -> TimeInterval {
+        let own = local(book).map { ($0.progressUpdatedAt ?? $0.lastOpened ?? .distantPast).timeIntervalSince1970 } ?? 0
+        let online = progress.checkpoint(for: book.id)?.updatedAt.timeIntervalSince1970 ?? 0
+        return max(own, online, 0)
     }
     private func refresh() async {
         await catalog.synchronize()

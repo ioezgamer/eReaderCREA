@@ -78,3 +78,13 @@ Prueba física adicional: actualizar un EPUB cambiado mientras su lector conserv
 | IA: interruptores y usos | `CREAAISettingsView` | iOS mantiene la lista de servidores autorizados (se envía el token de Google): «servidor propio» solo https **y** autorizado. |
 | Nunito, Liquid Glass | `CREAGlass`, `Fonts/Nunito.ttf` | Nunito es variable: comprobar peso en dispositivo. Los iconos Icons8 PNG de Android no se portaron: iOS usa SF Symbols. |
 | Voz de lectura | `CREAVoiceSettings` (ya en la app) | iOS no abre los ajustes de voz del sistema; se eligen dentro de la app. |
+
+## Android 1.0 a 1.5.1 (iOS 0.13.0)
+
+| Android | iOS | Diferencias / verificación |
+| --- | --- | --- |
+| Voz natural ElevenLabs (1.1 a 1.3) | `CREANaturalVoice`, `CREAHybridTTSEngine` (motor de Readium que envuelve `AVTTSEngine`) | Mismo `/v1/voice` y `/v1/status`; caché de 60 MB; pausas 2/10/30 min según el motivo. La expresividad se ajusta en Render. Probar en dispositivo con sesión de Google y créditos. Los audios no marcan palabra a palabra (solo la frase). |
+| Perfiles, grupos, recomendaciones y logros (1.4, 1.5) | `CREAReaderProfiles`, `CREAReaderStore`, `CREAProfileScreen`, `synchronizeReaders` | Mismo JSON `crea-perfil-<id>.json` y mismas reglas de fusión, para que Android e iOS compartan perfiles. Requiere el permiso completo de Drive. Pendiente de probar con dos dispositivos reales. |
+| Catálogo: último abierto primero (1.5.1) | `CREACatalogScreen.visible` | Cuenta lecturas en línea y copias descargadas de este dispositivo. |
+| Textos «dispositivo» en vez de «tablet» (1.5.1) | Los textos nuevos ya dicen «dispositivo» | — |
+| Panel web de facilitadores | Sin cambios en iOS | Lee los perfiles que ahora también escribe iOS. |

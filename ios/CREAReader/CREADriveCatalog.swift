@@ -773,3 +773,53 @@ final class CREADriveCatalog: ObservableObject {
         } catch { errorMessage = error.localizedDescription }
     }
 }
+
+// MARK: Reader profiles (one small file per reader in the shared folder: `crea-perfil-<id>.json`)
+
+extension CREADriveCatalog {
+    private static let readerPrefix = "crea-perfil-"
+
+    private func readerID(_ name: String) -> String? {
+        guard name.hasPrefix(Self.readerPrefix), name.hasSuffix(".json") else { return nil }
+        let id = String(name.dropFirst(Self.readerPrefix.count).dropLast(".json".count))
+        return id.isEmpty ? nil : id
+    }
+
+    /// Keeps reader profiles in step with Drive: brings in what changed on other devices and sends what changed
+    /// here (merged first, so nothing is overwritten). A failure here never stops the rest of the sync.
+    func synchronizeReaders(store: CREAReaderStore) async {
+        guard GIDSignIn.sharedInstance.currentUser?.grantedScopes?.contains("https://www.googleapis.com/auth/drive") == true else { return }
+        if folderID == nil { await synchronize() }
+        guard let folderID else { return }
+        do {
+            let access = try await token()
+            let listing = try await list(query: "'\(folderID)' in parents and name contains '\(Self.readerPrefix)' and trashed = false",
+                                         fields: "id,name,mimeType,modifiedTime,md5Checksum", token: access)
+            var files: [String: CREARemoteBook] = [:]
+            for file in listing { if let id = readerID(file.name) { files[id] = file } }
+            for (id, file) in files {
+                let version = file.md5Checksum ?? file.modifiedTime ?? ""
+                if store.knownVersion(id) == version { continue }
+                var url = URLComponents(string: "https://www.googleapis.com/drive/v3/files/" + file.id)!
+                url.queryItems = [URLQueryItem(name: "alt", value: "media")]
+                guard let data = try? await request(url.url!, token: access),
+                      let remote = try? JSONDecoder().decode(CREAReaderProfile.self, from: data), remote.id == id else { continue }
+                store.mergeRemote(remote, version: version)
+            }
+            var uploaded = false
+            for id in store.dirtyIDs() where id != CREAReaderStore.guestID {
+                guard let profile = store.localCopy(id), let bytes = try? JSONEncoder().encode(profile) else { continue }
+                do {
+                    try await writeSharedJSON(bytes, name: Self.readerPrefix + id + ".json", folderID: folderID, fileID: files[id]?.id, access: access)
+                    uploaded = true
+                } catch { continue } // changed elsewhere meanwhile: the next sync merges it
+            }
+            if uploaded {
+                // Remember the versions Drive now has so the next sync does not download what was just sent.
+                let fresh = try await list(query: "'\(folderID)' in parents and name contains '\(Self.readerPrefix)' and trashed = false",
+                                           fields: "id,name,mimeType,modifiedTime,md5Checksum", token: access)
+                for file in fresh { if let id = readerID(file.name), store.dirtyIDs().contains(id) { store.markUploaded(id, version: file.md5Checksum ?? file.modifiedTime ?? "") } }
+            }
+        } catch { /* optional: reading never depends on profiles */ }
+    }
+}

@@ -50,9 +50,49 @@ struct CREAVoiceSettings: View {
     @AppStorage("crea.voice.rate") private var rate = 0.5
     @AppStorage("crea.voice.pitch") private var pitch = 1.0
     @State private var voices = CREAVoiceChoice.installed
+    @ObservedObject private var natural = CREANaturalVoice.shared
+    @State private var sampleFile: URL?
+    @State private var samplePlayer: AVAudioPlayer?
+    @State private var sampleMessage: String?
     @Environment(\.openURL) private var openURL
+
+    private var naturalStatus: String {
+        if !natural.configured { return "Este dispositivo no tiene servidor de voz configurado." }
+        if !natural.signedIn { return "Inicia sesión con Google (Ajustes > Sincronización) para usar la voz natural." }
+        switch natural.serverState {
+        case .unknown: return "Pulsa «Comprobar» para ver si el servidor puede leer en voz alta."
+        case .checking: return "Comprobando…"
+        case .available: return natural.lastProblem.map { CREANaturalVoice.explanation($0) } ?? "La voz natural está lista."
+        case .unavailable: return CREANaturalVoice.explanation(natural.serverReason)
+        case .unreachable: return "No se pudo conectar al servidor. Se lee con la voz del dispositivo."
+        }
+    }
+
     var body: some View {
         Form {
+            Section("Voz natural (CREA)") {
+                Toggle("Usar voz natural al leer en voz alta", isOn: Binding(get: { natural.enabled }, set: { natural.setEnabled($0) }))
+                Text("Es un extra: sin conexión, sin créditos o sin sesión de Google, cada frase se lee con la voz del dispositivo y la lectura nunca se corta. El audio se guarda en el dispositivo (hasta 60 MB).")
+                    .font(.footnote).foregroundStyle(.secondary)
+                if natural.voices.count > 1 {
+                    Picker("Voz", selection: Binding(get: { natural.currentVoice?.id ?? "" }, set: { natural.selectVoice($0) })) {
+                        ForEach(natural.voices) { Text($0.name).tag($0.id) }
+                    }
+                }
+                Text(naturalStatus).font(.footnote)
+                Button("Comprobar", systemImage: "arrow.clockwise") { Task { await natural.check() } }
+                    .disabled(natural.serverState == .checking)
+                Button("Escuchar una muestra", systemImage: "play.circle") {
+                    Task {
+                        sampleMessage = nil
+                        guard let file = await natural.sample(), let player = try? AVAudioPlayer(contentsOf: file) else {
+                            sampleMessage = "No se pudo reproducir la muestra ahora."; return
+                        }
+                        samplePlayer = player; player.play()
+                    }
+                }.disabled(!natural.enabled || !natural.signedIn)
+                if let sampleMessage { Text(sampleMessage).font(.footnote).foregroundStyle(.red) }
+            }
             Section("Voz instalada") {
                 Picker("Voz", selection: $selected) {
                     Text("Automática: mejor voz instalada del idioma").tag("")
@@ -73,5 +113,7 @@ struct CREAVoiceSettings: View {
                 Button("Restablecer") { rate = 0.5; pitch = 1; selected = "" }
             }
         }.navigationTitle("Lectura en voz alta")
+            .task { if natural.voices.isEmpty { await natural.check() } }
+            .onDisappear { samplePlayer?.stop() }
     }
 }
