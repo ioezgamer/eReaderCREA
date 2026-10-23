@@ -2,10 +2,34 @@ import Foundation
 import SwiftUI
 import GoogleSignIn
 
+/// A natural voice approved on the CREA server (Render, `ELEVENLABS_VOICES`).
+struct CREAVoiceOption: Decodable, Identifiable, Equatable {
+    let id: String
+    let name: String
+}
+
+struct CREAAIVoiceStatus: Decodable {
+    let available: Bool?
+    let reason: String?
+    let voices: [CREAVoiceOption]?
+    let defaultVoice: String?
+}
+
 struct CREAAIStatus: Decodable {
     let available: Bool
     let reason: String?
     let remaining: [String: Int]?
+    let voice: CREAAIVoiceStatus?
+}
+
+enum CREAVoiceResult {
+    case audio(Data)
+    /// Switched off, out of credits or over budget: read with the device voice for a good while.
+    case unavailable(String?)
+    /// Daily limit of this device.
+    case limitReached
+    /// No connection, no Google account, busy or any other error: try again later.
+    case failed
 }
 
 struct CREAAIBookInfo: Codable {
@@ -104,6 +128,8 @@ enum CREAAIError: LocalizedError {
 /// No Anthropic API key is shipped, stored or requested by this iOS application.
 @MainActor
 final class CREAReaderAI: ObservableObject {
+    /// One instance for the whole app: the reader's voice engine needs it without a view.
+    static let shared = CREAReaderAI()
     @Published private(set) var enabled: Bool
     @Published private(set) var serverURL: String
     @Published private(set) var available = false
@@ -279,6 +305,53 @@ final class CREAReaderAI: ObservableObject {
               let result = root["result"] else { throw CREAAIError.response }
         if let quota = remaining[task], quota > 0 { remaining[task] = quota - 1 }
         return try JSONSerialization.data(withJSONObject: result, options: [.fragmentsAllowed])
+    }
+
+    /// Server status for the natural voice. Independent of the Claude switch: the voice only needs a
+    /// Google account and the CREA server.
+    func serverStatus() async -> CREAAIStatus? {
+        guard endpoint != nil, GIDSignIn.sharedInstance.currentUser != nil,
+              let body = try? await request(method: "GET", path: "/v1/status", input: nil) else { return nil }
+        return try? JSONDecoder().decode(CREAAIStatus.self, from: body)
+    }
+
+    var serverHost: String { endpoint?.host ?? "" }
+    var hasServer: Bool { endpoint != nil }
+
+    /// MP3 of `text` read by the natural voice. Short timeouts: when the voice is slow or missing, reading
+    /// goes on with the device voice instead of leaving a silence.
+    func speech(text: String, language: String?, voice: String?, previous: String?) async -> CREAVoiceResult {
+        guard let endpoint, let url = URL(string: endpoint.absoluteString + "/v1/voice") else { return .unavailable("not_configured") }
+        guard let token = try? await googleToken() else { return .unavailable("needs_drive") }
+        var payload: [String: Any] = ["text": text]
+        if let language { payload["language"] = language }
+        if let voice { payload["voice"] = voice }
+        if let previous, !previous.isEmpty { payload["previousText"] = String(previous.suffix(600)) }
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return .failed }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.timeoutInterval = 15
+        request.setValue("Bearer " + token, forHTTPHeaderField: "Authorization")
+        var device = UserDefaults.standard.string(forKey: "crea.reader.syncDeviceID")
+        if device == nil { device = UUID().uuidString; UserDefaults.standard.set(device, forKey: "crea.reader.syncDeviceID") }
+        request.setValue(device, forHTTPHeaderField: "X-Device-Id")
+        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        request.setValue("audio/mpeg", forHTTPHeaderField: "Accept")
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForResource = 20
+        let session = URLSession(configuration: configuration, delegate: CREAAINoRedirects(), delegateQueue: nil)
+        defer { session.invalidateAndCancel() }
+        do {
+            let (data, raw) = try await session.data(for: request)
+            guard let response = raw as? HTTPURLResponse else { return .failed }
+            if response.statusCode == 200, !data.isEmpty { return .audio(data) }
+            let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            let code = json?["code"] as? String
+            if response.statusCode == 503 && code == "unavailable" { return .unavailable(json?["reason"] as? String) }
+            if response.statusCode == 429 && code == "daily_limit" { return .limitReached }
+            return .failed
+        } catch { return .failed }
     }
 
     private func googleToken() async throws -> String {

@@ -199,7 +199,7 @@ final class EPUBBookModel: ObservableObject, PublicationSpeechSynthesizerDelegat
                 positionCount = positions.count
                 metadata = "\(publication.metadata.title ?? url.lastPathComponent)\n\(publication.metadata.authors.map { $0.name }.joined(separator: ", "))"
                 let delegate = voiceDelegate
-                speech = PublicationSpeechSynthesizer(publication: publication, engineFactory: { AVTTSEngine(delegate: delegate) })
+                speech = PublicationSpeechSynthesizer(publication: publication, engineFactory: { CREAHybridTTSEngine(device: AVTTSEngine(delegate: delegate)) })
                 speech?.delegate = self
                 do {
                     let lastLocation = initialLocatorJSON ?? (persistFileLocator ? UserDefaults.standard.string(forKey: "crea.epub.locator." + url.lastPathComponent) : nil)

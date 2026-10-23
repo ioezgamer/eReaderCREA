@@ -230,7 +230,7 @@ private enum ReaderTab: Int, CaseIterable {
         case .library: "Mi biblioteca"
         case .catalog: "Catálogo en línea"
         case .explore: "Explorar"
-        case .community: "Comunidad"
+        case .community: "Perfil"
         case .settings: "Ajustes"
         }
     }
@@ -239,7 +239,7 @@ private enum ReaderTab: Int, CaseIterable {
         case .library: "books.vertical.fill"
         case .catalog: "cloud.fill"
         case .explore: "safari"
-        case .community: "person.2.fill"
+        case .community: "person.crop.circle.fill"
         case .settings: "gearshape.fill"
         }
     }
@@ -250,7 +250,7 @@ struct ReaderHomeView: View {
     @StateObject private var googleAuth = CREAAuthSession()
     @StateObject private var driveCatalog = CREADriveCatalog()
     @StateObject private var progressSync = CREAProgressSync()
-    @StateObject private var readerAI = CREAReaderAI()
+    @StateObject private var readerAI = CREAReaderAI.shared
     @StateObject private var imports = CREAImportCoordinator.shared
     @State private var pendingImports: [URL] = []
     @State private var categoryTarget: LocalBook?
@@ -286,6 +286,7 @@ struct ReaderHomeView: View {
     @State private var showCollectionManager = false
     @ObservedObject private var annotations = CREAAnnotationStore.shared
     @ObservedObject private var look = CREAReaderLook.shared
+    @ObservedObject private var readers = CREAReaderStore.shared
     @State private var temporarySize: Int64 = 0
     @AppStorage("crea.reader.theme") private var theme = "Sistema"
     @AppStorage("crea.reader.language") private var language = "es"
@@ -327,7 +328,7 @@ struct ReaderHomeView: View {
                 libraryScreen.tabItem { Label("Biblioteca", systemImage: ReaderTab.library.icon) }.tag(ReaderTab.library)
                 catalogScreen.tabItem { Label("Catálogo", systemImage: ReaderTab.catalog.icon) }.tag(ReaderTab.catalog)
                 exploreScreen.tabItem { Label("Explorar", systemImage: ReaderTab.explore.icon) }.tag(ReaderTab.explore)
-                communityScreen.tabItem { Label("Comunidad", systemImage: ReaderTab.community.icon) }.tag(ReaderTab.community)
+                communityScreen.tabItem { Label("Perfil", systemImage: ReaderTab.community.icon) }.tag(ReaderTab.community)
                 settingsScreen.tabItem { Label("Ajustes", systemImage: ReaderTab.settings.icon) }.tag(ReaderTab.settings)
             }
             .tint(CREAStyle.blue)
@@ -358,7 +359,7 @@ struct ReaderHomeView: View {
                 Task { await CREABackgroundDownloads.shared.resumeReadyForCurrentAccount() }
             }
             if phase == .active && autoSync && googleAuth.progressAuthorized && driveCatalog.needsAutoSync {
-                Task { await driveCatalog.synchronize(); await progressSync.pull(catalog: driveCatalog, library: library); await progressSync.push(catalog: driveCatalog, library: library) }
+                Task { await driveCatalog.synchronize(); await progressSync.pull(catalog: driveCatalog, library: library); await progressSync.push(catalog: driveCatalog, library: library); await syncReaders() }
             }
         }
         .sheet(item: $selectedRemoteBook, onDismiss: {
@@ -411,9 +412,11 @@ struct ReaderHomeView: View {
                             onProgress: { amount in
                                 progressSync.recordOnlineProgress(for: online.book.id, fraction: amount)
                             },
-                            initialLocatorJSON: progressSync.checkpoint(for: online.book.id)?.locatorJSON,
+                            initialLocatorJSON: readers.progression(for: "drive:" + online.book.id) ?? progressSync.checkpoint(for: online.book.id)?.locatorJSON,
                             onLocator: { locator in
                                 progressSync.recordOnlineLocator(for: online.book.id, locator: locator)
+                                readers.progressed(CREABookRef(key: "drive:" + online.book.id, title: online.book.displayName, author: nil, driveFileId: online.book.id),
+                                                   progression: locator, percent: CREAReaderRules.percent(fromLocator: locator))
                             },
                             ai: readerAI,
                             isTemporaryOnline: true
@@ -436,7 +439,7 @@ struct ReaderHomeView: View {
                 }
                 .onDisappear {
                     if googleAuth.progressAuthorized {
-                        Task { await progressSync.push(catalog: driveCatalog, library: library) }
+                        Task { await progressSync.push(catalog: driveCatalog, library: library); await syncReaders() }
                     }
                 }
             }
@@ -453,6 +456,11 @@ struct ReaderHomeView: View {
         .onChange(of: imports.pending?.id) { _, id in if id != nil, let decision = imports.pending { CREAImportPresenter.present(decision, coordinator: imports) } }
         .sheet(item: $categoryTarget) { book in CREALibraryCategorySheet(library: library, catalog: driveCatalog, book: book) }
         .sheet(item: $uploadTarget) { book in CREAUploadSheet(catalog: driveCatalog, library: library, book: book) }
+        .onChange(of: activeOnlineReading?.id) { _, id in
+            if id != nil, let online = activeOnlineReading {
+                readers.opened(CREABookRef(key: "drive:" + online.book.id, title: online.book.displayName, author: nil, driveFileId: online.book.id))
+            }
+        }
         .onChange(of: imports.report) { _, value in if let value { notice = value; imports.report = nil } }
         .onChange(of: imports.processing) { _, active in if !active { Task { await CREABackgroundDownloads.shared.resumeReadyForCurrentAccount() } } }
         .alert("Importación completada", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) {
@@ -541,12 +549,14 @@ struct ReaderHomeView: View {
                 if googleAuth.progressAuthorized {
                     if driveCatalog.needsAutoSync { await driveCatalog.synchronize() }
                     await progressSync.pull(catalog: driveCatalog, library: library)
+                    await syncReaders()
                 }
             }
             .refreshable {
                 if googleAuth.progressAuthorized {
                     await driveCatalog.synchronize()
                     await progressSync.pull(catalog: driveCatalog, library: library)
+                    await syncReaders()
                 }
             }
             .searchable(text: $search, prompt: "Buscar en mi biblioteca")
@@ -573,12 +583,13 @@ struct ReaderHomeView: View {
                                 $0.lastOpened = Date()
                             }
                         },
-                        initialLocatorJSON: library.books.first(where: { $0.id == book.id })?.readingLocatorJSON,
+                        initialLocatorJSON: readerProgression(book) ?? library.books.first(where: { $0.id == book.id })?.readingLocatorJSON,
                         onLocator: { serialized in
                             library.update(book) {
                                 $0.readingLocatorJSON = serialized
                                 $0.progressUpdatedAt = Date()
                             }
+                            recordReading(book, locator: serialized)
                         },
                         ai: readerAI
                     )
@@ -586,7 +597,7 @@ struct ReaderHomeView: View {
                         if googleAuth.progressAuthorized || (communityShareEnabled && communityShareAccount == (googleAuth.accountEmail ?? "") && googleAuth.communityAuthorized) {
                             Task {
                                 if googleAuth.progressAuthorized {
-                                    await progressSync.push(catalog: driveCatalog, library: library)
+                                    await progressSync.push(catalog: driveCatalog, library: library); await syncReaders()
                                 }
                                 if communityShareEnabled && communityShareAccount == (googleAuth.accountEmail ?? "") && googleAuth.communityAuthorized {
                                     _ = await driveCatalog.publishCommunity(
@@ -607,11 +618,12 @@ struct ReaderHomeView: View {
                             $0.progressUpdatedAt = Date()
                             $0.lastOpened = Date()
                         }
-                    }, initialProgress: book.progress, onLocator: { json in
+                    }, initialProgress: readerProgression(book).map { Double(CREAReaderRules.percent(fromLocator: $0)) / 100 } ?? book.progress, onLocator: { json in
                         library.update(book) { $0.readingLocatorJSON = json; $0.progressUpdatedAt = Date() }
+                        recordReading(book, locator: json)
                     })
                     .onDisappear {
-                        if googleAuth.progressAuthorized { Task { await progressSync.push(catalog: driveCatalog, library: library) } }
+                        if googleAuth.progressAuthorized { Task { await progressSync.push(catalog: driveCatalog, library: library); await syncReaders() } }
                     }
                 }
             }
@@ -694,6 +706,7 @@ struct ReaderHomeView: View {
         }
         if book.driveFileID == nil { Button("Categoría", systemImage: "folder") { categoryTarget = book } }
         Button(book.favorite ? "Quitar favorito" : "Añadir a favoritos", systemImage: book.favorite ? "heart.slash" : "heart") {
+            if let ref = ref(book) { readers.setFavorite(ref, on: !book.favorite) }
             library.update(book) { $0.favorite.toggle() }
         }
         Button("Marcar como terminado", systemImage: "checkmark.circle") {
@@ -706,7 +719,26 @@ struct ReaderHomeView: View {
         Button("Eliminar del dispositivo", systemImage: "trash", role: .destructive) { library.remove(book) }
     }
 
+    private func ref(_ book: LocalBook) -> CREABookRef? {
+        guard let key = CREAReaderRules.keyFor(driveFileId: book.driveFileID, contentHash: book.contentHash) else { return nil }
+        return CREABookRef(key: key, title: book.name, author: book.author, driveFileId: book.driveFileID)
+    }
+
+    /// Where the current reader stopped in this book (on any device), as a Readium locator.
+    private func readerProgression(_ book: LocalBook) -> String? { ref(book).flatMap { readers.progression(for: $0.key) } }
+
+    private func recordReading(_ book: LocalBook, locator: String) {
+        guard let ref = ref(book) else { return }
+        readers.progressed(ref, progression: locator, percent: CREAReaderRules.percent(fromLocator: locator))
+    }
+
+    private func syncReaders() async {
+        if !progressSync.devices.isEmpty { readers.accountDevices = progressSync.devices.count }
+        await driveCatalog.synchronizeReaders(store: readers)
+    }
+
     private func open(_ book: LocalBook) {
+        if let ref = ref(book) { readers.opened(ref) }
         library.update(book) { $0.lastOpened = Date() }
         selection = book
     }
@@ -721,21 +753,19 @@ struct ReaderHomeView: View {
     }
 
     private var communityScreen: some View {
-        NavigationStack {
-            ScrollView {
+        CREAProfileScreen(
+            store: readers, library: library, catalog: driveCatalog,
+            community: AnyView(
                 VStack(alignment: .leading, spacing: 16) {
                     communityHeading
                     CREACommunityDiscovery(catalog: driveCatalog, library: library, progress: progressSync, sharingEnabled: communityIsOnCurrentAccount) { book in selectedRemoteBook = book }
                     communityMembersSection
                     communitySharingPanel
-                }
-                .padding()
-            }
-            .background(CREAStyle.gradient)
-            .navigationTitle("Comunidad")
-            .task(id: googleAuth.accountEmail) {
-                if googleAuth.accountEmail != nil { await driveCatalog.loadCommunity() }
-            }
+                }),
+            onOpenLocal: { book in tab = .library; open(book) },
+            onOpenRemote: { book in selectedRemoteBook = book })
+        .task(id: googleAuth.accountEmail) {
+            if googleAuth.accountEmail != nil { await driveCatalog.loadCommunity(); await syncReaders() }
         }
     }
 
@@ -934,6 +964,15 @@ struct ReaderHomeView: View {
                         ForEach(CREACoverSize.allCases, id: \.rawValue) { Text(LocalizedStringKey($0.title)).tag($0.rawValue) }
                     }
                 }
+                Section("Lectores") {
+                    Picker("Lectores en este dispositivo", selection: Binding(
+                        get: { readers.modeOverride.map { $0 ? 1 : 2 } ?? 0 },
+                        set: { readers.setModeOverride($0 == 0 ? nil : $0 == 1) })) {
+                        Text("Automático").tag(0); Text("Varias personas").tag(1); Text("Una sola").tag(2)
+                    }
+                    Text("Automático: si tres o más dispositivos usan la misma cuenta de Google, cada persona elige su nombre y su perfil la sigue en cualquier dispositivo. Elige «Una sola» para tener un único perfil.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Section("Almacenamiento") {
                     LabeledContent("Lecturas temporales", value: ByteCountFormatter.string(fromByteCount: temporarySize, countStyle: .file))
                     Button("Limpiar lecturas temporales", systemImage: "trash") { CREATemporaryStorage.clear(); temporarySize = CREATemporaryStorage.size() }
@@ -963,7 +1002,7 @@ struct ReaderHomeView: View {
                             Task {
                                 await driveCatalog.synchronize()
                                 await progressSync.pull(catalog: driveCatalog, library: library)
-                                await progressSync.push(catalog: driveCatalog, library: library)
+                                await progressSync.push(catalog: driveCatalog, library: library); await syncReaders()
                             }
                         } label: {
                             Label("Sincronizar progreso Android y iOS", systemImage: "arrow.triangle.2.circlepath")

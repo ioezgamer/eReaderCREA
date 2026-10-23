@@ -1,5 +1,15 @@
 # Historial de cambios
 
+## iOS 0.13.0 - 2026-10-23
+
+Paridad con Android 1.0 a 1.5.1:
+
+- **Voz natural (ElevenLabs, por el servidor de CREA)** para leer en voz alta, como extra de la voz del dispositivo: cada frase se pide junto con la anterior para continuar la entonación, el audio se guarda (hasta 60 MB) y, sin conexión, sin sesión de Google, sin créditos o ante cualquier error, se lee con la voz del dispositivo sin cortar la lectura. Ajustes > Lectura en voz alta: interruptor, selector de voz, muestra, comprobación y explicación de por qué no suena.
+- **Perfiles de lector**: la pestaña «Comunidad» pasa a ser **Perfil**. Seguir leyendo, Leídos recientemente, Favoritos y Terminados por persona; «Qué leen los demás» queda dentro. Los perfiles viajan por Drive (`crea-perfil-<id>.json`, el mismo formato de Android) y al abrir un libro se continúa donde esa persona lo dejó.
+- **Dispositivos de grupo**: con tres o más dispositivos en la misma cuenta aparece «¿Quién lee hoy?», «Soy nuevo» (apodo, dibujo y grupo), «Terminé» y cierre automático de sesión tras 30 minutos o al día siguiente. Se puede leer sin elegir. Ajustes > Lectores: automático, varias personas o una sola. Cambiar nombre o dibujo, ocultar la lectura, borrar el historial y eliminar el perfil.
+- **Grupos de lectura**, «Lo que lee mi grupo», **Recomendado para ti** (hasta 8 libros del catálogo con el motivo, sin IA) y **Logros** sin puntos ni competencia.
+- **Catálogo en línea**: el último libro abierto en este dispositivo va primero con cualquier orden (no mientras se busca por texto).
+
 ## iOS 0.12.0 - 2026-10-16
 
 Paridad con la sesión «Rediseño Liquid Glass» de Android (PR #8):
