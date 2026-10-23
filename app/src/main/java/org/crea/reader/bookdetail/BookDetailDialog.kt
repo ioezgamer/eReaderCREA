@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -306,7 +307,11 @@ class BookDetailDialog : DialogFragment() {
                 ) {
                     Text(stringResource(if (percent in 1..99) R.string.book_detail_continue else R.string.book_detail_read), fontSize = 16.sp)
                 }
-                OutlinedButton(onClick = { read(local, row, listen = true) }, modifier = Modifier.weight(1f).height(52.dp)) {
+                OutlinedButton(
+                    onClick = { read(local, row, listen = true) },
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    border = BorderStroke(1.5.dp, colorResource(R.color.crea_primary)),
+                ) {
                     Text("🎧  " + stringResource(R.string.book_detail_listen), fontSize = 16.sp, color = colorResource(R.color.crea_on_surface))
                 }
             }

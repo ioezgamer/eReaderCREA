@@ -40,9 +40,23 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import org.crea.reader.R
 import org.crea.reader.data.model.Book
+import org.crea.reader.data.model.DriveBook
 
-/** A book in the "Seguir leyendo" carousel: its progress for whoever reads now, and its AI summary. */
-data class ContinueItem(val book: Book, val percent: Int, val summary: String?)
+/**
+ * A book in the "Seguir leyendo" carousel, downloaded ([book]) or read online from Drive ([drive]),
+ * with its progress for whoever reads now and its AI summary.
+ */
+data class ContinueItem(
+    val title: String,
+    val author: String?,
+    val cover: String?,
+    val percent: Int,
+    val summary: String?,
+    val book: Book? = null,
+    val drive: DriveBook? = null,
+) {
+    val key: String get() = drive?.driveFileId ?: book?.id?.toString().orEmpty()
+}
 
 /**
  * Top of "Mi biblioteca": a carousel with the last books being read (swipe between them, dots
@@ -52,25 +66,26 @@ data class ContinueItem(val book: Book, val percent: Int, val summary: String?)
 fun LibraryHighlights(
     reading: List<ContinueItem>,
     recent: List<Book>,
-    onOpen: (Book) -> Unit,
-    onDetails: (Book) -> Unit,
+    onOpen: (ContinueItem) -> Unit,
+    onDetails: (ContinueItem) -> Unit,
+    onBookDetails: (Book) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(top = 12.dp)) {
         if (reading.isNotEmpty()) ContinueCarousel(reading, onOpen, onDetails)
-        if (recent.isNotEmpty()) RecentRow(recent, onDetails)
+        if (recent.isNotEmpty()) RecentRow(recent, onBookDetails)
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ContinueCarousel(items: List<ContinueItem>, onOpen: (Book) -> Unit, onDetails: (Book) -> Unit) {
+private fun ContinueCarousel(items: List<ContinueItem>, onOpen: (ContinueItem) -> Unit, onDetails: (ContinueItem) -> Unit) {
     val pager = rememberPagerState { items.size }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         HorizontalPager(
             state = pager,
             contentPadding = PaddingValues(horizontal = 16.dp),
             pageSpacing = 10.dp,
-            key = { items[it].book.id ?: it.toLong() },
+            key = { items[it].key },
         ) { page ->
             ContinueCard(items[page], onOpen, onDetails)
         }
@@ -90,7 +105,7 @@ private fun ContinueCarousel(items: List<ContinueItem>, onOpen: (Book) -> Unit, 
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ContinueCard(item: ContinueItem, onOpen: (Book) -> Unit, onDetails: (Book) -> Unit) {
+private fun ContinueCard(item: ContinueItem, onOpen: (ContinueItem) -> Unit, onDetails: (ContinueItem) -> Unit) {
     val shape = RoundedCornerShape(28.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -99,17 +114,17 @@ private fun ContinueCard(item: ContinueItem, onOpen: (Book) -> Unit, onDetails: 
             .clip(shape)
             .background(Brush.linearGradient(listOf(colorResource(R.color.hero_start), colorResource(R.color.hero_end))))
             .border(1.dp, Color.White.copy(alpha = 0.5f), shape)
-            .combinedClickable(onLongClick = { onDetails(item.book) }, onClick = { onOpen(item.book) })
+            .combinedClickable(onLongClick = { onDetails(item) }, onClick = { onOpen(item) })
             .padding(14.dp),
     ) {
-        BookCover(item.book.cover, 84.dp, 126.dp)
+        BookCover(item.cover, 84.dp, 126.dp)
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(stringResource(R.string.library_continue_label), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.8f))
             Text(
-                item.book.title.orEmpty(), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White,
+                item.title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White,
                 maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp),
             )
-            item.book.author?.takeIf { it.isNotBlank() }?.let {
+            item.author?.takeIf { it.isNotBlank() }?.let {
                 Text(it, fontSize = 13.sp, color = Color.White.copy(alpha = 0.9f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             item.summary?.let {
@@ -160,10 +175,12 @@ private fun RecentRow(books: List<Book>, onDetails: (Book) -> Unit) {
 }
 
 @Composable
-private fun BookCover(path: String, width: Dp, height: Dp) {
+private fun BookCover(path: String?, width: Dp, height: Dp) {
     AndroidView(
         factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP } },
-        update = { view -> CoverImages.request(path).placeholder(R.drawable.cover).into(view) },
+        update = { view ->
+            if (path != null) CoverImages.request(path).placeholder(R.drawable.cover).into(view) else view.setImageResource(R.drawable.cover)
+        },
         modifier = Modifier.width(width).height(height).shadow(6.dp, RoundedCornerShape(8.dp)).clip(RoundedCornerShape(8.dp)),
     )
 }

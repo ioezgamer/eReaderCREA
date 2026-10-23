@@ -6,6 +6,7 @@
 
 package org.crea.reader.bookshelf
 
+import android.widget.Toast
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -40,6 +41,8 @@ import org.crea.reader.Application
 import org.crea.reader.R
 import org.crea.reader.bookdetail.BookDetailDialog
 import org.crea.reader.data.model.Book
+import org.crea.reader.data.model.DriveBook
+import org.crea.reader.online.OnlineBookManager
 import org.crea.reader.data.model.BookCollection
 import org.crea.reader.data.model.CollectionBook
 import org.crea.reader.databinding.FragmentBookshelfBinding
@@ -91,6 +94,7 @@ class BookshelfFragment : Fragment() {
     private var collectionChips = mapOf<Int, Long>()
     private var viewOptions = ViewOptions(ViewMode.GRID, CoverSize.MEDIUM)
     private var syncRunning = false
+    private var driveCatalog: List<DriveBook> = emptyList()
     private var highlights by mutableStateOf<Pair<List<ContinueItem>, List<Book>>>(emptyList<ContinueItem>() to emptyList())
 
     private val app: Application
@@ -160,8 +164,11 @@ class BookshelfFragment : Fragment() {
             LibraryHighlights(
                 reading = reading,
                 recent = recent,
-                onOpen = { book -> book.id?.let { bookshelfViewModel.openPublication(it) } },
-                onDetails = { book -> BookDetailDialog.show(childFragmentManager, driveFileId = book.remoteFileId, bookId = book.id) },
+                onOpen = ::openContinue,
+                onDetails = { item ->
+                    BookDetailDialog.show(childFragmentManager, driveFileId = item.drive?.driveFileId ?: item.book?.remoteFileId, bookId = item.book?.id)
+                },
+                onBookDetails = { book -> BookDetailDialog.show(childFragmentManager, driveFileId = book.remoteFileId, bookId = book.id) },
             )
         }
         binding.bookshelfReaderCard.setContent {
@@ -203,6 +210,13 @@ class BookshelfFragment : Fragment() {
                         if (query.filter == LibraryFilter.BOOKMARKS || query.filter == LibraryFilter.NOTES) applyFilters()
                     }
                 }
+                launch {
+                    app.driveCatalogState.filterNotNull().collect {
+                        driveCatalog = it
+                        renderContinueReading()
+                    }
+                }
+                launch { app.onlineBooks.readyToRead.collect { event -> event?.let(::openWhenReady) } }
                 launch {
                     app.insightsState.collect { insights ->
                         bookshelfAdapter.summaries = insights.values
@@ -273,19 +287,37 @@ class BookshelfFragment : Fragment() {
      */
     private fun renderContinueReading() {
         val showing = query.text.isBlank() && query.filter == LibraryFilter.ALL && selectedCollection == null && selectedCategory == null
-        val summaryOf = { book: Book -> book.remoteFileId?.let { bookshelfAdapter.summaries[it] } }
+        val summaryOf = { driveFileId: String? -> driveFileId?.let { bookshelfAdapter.summaries[it] } }
+        val local = { book: Book, percent: Int ->
+            ContinueItem(book.title.orEmpty(), book.author, book.cover, percent, summaryOf(book.remoteFileId), book = book)
+        }
+        val online = { drive: DriveBook, percent: Int ->
+            ContinueItem(drive.title, drive.author, drive.coverPath, percent, summaryOf(drive.driveFileId), drive = drive)
+        }
+        val downloadedIds = allBooks.mapNotNullTo(hashSetOf()) { it.remoteFileId }
+        val catalog = driveCatalog.associateBy { it.driveFileId }
         val reading = when {
             !showing -> emptyList()
             app.readers.isGroupTablet -> {
                 val byKey = allBooks.mapNotNull { book -> book.toReaderRef()?.let { it.key to book } }.toMap()
                 org.crea.reader.readers.ReaderRules.continueReading(app.readers.current()).mapNotNull { entry ->
-                    byKey[entry.key]?.let { ContinueItem(it, entry.percent, summaryOf(it)) }
+                    byKey[entry.key]?.let { local(it, entry.percent) }
+                        ?: entry.driveFileId?.let(catalog::get)?.let { online(it, entry.percent) }
                 }
             }
-            else -> allBooks
-                .filter { BookshelfAdapter.progressPercent(it.progression) in 1 until LibraryRules.FINISHED_AT }
-                .sortedByDescending { it.progressUpdatedAt }
-                .map { ContinueItem(it, BookshelfAdapter.progressPercent(it.progression), summaryOf(it)) }
+            else -> {
+                // Downloaded books and books read online here (not downloaded), most recent first.
+                val inProgress = { percent: Int -> percent in 1 until LibraryRules.FINISHED_AT }
+                val downloaded = allBooks.mapNotNull { book ->
+                    val percent = BookshelfAdapter.progressPercent(book.progression)
+                    if (inProgress(percent)) book.progressUpdatedAt to local(book, percent) else null
+                }
+                val readOnline = driveCatalog.filter { it.driveFileId !in downloadedIds }.mapNotNull { drive ->
+                    val percent = BookshelfAdapter.progressPercent(drive.progression)
+                    if (inProgress(percent)) drive.progressionAt to online(drive, percent) else null
+                }
+                (downloaded + readOnline).sortedByDescending { it.first }.map { it.second }
+            }
         }.take(MAX_CONTINUE)
         val recent = if (showing && allBooks.size >= MIN_FOR_RECENT) {
             allBooks.sortedByDescending { it.creation ?: 0L }.take(MAX_RECENT)
@@ -294,6 +326,19 @@ class BookshelfFragment : Fragment() {
         }
         highlights = reading to recent
         binding.bookshelfHighlights.isVisible = reading.isNotEmpty() || recent.isNotEmpty()
+    }
+
+    /** A downloaded book opens right away; one read online is fetched again and opens when ready. */
+    private fun openContinue(item: ContinueItem) {
+        item.book?.id?.let { return bookshelfViewModel.openPublication(it) }
+        val drive = item.drive ?: return
+        app.onlineBooks.read(drive)
+        Toast.makeText(requireContext(), R.string.book_detail_preparing, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openWhenReady(event: OnlineBookManager.Event.ReadyToRead) {
+        app.onlineBooks.consumeReady(event)
+        if (System.currentTimeMillis() - event.at <= READY_MAX_AGE_MS) bookshelfViewModel.openPublication(event.readerId)
     }
 
     private fun renderEmptyState(listEmpty: Boolean) {
@@ -733,6 +778,7 @@ class BookshelfFragment : Fragment() {
         const val MAX_CONTINUE = 5
         const val MAX_RECENT = 10
         const val MIN_FOR_RECENT = 4
+        const val READY_MAX_AGE_MS = 2 * 60 * 1000L
 
         val SORT_MENU = mapOf(
             R.id.sort_recent to LibrarySort.LAST_READ,

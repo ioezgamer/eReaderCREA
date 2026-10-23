@@ -1,5 +1,11 @@
 # Historial de cambios
 
+## 1.6.1 - 2026-10-23
+
+- **Seguir leyendo** incluye también los libros leídos en línea desde Drive (no solo los descargados). Un toque los vuelve a abrir desde Drive y la pulsación larga muestra su ficha. En un dispositivo compartido aparecen los de quien lee, estén descargados o no.
+- Ficha del libro: el botón **Escuchar** se ve bien con el tema claro, y «En este dispositivo» lleva su propio ícono.
+- Mi biblioteca sin libros (o sin resultados): el mensaje y sus botones ya no quedan tapados por la barra inferior; aparecen arriba y se pueden desplazar.
+
 ## 1.6.0 - 2026-10-23
 
 - **Ficha del libro** a pantalla completa: portada grande, título y autor; tarjeta con categoría, nivel de lectura, formato y tamaño, origen (Drive o este dispositivo) y fecha; resumen de la IA; botones **Leer / Seguir leyendo**, **Escuchar** (abre el libro y empieza a leer en voz alta), **Descargar** o **Actualizar** y favorito ♥. En los libros descargados, pestañas **Índice**, **Marcadores** y **Notas**: un toque abre el libro en ese lugar. Además, **«En tu grupo lo leen»** (quién del grupo lo lee y cuánto lleva) y **«Si te gusta, prueba…»** (mismo autor o categoría).
