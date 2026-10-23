@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.6.2 - 2026-10-23
+
+- Mi biblioteca sin libros (o sin resultados): el logo, el mensaje y los botones quedan centrados en el espacio libre, entre los filtros y la barra inferior, tenga la parte de arriba las tarjetas que tenga.
+
 ## 1.6.1 - 2026-10-23
 
 - **Seguir leyendo** incluye también los libros leídos en línea desde Drive (no solo los descargados). Un toque los vuelve a abrir desde Drive y la pulsación larga muestra su ficha. En un dispositivo compartido aparecen los de quien lee, estén descargados o no.

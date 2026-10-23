@@ -359,15 +359,17 @@
         android:visibility="gone"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
+    <!-- Its minimum height is the space left under the header, so the message sits in its centre. -->
     <LinearLayout
+        android:id="@+id/bookshelf_empty_content"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
+        android:gravity="center"
         android:orientation="vertical"
         android:paddingStart="32dp"
-        android:paddingTop="24dp"
+        android:paddingTop="16dp"
         android:paddingEnd="32dp"
-        android:paddingBottom="96dp">
+        android:paddingBottom="16dp">
 
         <ImageView
             android:id="@+id/bookshelf_empty_icon"

@@ -250,6 +250,7 @@ class BookshelfFragment : Fragment() {
         binding.bookshelfSyncCard.setOnClickListener {
             findNavController().navigate(R.id.sync)
         }
+        binding.root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> fitEmptyState() }
         binding.bookshelfRefresh.setOnRefreshListener { refreshFromDrive() }
         binding.bookshelfAddBookFab.setOnClickListener { showAddBookSheet() }
         binding.bookshelfEmptyPrimary.setOnClickListener {
@@ -339,6 +340,16 @@ class BookshelfFragment : Fragment() {
     private fun openWhenReady(event: OnlineBookManager.Event.ReadyToRead) {
         app.onlineBooks.consumeReady(event)
         if (System.currentTimeMillis() - event.at <= READY_MAX_AGE_MS) bookshelfViewModel.openPublication(event.readerId)
+    }
+
+    /** Centres the empty message between the header (whatever cards it shows) and the bottom bar. */
+    private fun fitEmptyState() {
+        val empty = binding.bookshelfEmptyState
+        val free = (binding.root.height - binding.bookshelfAppbar.bottom - empty.paddingBottom).coerceAtLeast(0)
+        if (binding.bookshelfEmptyContent.minimumHeight != free) {
+            binding.bookshelfEmptyContent.minimumHeight = free
+            binding.bookshelfEmptyContent.requestLayout()
+        }
     }
 
     private fun renderEmptyState(listEmpty: Boolean) {
