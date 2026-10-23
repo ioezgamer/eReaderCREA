@@ -61,6 +61,13 @@
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.Crea.Dialog</item>
     </style>
 
+    <!-- Full-screen card of a book (BookDetailDialog). -->
+    <style name="AppTheme.Glass.FullScreen">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Activity</item>
+    </style>
+
     <!-- The reader keeps the book's own background; only its bars use the glass look -->
     <style name="AppTheme.Reader" parent="AppTheme">
         <item name="actionBarStyle">@style/Widget.Crea.ReaderActionBar</item>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="book_detail_title">Ficha del libro</string>
+    <string name="book_detail_back">Volver</string>
+    <string name="book_detail_loading">Cargando…</string>
+    <string name="book_detail_read">Leer</string>
+    <string name="book_detail_continue">Seguir leyendo</string>
+    <string name="book_detail_listen">Escuchar</string>
+    <string name="book_detail_download">Descargar (%1$s)</string>
+    <string name="book_detail_preparing">Preparando el libro…</string>
+    <string name="book_detail_open_failed">No se pudo abrir el libro.</string>
+    <string name="book_detail_summary">De qué trata</string>
+    <string name="book_detail_level">Nivel: %1$s</string>
+    <string name="book_detail_here">En este dispositivo</string>
+    <string name="book_detail_drive">En el catálogo de Drive</string>
+    <string name="book_detail_added">Agregado el %1$s</string>
+    <string name="book_detail_group">En tu grupo lo leen (%1$s)</string>
+    <string name="book_detail_similar">Si te gusta, prueba…</string>
+    <string name="book_detail_toc">Índice</string>
+    <string name="book_detail_bookmarks">Marcadores</string>
+    <string name="book_detail_notes">Notas</string>
+    <string name="book_detail_bookmark">Marcador</string>
+    <string name="book_detail_no_toc">Este libro no tiene índice.</string>
+    <string name="book_detail_no_bookmarks">Aún no hay marcadores. Agrégalos mientras lees.</string>
+    <string name="book_detail_no_notes">Aún no hay notas ni subrayados.</string>
+    <string name="book_detail_open">Ver ficha del libro</string>
+    <string name="library_source_drive">En Drive · disponible sin conexión</string>
+    <string name="library_source_device">Solo en este dispositivo</string>
+    <string name="library_recent_label">Agregados recientemente</string>
+</resources>

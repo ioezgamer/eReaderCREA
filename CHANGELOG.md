@@ -1,5 +1,12 @@
 # Historial de cambios
 
+## 1.6.0 - 2026-10-23
+
+- **Ficha del libro** a pantalla completa: portada grande, título y autor; tarjeta con categoría, nivel de lectura, formato y tamaño, origen (Drive o este dispositivo) y fecha; resumen de la IA; botones **Leer / Seguir leyendo**, **Escuchar** (abre el libro y empieza a leer en voz alta), **Descargar** o **Actualizar** y favorito ♥. En los libros descargados, pestañas **Índice**, **Marcadores** y **Notas**: un toque abre el libro en ese lugar. Además, **«En tu grupo lo leen»** (quién del grupo lo lee y cuánto lleva) y **«Si te gusta, prueba…»** (mismo autor o categoría).
+- La ficha se abre al tocar un libro del catálogo en línea o del Perfil > «Qué leen los demás», con una pulsación larga en las portadas del Perfil, y desde Mi biblioteca (pulsación larga > «Ver ficha del libro»).
+- **Mi biblioteca en lista**: cada libro muestra 2 líneas del resumen y si está en Drive o solo en este dispositivo, además del formato y la barra de avance.
+- **Seguir leyendo** en Mi biblioteca es ahora un carrusel con los últimos 5 libros en curso (en un dispositivo compartido, los de quien lee), con resumen y puntos para pasar de uno a otro; pulsación larga abre la ficha. Debajo, **Agregados recientemente**.
+
 ## 1.5.1 - 2026-10-22
 
 - **Textos para cualquier dispositivo**: la app ya no habla solo de «tablet» («Terminé, devolver el dispositivo», «seguir en cualquier dispositivo», «Lectores en este dispositivo»…), porque también se usa en teléfonos y otros equipos.

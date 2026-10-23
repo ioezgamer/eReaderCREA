@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Biblioteca -->
-    <string name="library_continue_label">Continuar leyendo</string>
+    <string name="library_continue_label">Seguir leyendo</string>
     <string name="library_continue_action">Continuar</string>
     <string name="library_sync_running">Sincronizando…</string>
     <string name="library_sync_error_title">Sincronización pendiente</string>

@@ -150,6 +150,16 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
 
         navigatorFragment = navigator as Fragment
 
+        // "Escuchar" from the book card: start reading aloud once the page is ready (only the first time).
+        val intent = requireActivity().intent
+        if (savedInstanceState == null && intent.getBooleanExtra("listen", false)) {
+            intent.removeExtra("listen")
+            viewLifecycleOwner.lifecycleScope.launch {
+                kotlinx.coroutines.delay(LISTEN_DELAY_MS)
+                onListen()
+            }
+        }
+
         (navigator as OverflowableNavigator).apply {
             // This will automatically turn pages when tapping the screen edges or arrow keys.
             addInputListener(DirectionalNavigationAdapter(this, animatedTransition = true))
@@ -871,3 +881,6 @@ data class DecorationStyleAnnotationMark(@ColorInt val tint: Int) : Decoration.S
 @Parcelize
 data class DecorationStylePageNumber(val label: String) : Decoration.Style
 
+
+/** Time for the first page to be laid out before "Escuchar" starts reading aloud. */
+private const val LISTEN_DELAY_MS = 1200L

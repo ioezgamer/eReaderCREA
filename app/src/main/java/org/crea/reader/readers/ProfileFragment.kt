@@ -8,6 +8,7 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +62,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.crea.reader.Application
 import org.crea.reader.R
+import org.crea.reader.bookdetail.BookDetailDialog
 import org.crea.reader.bookshelf.CoverImages
 import org.crea.reader.data.model.Book
 import org.crea.reader.online.CatalogRow
@@ -120,6 +122,16 @@ class ProfileFragment : Fragment() {
             else -> books.firstOrNull { it.toReaderRef()?.key == key }?.id?.let { viewModel.openPublication(it) }
                 ?: Toast.makeText(requireContext(), R.string.profile_not_here, Toast.LENGTH_LONG).show()
         }
+    }
+
+    /** Long press: the book's card, from the catalog or from this device's library. */
+    private fun details(key: String, driveFileId: String?, books: List<Book>) {
+        val local = books.firstOrNull { it.toReaderRef()?.key == key }
+        if (driveFileId == null && local == null) {
+            Toast.makeText(requireContext(), R.string.profile_not_here, Toast.LENGTH_LONG).show()
+            return
+        }
+        BookDetailDialog.show(childFragmentManager, driveFileId = driveFileId ?: local?.remoteFileId, bookId = local?.id)
     }
 
     private fun coverFor(key: String, driveFileId: String?, books: List<Book>): String? {
@@ -364,14 +376,16 @@ class ProfileFragment : Fragment() {
                 modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
             )
             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(tiles, key = { it.key }) { tile -> BookTile(tile) { open(tile.key, tile.driveFileId, books) } }
+                items(tiles, key = { it.key }) { tile ->
+                    BookTile(tile, onLongClick = { details(tile.key, tile.driveFileId, books) }) { open(tile.key, tile.driveFileId, books) }
+                }
             }
         }
     }
 
     @Composable
-    private fun BookTile(tile: Tile, onClick: () -> Unit) {
-        Column(Modifier.width(104.dp).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick)) {
+    private fun BookTile(tile: Tile, onLongClick: () -> Unit, onClick: () -> Unit) {
+        Column(Modifier.width(104.dp).clip(RoundedCornerShape(12.dp)).combinedClickable(onLongClick = onLongClick, onClick = onClick)) {
             AndroidView(
                 factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP } },
                 update = { view ->

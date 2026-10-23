@@ -43,6 +43,17 @@ class BookshelfAdapter(
             notifyDataSetChanged()
         }
 
+    /** AI summaries of the books that are also in Drive, by Drive file id (list view only). */
+    var summaries: Map<String, String> = emptyMap()
+        set(value) {
+            if (field == value) return
+            field = value
+            if (mode == ViewMode.LIST) {
+                @Suppress("NotifyDataSetChanged")
+                notifyDataSetChanged()
+            }
+        }
+
     override fun getItemViewType(position: Int): Int = mode.ordinal
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -93,6 +104,12 @@ class BookshelfAdapter(
             val progress = progressPercent(book.progression)
             binding.listProgress.isVisible = progress in 1..99
             binding.listProgress.setProgressCompat(progress, false)
+            val summary = book.remoteFileId?.let { summaries[it] }
+            binding.listSummary.text = summary
+            binding.listSummary.isVisible = summary != null
+            val inDrive = book.remoteFileId != null
+            binding.listSourceIcon.setImageResource(if (inDrive) R.drawable.ic_nav_drive else R.drawable.ic_download_done)
+            binding.listSource.setText(if (inDrive) R.string.library_source_drive else R.string.library_source_device)
             binding.listMeta.text = listOf(
                 progressLabel(context, progress),
                 Formatter.formatShortFileSize(context, book.fileSize),

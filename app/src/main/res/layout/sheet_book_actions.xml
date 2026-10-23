@@ -35,6 +35,10 @@
         tools:text="Autor" />
 
     <include
+        android:id="@+id/book_sheet_details"
+        layout="@layout/item_sheet_action" />
+
+    <include
         android:id="@+id/book_sheet_favorite"
         layout="@layout/item_sheet_action" />
 

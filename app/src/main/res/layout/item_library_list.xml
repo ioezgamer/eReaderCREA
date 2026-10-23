@@ -88,6 +88,23 @@
             tools:text="Gabriel García Márquez" />
 
         <TextView
+            android:id="@+id/list_summary"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurface"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/list_cover"
+            app:layout_constraintTop_toBottomOf="@id/list_author"
+            tools:text="Una saga familiar en el pueblo de Macondo, entre lo real y lo mágico."
+            tools:visibility="visible" />
+
+        <TextView
             android:id="@+id/list_meta"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -100,7 +117,7 @@
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/list_cover"
-            app:layout_constraintTop_toBottomOf="@id/list_author"
+            app:layout_constraintTop_toBottomOf="@id/list_summary"
             tools:text="38% leído · 3,1 MB" />
 
         <LinearLayout
@@ -116,6 +133,7 @@
             app:layout_constraintTop_toBottomOf="@id/list_meta">
 
             <ImageView
+                android:id="@+id/list_source_icon"
                 android:layout_width="16dp"
                 android:layout_height="16dp"
                 android:contentDescription="@null"
@@ -123,6 +141,7 @@
                 app:tint="@color/crea_green" />
 
             <TextView
+                android:id="@+id/list_source"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"

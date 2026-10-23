@@ -124,12 +124,17 @@ class OnlineCatalogViewModel(application: Application) : AndroidViewModel(applic
         clearSelection()
     }
 
+    /** Reader id of an online book asked to be listened to ("Escuchar"), started when it opens. */
+    var listenOnOpen: Long? = null
+
     fun openPublication(bookId: Long) {
+        val listen = listenOnOpen == bookId
+        if (listen) listenOnOpen = null
         viewModelScope.launch {
             app.readerRepository
                 .open(bookId)
                 .onFailure { channel.send(Event.OpenPublicationError(it)) }
-                .onSuccess { channel.send(Event.LaunchReader(ReaderActivityContract.Arguments(bookId))) }
+                .onSuccess { channel.send(Event.LaunchReader(ReaderActivityContract.Arguments(bookId, listen))) }
         }
     }
 

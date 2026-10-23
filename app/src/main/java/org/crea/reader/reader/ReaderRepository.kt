@@ -82,10 +82,11 @@ class ReaderRepository(
     operator fun get(bookId: Long): ReaderInitData? =
         repository[bookId]
 
-    suspend fun open(bookId: Long): Try<Unit, OpeningError> =
-        coroutineQueue.await { doOpen(bookId) }
+    /** Opens [bookId]; [startAt] (a locator as JSON) opens it at that place instead of where it was left. */
+    suspend fun open(bookId: Long, startAt: String? = null): Try<Unit, OpeningError> =
+        coroutineQueue.await { doOpen(bookId, startAt) }
 
-    private suspend fun doOpen(bookId: Long): Try<Unit, OpeningError> {
+    private suspend fun doOpen(bookId: Long, startAt: String? = null): Try<Unit, OpeningError> {
         if (bookId in repository.keys) {
             return Try.success(Unit)
         }
@@ -127,7 +128,7 @@ class ReaderRepository(
 
         // A reader who already started this book (on any tablet) continues where they stopped.
         val ownPosition = source.ref?.let { runCatching { readers.progressionFor(it.key) }.getOrNull() }
-        val initialLocator = (ownPosition ?: source.progression)
+        val initialLocator = (startAt ?: ownPosition ?: source.progression)
             ?.let { Locator.fromJSON(JSONObject(it)) }
 
         val readerInitData = when {

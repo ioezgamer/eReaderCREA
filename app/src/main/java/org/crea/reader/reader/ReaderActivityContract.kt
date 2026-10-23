@@ -20,11 +20,12 @@ import androidx.core.os.bundleOf
 class ReaderActivityContract :
     ActivityResultContract<ReaderActivityContract.Arguments, ReaderActivityContract.Arguments?>() {
 
-    data class Arguments(val bookId: Long)
+    /** [listen]: start reading aloud as soon as the book is open (the "Escuchar" button). */
+    data class Arguments(val bookId: Long, val listen: Boolean = false)
 
     override fun createIntent(context: Context, input: Arguments): Intent {
         val intent = Intent(context, ReaderActivity::class.java)
-        val arguments = bundleOf("bookId" to input.bookId)
+        val arguments = bundleOf("bookId" to input.bookId, "listen" to input.listen)
         intent.putExtras(arguments)
         return intent
     }
@@ -48,7 +49,7 @@ class ReaderActivityContract :
         private fun parseExtras(extras: Bundle): Arguments {
             val bookId = extras.getLong("bookId")
             check(bookId != 0L)
-            return Arguments(bookId)
+            return Arguments(bookId, extras.getBoolean("listen", false))
         }
     }
 }

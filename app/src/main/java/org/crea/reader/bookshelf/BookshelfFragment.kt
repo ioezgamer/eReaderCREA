@@ -16,6 +16,9 @@ import android.webkit.URLUtil
 import android.widget.EditText
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
@@ -35,6 +38,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import org.crea.reader.Application
 import org.crea.reader.R
+import org.crea.reader.bookdetail.BookDetailDialog
 import org.crea.reader.data.model.Book
 import org.crea.reader.data.model.BookCollection
 import org.crea.reader.data.model.CollectionBook
@@ -87,7 +91,7 @@ class BookshelfFragment : Fragment() {
     private var collectionChips = mapOf<Int, Long>()
     private var viewOptions = ViewOptions(ViewMode.GRID, CoverSize.MEDIUM)
     private var syncRunning = false
-    private var continueBookId: Long? = null
+    private var highlights by mutableStateOf<Pair<List<ContinueItem>, List<Book>>>(emptyList<ContinueItem>() to emptyList())
 
     private val app: Application
         get() = requireContext().applicationContext as Application
@@ -151,6 +155,15 @@ class BookshelfFragment : Fragment() {
         renderSyncState(app.syncStateStore.snapshot(), app.syncEngine.progress.value)
 
         // Group tablets: "who is reading today?" (reading never waits for it).
+        binding.bookshelfHighlights.setContent {
+            val (reading, recent) = highlights
+            LibraryHighlights(
+                reading = reading,
+                recent = recent,
+                onOpen = { book -> book.id?.let { bookshelfViewModel.openPublication(it) } },
+                onDetails = { book -> BookDetailDialog.show(childFragmentManager, driveFileId = book.remoteFileId, bookId = book.id) },
+            )
+        }
         binding.bookshelfReaderCard.setContent {
             org.crea.reader.readers.ReaderSessionCard(app.readers, onOpenProfile = { findNavController().navigate(R.id.community) })
         }
@@ -191,6 +204,14 @@ class BookshelfFragment : Fragment() {
                     }
                 }
                 launch {
+                    app.insightsState.collect { insights ->
+                        bookshelfAdapter.summaries = insights.values
+                            .filter { !it.isPlaceholder && it.summary.isNotBlank() }
+                            .associate { it.driveFileId to it.summary }
+                        renderContinueReading()
+                    }
+                }
+                launch {
                     combine(app.syncStateStore.state, app.syncEngine.progress) { state, progress ->
                         state to progress
                     }.collect { (state, progress) ->
@@ -214,9 +235,6 @@ class BookshelfFragment : Fragment() {
         }
         binding.bookshelfSyncCard.setOnClickListener {
             findNavController().navigate(R.id.sync)
-        }
-        binding.bookshelfContinueCard.setOnClickListener {
-            continueBookId?.let { bookshelfViewModel.openPublication(it) }
         }
         binding.bookshelfRefresh.setOnRefreshListener { refreshFromDrive() }
         binding.bookshelfAddBookFab.setOnClickListener { showAddBookSheet() }
@@ -249,57 +267,33 @@ class BookshelfFragment : Fragment() {
         )
     }
 
-    private fun renderContinueReading() {
-        if (app.readers.isGroupTablet) {
-            renderReaderContinue()
-            return
-        }
-        val candidate = if (query.text.isBlank() && query.filter == LibraryFilter.ALL) {
-            allBooks
-                .filter { BookshelfAdapter.progressPercent(it.progression) in 1 until LibraryRules.FINISHED_AT }
-                .maxByOrNull { it.progressUpdatedAt }
-        } else {
-            null
-        }
-        continueBookId = candidate?.id
-        binding.bookshelfContinueCard.isVisible = candidate != null
-        if (candidate == null) return
-        val progress = BookshelfAdapter.progressPercent(candidate.progression)
-        binding.continueTitle.text = candidate.title
-        binding.continueAuthor.text = candidate.author.orEmpty()
-        binding.continueAuthor.isVisible = !candidate.author.isNullOrBlank()
-        binding.continueProgress.setProgressCompat(progress, true)
-        binding.continuePercent.text = getString(R.string.book_progress_label, progress)
-        CoverImages.request(candidate.cover)
-            .placeholder(R.drawable.cover)
-            .into(binding.continueCover)
-    }
-
     /**
-     * On a group tablet the last book read here may be somebody else's: "Continuar leyendo" shows
-     * the current reader's own last book (if it is in this library), and nothing for a guest.
+     * "Seguir leyendo": the last books in progress (on a shared device, the current reader's own,
+     * and nothing for a guest), plus the books added most recently. Only on the unfiltered library.
      */
-    private fun renderReaderContinue() {
-        val reader = app.readers.current()
-        val showing = query.text.isBlank() && query.filter == LibraryFilter.ALL
-        val match = if (reader == null || !showing) null else {
-            val byKey = allBooks.mapNotNull { book -> book.toReaderRef()?.let { it.key to book } }.toMap()
-            org.crea.reader.readers.ReaderRules.continueReading(reader).firstNotNullOfOrNull { entry ->
-                byKey[entry.key]?.let { entry to it }
+    private fun renderContinueReading() {
+        val showing = query.text.isBlank() && query.filter == LibraryFilter.ALL && selectedCollection == null && selectedCategory == null
+        val summaryOf = { book: Book -> book.remoteFileId?.let { bookshelfAdapter.summaries[it] } }
+        val reading = when {
+            !showing -> emptyList()
+            app.readers.isGroupTablet -> {
+                val byKey = allBooks.mapNotNull { book -> book.toReaderRef()?.let { it.key to book } }.toMap()
+                org.crea.reader.readers.ReaderRules.continueReading(app.readers.current()).mapNotNull { entry ->
+                    byKey[entry.key]?.let { ContinueItem(it, entry.percent, summaryOf(it)) }
+                }
             }
+            else -> allBooks
+                .filter { BookshelfAdapter.progressPercent(it.progression) in 1 until LibraryRules.FINISHED_AT }
+                .sortedByDescending { it.progressUpdatedAt }
+                .map { ContinueItem(it, BookshelfAdapter.progressPercent(it.progression), summaryOf(it)) }
+        }.take(MAX_CONTINUE)
+        val recent = if (showing && allBooks.size >= MIN_FOR_RECENT) {
+            allBooks.sortedByDescending { it.creation ?: 0L }.take(MAX_RECENT)
+        } else {
+            emptyList()
         }
-        continueBookId = match?.second?.id
-        binding.bookshelfContinueCard.isVisible = match != null
-        if (match == null) return
-        val (entry, book) = match
-        binding.continueTitle.text = book.title
-        binding.continueAuthor.text = book.author.orEmpty()
-        binding.continueAuthor.isVisible = !book.author.isNullOrBlank()
-        binding.continueProgress.setProgressCompat(entry.percent, true)
-        binding.continuePercent.text = getString(R.string.book_progress_label, entry.percent)
-        CoverImages.request(book.cover)
-            .placeholder(R.drawable.cover)
-            .into(binding.continueCover)
+        highlights = reading to recent
+        binding.bookshelfHighlights.isVisible = reading.isNotEmpty() || recent.isNotEmpty()
     }
 
     private fun renderEmptyState(listEmpty: Boolean) {
@@ -599,6 +593,10 @@ class BookshelfFragment : Fragment() {
         sheet.bookSheetDetail.text = getString(
             if (book.remoteFileId != null) R.string.book_action_delete_synced else R.string.book_action_delete_local
         )
+        bindAction(sheet.bookSheetDetails, R.drawable.ic_baseline_info_24, R.string.book_detail_open, null) {
+            dialog.dismiss()
+            BookDetailDialog.show(childFragmentManager, driveFileId = book.remoteFileId, bookId = book.id)
+        }
         bindAction(
             sheet.bookSheetFavorite,
             if (book.favorite) R.drawable.ic_favorite_outline else R.drawable.ic_favorite,
@@ -732,6 +730,9 @@ class BookshelfFragment : Fragment() {
         const val KEY_VIEW = "bookshelf_view"
         const val REFRESH_GRACE_MS = 2500L
         const val MAX_COLLECTION_NAME = 40
+        const val MAX_CONTINUE = 5
+        const val MAX_RECENT = 10
+        const val MIN_FOR_RECENT = 4
 
         val SORT_MENU = mapOf(
             R.id.sort_recent to LibrarySort.LAST_READ,

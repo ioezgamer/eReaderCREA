@@ -22,7 +22,6 @@ import org.crea.reader.Application
 import org.crea.reader.R
 import org.crea.reader.databinding.FragmentOnlineCatalogBinding
 import org.crea.reader.databinding.ItemSheetActionBinding
-import org.crea.reader.databinding.SheetCatalogBookBinding
 import org.crea.reader.opds.GridAutoFitLayoutManager
 import org.crea.reader.reader.ReaderActivityContract
 import org.crea.reader.sync.LibrarySyncEngine
@@ -31,6 +30,7 @@ import org.crea.reader.sync.SyncStateStore
 import org.crea.reader.sync.SyncUi
 import org.crea.reader.utils.viewLifecycle
 import org.crea.reader.views.CoverSize
+import org.crea.reader.bookdetail.BookDetailDialog
 import org.crea.reader.views.ViewMode
 import org.crea.reader.views.ViewOptions
 import org.crea.reader.views.ViewOptionsSheet
@@ -332,7 +332,9 @@ class OnlineCatalogFragment : Fragment() {
         }.show()
     }
 
-private fun showBookSheet(row: CatalogRow) {        CatalogBookSheet.show(            requireContext(),            layoutInflater,            row,            CatalogBookSheet.Actions(                readOnline = viewModel::readOnline,                download = ::startDownload,                update = ::startUpdate,                openLocal = viewModel::openLocal,                cancel = viewModel::cancel,            )        )    }
+private fun showBookSheet(row: CatalogRow) {
+        BookDetailDialog.show(childFragmentManager, driveFileId = row.book.driveFileId)
+    }
 
     // region Downloads, updates and multiple selection
 

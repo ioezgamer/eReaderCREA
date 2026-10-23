@@ -19,8 +19,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.crea.reader.Application
 import org.crea.reader.R
+import org.crea.reader.bookdetail.BookDetailDialog
 import org.crea.reader.databinding.FragmentCommunityBinding
-import org.crea.reader.online.CatalogBookSheet
 import org.crea.reader.online.CatalogRow
 import org.crea.reader.online.OnlineBookManager
 import org.crea.reader.online.OnlineCatalogViewModel
@@ -183,18 +183,7 @@ class CommunityFragment : Fragment() {
     }
 
     private fun showBookSheet(row: CatalogRow) {
-        CatalogBookSheet.show(
-            requireContext(),
-            layoutInflater,
-            row,
-            CatalogBookSheet.Actions(
-                readOnline = viewModel::readOnline,
-                download = viewModel::download,
-                update = viewModel::update,
-                openLocal = viewModel::openLocal,
-                cancel = viewModel::cancel,
-            )
-        )
+        BookDetailDialog.show(childFragmentManager, driveFileId = row.book.driveFileId)
     }
 
     private fun openWhenReady(event: OnlineBookManager.Event.ReadyToRead) {
