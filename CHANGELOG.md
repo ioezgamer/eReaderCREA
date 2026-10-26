@@ -1,5 +1,12 @@
 # Historial de cambios
 
+## 1.7.0 - 2026-10-26
+
+- **Catálogo público**: quien no tiene cuenta de CREA ve en el Catálogo en línea los libros de la carpeta «Biblioteca pública» (dentro de «CREA Reader» en Drive, compartida como «cualquier persona con el enlace: lector»), sin iniciar sesión. Puede leerlos en línea o descargarlos, con portada y con los resúmenes que publiquen los dispositivos de CREA. Su avance queda en su dispositivo.
+- Las cuentas de CREA ven esos libros junto con los demás (categoría «Biblioteca pública») y copian a esa carpeta los resúmenes de sus libros. Perfiles, avance y demás datos nunca van a la carpeta pública.
+- La app lee la carpeta pública con una clave de API restringida a la Drive API y a esta app; la carpeta y la clave se configuran en `public-catalog.properties`, que no se sube al repositorio.
+- Textos: «¿Eres de CREA? Conecta tu cuenta» (solo cuentas @creanicaragua.org) y, en Ajustes, la IA y las voces naturales indican que son solo con una cuenta de CREA conectada.
+
 ## 1.6.2 - 2026-10-23
 
 - Mi biblioteca sin libros (o sin resultados): el logo, el mensaje y los botones quedan centrados en el espacio libre, entre los filtros y la barra inferior, tenga la parte de arriba las tarjetas que tenga.

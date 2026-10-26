@@ -14,6 +14,7 @@ apk-analysis/
 # Signing secrets
 keystore/
 keystore.properties
+public-catalog.properties
 *.jks
 *.keystore
 

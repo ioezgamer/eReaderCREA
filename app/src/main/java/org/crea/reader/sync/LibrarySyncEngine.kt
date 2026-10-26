@@ -114,6 +114,11 @@ class LibrarySyncEngine(
         val catalogListing = drive.listCatalog(folderId)
         stateStore.categoryFolders = catalogListing.folders
         val listing = catalogListing.entries.toMutableList()
+        // The public folder's books show up with the rest (once, if it sits inside the private folder).
+        val publicListing = listPublic(drive, folderId)
+        val publicIds = publicListing.mapTo(hashSetOf()) { it.file.id }
+        val privateIds = listing.mapTo(hashSetOf()) { it.file.id }
+        listing += publicListing.filter { it.file.id !in privateIds }
         val live = listing.map { it.file.id }.toSet()
 
         linkLocalCopies(listing)
@@ -216,6 +221,7 @@ class LibrarySyncEngine(
         recordMissingVersions(listing)
         fetchCovers(drive, listing)
         syncInsights(drive, folderId, listing)
+        sharePublicInsights(drive, publicIds)
 
         for (remoteProgress in plan.applyRemoteProgress) {
             bookRepository.saveProgressionFromSync(
@@ -280,6 +286,104 @@ class LibrarySyncEngine(
         stateStore.markSuccess(now, listing.size, summary.toSummary(), account)
         return result
     }
+
+    /**
+     * Without a CREA account: the catalog is the public folder, read with the app's API key. Only
+     * the catalog, covers and the summaries CREA devices published there; nothing is written.
+     */
+    suspend fun syncPublic(drive: GoogleDriveRestClient): Result = mutex.withLock {
+        stateStore.markRunning()
+        report(Stage.CHECKING)
+        try {
+            val summary = Counters()
+            val listing = drive.listCatalog(PublicCatalog.folderId).entries
+            refreshCatalog(listing, summary)
+            fetchCovers(drive, listing)
+            readPublicInsights(drive, listing)
+            val now = Clock.System.now().toEpochMilliseconds()
+            stateStore.markSuccess(now, listing.size, summary.toSummary(), account = null)
+            Result(listing.size, now)
+        } catch (cancelled: CancellationException) {
+            stateStore.markError("La actualización se interrumpió y se reanudará sola.")
+            throw cancelled
+        } catch (error: Throwable) {
+            Timber.e(error, "Public catalog sync failed")
+            stateStore.markError(describe(error))
+            throw error
+        } finally {
+            _progress.value = null
+        }
+    }
+
+    /**
+     * The public folder's books, for a CREA account. A folder that no longer exists (or that this
+     * account cannot see) just adds nothing; any other failure stops the sync before anything changes.
+     */
+    private suspend fun listPublic(drive: GoogleDriveRestClient, privateFolderId: String): List<GoogleDriveRestClient.CatalogEntry> {
+        if (!PublicCatalog.isConfigured || PublicCatalog.folderId == privateFolderId) return emptyList()
+        return try {
+            drive.listCatalog(PublicCatalog.folderId).entries
+        } catch (error: GoogleDriveRestClient.DriveApiException) {
+            if (error.statusCode != 404) throw error
+            Timber.w(error, "Public catalog folder not found")
+            emptyList()
+        }
+    }
+
+    /**
+     * Copies the summaries of the public books into the public folder, so readers without an
+     * account see them too. Only written when they changed; failures never stop the sync.
+     */
+    private suspend fun sharePublicInsights(drive: GoogleDriveRestClient, publicIds: Set<String>) {
+        if (publicIds.isEmpty()) return
+        try {
+            val books = insightsDao.getAll()
+                .filter { it.driveFileId in publicIds && !it.isPlaceholder }
+                .map { it.toShared() }
+                .sortedBy { it.driveFileId }
+            if (books.isEmpty()) return
+            val existing = drive.listByName(PublicCatalog.folderId, InsightsSyncState.FILE_NAME).firstOrNull()
+            if (existing != null && readIndex(drive, existing).books.sortedBy { it.driveFileId } == books) return
+            drive.uploadInsights(
+                PublicCatalog.folderId,
+                InsightsSyncState.FILE_NAME,
+                json.encodeToString(InsightIndex.serializer(), InsightIndex(books = books)),
+                existing?.id,
+            )
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Public summaries not shared")
+        }
+    }
+
+    /** Summaries CREA devices left in the public folder, for the books still in it. */
+    private suspend fun readPublicInsights(drive: GoogleDriveRestClient, listing: List<GoogleDriveRestClient.CatalogEntry>) {
+        try {
+            val live = listing.mapTo(hashSetOf()) { it.file.id }
+            val file = drive.listByName(PublicCatalog.folderId, InsightsSyncState.FILE_NAME).firstOrNull()
+            val fresh = file?.let { readIndex(drive, it).books }.orEmpty()
+                .filter { it.driveFileId in live && !it.summary.startsWith(BookInsight.PLACEHOLDER) }
+                .map { it.toEntity() }
+            if (fresh.isNotEmpty()) insightsDao.upsert(fresh)
+            insightsDao.delete(insightsDao.getAll().map { it.driveFileId }.filter { it !in live })
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Public summaries not read")
+        }
+    }
+
+    private fun BookInsight.toShared() = SharedInsight(
+        driveFileId = driveFileId,
+        version = version,
+        title = title,
+        author = author,
+        summary = summary,
+        categories = categoryList,
+        level = level,
+        confidence = confidence,
+    )
 
     /** Reading position per Drive book on this device, whether the book is downloaded or was read online. */
     private suspend fun ownReadings(live: Set<String>): List<DeviceReading> {

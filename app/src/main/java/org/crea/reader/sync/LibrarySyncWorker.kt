@@ -11,7 +11,16 @@ class LibrarySyncWorker(
 ) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
         val app = applicationContext as Application
-        if (!app.syncStateStore.isEnabled) return Result.success()
+        if (!app.syncStateStore.isEnabled) {
+            // No CREA account: keep the public catalog, if this build has one, up to date.
+            val publicDrive = PublicCatalog.client(applicationContext) ?: return Result.success()
+            return try {
+                app.syncEngine.syncPublic(publicDrive)
+                Result.success()
+            } catch (_: Throwable) {
+                if (runAttemptCount < 5) Result.retry() else Result.failure()
+            }
+        }
 
         return try {
             when (val authorization = DriveAuthorizationProvider(applicationContext).requestToken()) {

@@ -34,7 +34,7 @@ object SyncScheduler {
 
     /** Keeps the library fresh when the app is opened, without hammering Drive on every resume. */
     fun runIfStale(context: Context, state: SyncStateStore.Snapshot, maxAgeMillis: Long = STALE_AFTER_MS) {
-        if (!state.enabled) return
+        if (!state.enabled && !PublicCatalog.isConfigured) return
         if (System.currentTimeMillis() - state.lastSync < maxAgeMillis) return
         runNow(context)
     }

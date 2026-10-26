@@ -132,7 +132,10 @@ class SyncStateStore(context: Context) {
         val account: String?,
         val folderId: String?,
         val lastSummary: Summary,
-    )
+    ) {
+        /** A catalog to show: the CREA account's Drive, or else the public folder (no account). */
+        val catalogAvailable: Boolean get() = enabled || PublicCatalog.isConfigured
+    }
 
     companion object {
         const val STATUS_IDLE = "idle"

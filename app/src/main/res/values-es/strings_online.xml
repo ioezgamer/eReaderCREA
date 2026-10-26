@@ -206,4 +206,7 @@
     <string name="tts_improve_voices_hint">La voz 1 es la mejor disponible. Para un sonido más natural, abre los ajustes de voz del dispositivo y descarga las voces de alta calidad de tu idioma.</string>
     <string name="tts_accent_spain">España</string>
     <string name="tts_accent_latam">Latinoamérica</string>
+    <string name="catalog_status_public_title">Catálogo público al día</string>
+    <string name="catalog_public_empty_title">El catálogo público está vacío</string>
+    <string name="catalog_public_empty_detail">Pronto habrá libros aquí. Mientras tanto, busca libros gratis en Explorar.</string>
 </resources>

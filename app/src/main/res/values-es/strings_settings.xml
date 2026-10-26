@@ -17,7 +17,7 @@
     <string name="settings_natural_voice_on">Disponible: los libros se leen con voz natural</string>
     <string name="settings_natural_voice_off">Desactivada: se usa la voz del dispositivo</string>
     <string name="settings_natural_voice_no_server">No disponible en esta versión</string>
-    <string name="settings_natural_voice_needs_drive">Conecta Drive para usarla; mientras tanto se usa la voz del dispositivo</string>
+    <string name="settings_natural_voice_needs_drive">Solo con una cuenta de CREA conectada; mientras tanto se usa la voz del dispositivo</string>
     <string name="settings_natural_voice_unavailable">Sin créditos o pausada: se usa la voz del dispositivo</string>
     <string name="settings_natural_voice_unreachable">Sin conexión con el servidor: se usa la voz del dispositivo</string>
     <string name="settings_natural_voice_checking">Comprobando…</string>
@@ -37,7 +37,7 @@
     <string name="settings_ai_claude_title">Asistente de IA (Claude)</string>
     <string name="settings_ai_status_off">Desactivada</string>
     <string name="settings_ai_status_no_server">Sin servidor: indica su dirección para activarla</string>
-    <string name="settings_ai_status_needs_drive">Conecta Google Drive para usarla</string>
+    <string name="settings_ai_status_needs_drive">Solo con una cuenta de CREA conectada</string>
     <string name="settings_ai_status_available">Disponible</string>
     <string name="settings_ai_status_unavailable">No disponible por ahora (sin créditos o apagada en el servidor)</string>
     <string name="settings_ai_status_unreachable">El servidor no responde. Prueba en un momento</string>

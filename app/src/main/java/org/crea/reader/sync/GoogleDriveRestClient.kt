@@ -20,7 +20,9 @@ import kotlinx.serialization.json.Json
 import org.crea.reader.online.CategoryPaths
 
 class GoogleDriveRestClient(
-    private val accessToken: String,
+    /** The signed-in CREA account's token; null when reading the public catalog with [publicAccess]. */
+    private val accessToken: String?,
+    private val publicAccess: PublicCatalog.Access? = null,
 ) {
     @Serializable
     data class DriveFile(
@@ -228,7 +230,7 @@ class GoogleDriveRestClient(
         val connection = (uri.toURL().openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
             readTimeout = 30_000
-            setRequestProperty("Authorization", "Bearer $accessToken")
+            if (accessToken != null) setRequestProperty("Authorization", "Bearer $accessToken")
         }
         try {
             if (connection.responseCode !in 200..299 || connection.contentLengthLong > MAX_THUMBNAIL_BYTES) {
@@ -346,7 +348,7 @@ class GoogleDriveRestClient(
             do {
                 val url = buildString {
                     append("$API/files?spaces=$spaces&pageSize=$PAGE_SIZE&fields=$fieldMask")
-                    if (spaces == "drive") append("&corpora=user")
+                    if (spaces == "drive" && accessToken != null) append("&corpora=user")
                     if (query != null) append("&q=").append(encode(query))
                     if (pageToken != null) append("&pageToken=").append(encode(pageToken))
                 }
@@ -410,12 +412,20 @@ class GoogleDriveRestClient(
         }
     }
 
-    private fun open(url: String): HttpURLConnection =
-        (URI(url).toURL().openConnection() as HttpURLConnection).apply {
+    private fun open(url: String): HttpURLConnection {
+        val access = publicAccess.takeIf { accessToken == null }
+        // Public files are read with the app's API key, restricted to this app's package and certificate.
+        val target = if (access == null) url else url + (if ('?' in url) "&" else "?") + "key=" + encode(access.apiKey)
+        return (URI(target).toURL().openConnection() as HttpURLConnection).apply {
             connectTimeout = 30_000
             readTimeout = 120_000
-            setRequestProperty("Authorization", "Bearer $accessToken")
+            if (accessToken != null) setRequestProperty("Authorization", "Bearer $accessToken")
+            if (access != null) {
+                setRequestProperty("X-Android-Package", access.packageName)
+                setRequestProperty("X-Android-Cert", access.certificateSha1)
+            }
         }
+    }
 
     /** HttpURLConnection rejects PATCH on some platforms; Google honours the override header. */
     private fun HttpURLConnection.patch() {

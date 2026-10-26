@@ -30,6 +30,7 @@ import org.crea.reader.data.model.DriveBook
 import org.crea.reader.domain.Bookshelf
 import org.crea.reader.sync.DriveAuthorizationProvider
 import org.crea.reader.sync.GoogleDriveRestClient
+import org.crea.reader.sync.PublicCatalog
 import org.crea.reader.utils.sha256
 import org.readium.r2.shared.util.getOrElse
 import timber.log.Timber
@@ -247,13 +248,18 @@ class OnlineBookManager(
 
     /** Streams the Drive file into [destination] with progress, then checks it against Drive's checksum. */
     private suspend fun fetch(book: DriveBook, destination: File, purpose: Purpose) {
-        val token = when (val authorization = DriveAuthorizationProvider(context).requestToken()) {
-            is DriveAuthorizationProvider.TokenResult.Authorized -> authorization.accessToken
-            is DriveAuthorizationProvider.TokenResult.ConsentRequired -> throw TransferFailed(Failure.SIGN_IN_NEEDED)
+        // A CREA account reads with its own permission; without one, the public folder with the app's key.
+        val drive = if (isDriveConnected()) {
+            when (val authorization = DriveAuthorizationProvider(context).requestToken()) {
+                is DriveAuthorizationProvider.TokenResult.Authorized -> GoogleDriveRestClient(authorization.accessToken)
+                is DriveAuthorizationProvider.TokenResult.ConsentRequired -> throw TransferFailed(Failure.SIGN_IN_NEEDED)
+            }
+        } else {
+            PublicCatalog.client(context) ?: throw TransferFailed(Failure.SIGN_IN_NEEDED)
         }
         var lastPublished = 0L
         try {
-            val md5 = GoogleDriveRestClient(token).download(book.driveFileId, destination) { copied, total ->
+            val md5 = drive.download(book.driveFileId, destination) { copied, total ->
                 val now = System.currentTimeMillis()
                 if (now - lastPublished >= PROGRESS_INTERVAL_MS) {
                     lastPublished = now
@@ -274,7 +280,7 @@ class OnlineBookManager(
     }
 
     private fun requireNetwork() {
-        if (!isDriveConnected()) throw TransferFailed(Failure.SIGN_IN_NEEDED)
+        if (!isDriveConnected() && !PublicCatalog.isConfigured) throw TransferFailed(Failure.SIGN_IN_NEEDED)
         if (!Connectivity.isOnline(context)) throw TransferFailed(Failure.NO_CONNECTION)
     }
 

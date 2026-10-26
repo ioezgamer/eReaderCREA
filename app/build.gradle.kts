@@ -9,6 +9,13 @@ plugins {
     id("androidx.room3")
 }
 
+// Public catalog (a Drive folder anyone can read) and its API key, from public-catalog.properties
+// (never committed: the repository is public). Without it the app has no public catalog.
+val publicCatalogProperties = Properties().apply {
+    val file = rootProject.file("public-catalog.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 // Upload key for Google Play, read from keystore.properties (never committed).
 val keystoreProperties = Properties().apply {
     val file = rootProject.file("keystore.properties")
@@ -25,9 +32,11 @@ android {
         applicationId = "org.crea.reader"
         minSdk = 24
         targetSdk = 37
-        versionCode = 38
-        versionName = "1.6.2"
+        versionCode = 39
+        versionName = "1.7.0"
         // Address of the AI server (see server/README.md). Empty = AI features do not exist in this build.
+        buildConfigField("String", "PUBLIC_FOLDER_ID", "\"${publicCatalogProperties.getProperty("folderId", "")}\"")
+        buildConfigField("String", "PUBLIC_DRIVE_KEY", "\"${publicCatalogProperties.getProperty("apiKey", "")}\"")
         buildConfigField("String", "AI_BASE_URL", "\"${project.findProperty("aiBaseUrl") ?: "https://crea-reader-ai.onrender.com"}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Every CREA tablet is ARM: the x86 libraries only go into debug builds, for the emulator.

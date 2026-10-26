@@ -52,7 +52,7 @@
     <string name="add_a_note">Agregar una nota</string>
     <string name="delete_highlight_or_annotation">Eliminar resaltado o nota</string>
     <string name="sync_heading">Tu biblioteca, en todos tus dispositivos</string>
-    <string name="sync_intro">Conecta Google Drive una sola vez. Los libros que subas a tu carpeta «CREA Reader» aparecerán en el Catálogo en línea, y los que agregues en la app se subirán a Drive.</string>
+    <string name="sync_intro">Solo para cuentas de CREA (@creanicaragua.org). Conéctala una vez: los libros de la carpeta «CREA Reader» aparecerán en el Catálogo en línea y los que agregues en la app se podrán subir a Drive. Sin cuenta de CREA puedes leer el catálogo público, tus propios libros y los de Explorar.</string>
     <string name="sync_connect_drive">Conectar Google Drive</string>
     <string name="sync_now">Sincronizar ahora</string>
     <string name="sync_disable">Desconectar Drive</string>
@@ -73,8 +73,8 @@
     <string name="filter_reading">Leyendo</string>
     <string name="library_empty_title">Tu biblioteca está vacía</string>
     <string name="library_empty_detail">Descarga libros del Catálogo en línea o agrégalos desde este dispositivo.</string>
-    <string name="library_sync_off_title">Conecta Google Drive</string>
-    <string name="library_sync_off_detail">Lleva tus libros y tu progreso a todos tus dispositivos</string>
+    <string name="library_sync_off_title">¿Eres de CREA? Conecta tu cuenta</string>
+    <string name="library_sync_off_detail">Solo @creanicaragua.org: catálogo completo, IA y voces naturales</string>
     <string name="library_sync_on_title">Biblioteca al día</string>
     <string name="library_sync_on_detail">Libros y progreso protegidos en Google Drive</string>
     <string name="book_progress_meta">%1$s · %2$d%% leído</string>

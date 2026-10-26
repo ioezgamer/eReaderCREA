@@ -206,4 +206,7 @@
     <string name="tts_improve_voices_hint">Voice 1 is the best one available. For a more natural sound, open the device speech settings and download the high-quality voices for your language.</string>
     <string name="tts_accent_spain">Spain</string>
     <string name="tts_accent_latam">Latin America</string>
+    <string name="catalog_status_public_title">Public catalog up to date</string>
+    <string name="catalog_public_empty_title">The public catalog is empty</string>
+    <string name="catalog_public_empty_detail">Books will appear here soon. Meanwhile, find free books in Explore.</string>
 </resources>

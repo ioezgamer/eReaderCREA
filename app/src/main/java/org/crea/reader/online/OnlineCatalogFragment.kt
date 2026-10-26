@@ -153,7 +153,7 @@ class OnlineCatalogFragment : Fragment() {
         val list = catalogView
         val state = syncState
         // Waiting for the very first sync; a failed one or no network falls through to the empty state.
-        val firstSyncPending = state != null && state.enabled && state.lastSync == 0L &&
+        val firstSyncPending = state != null && state.catalogAvailable && state.lastSync == 0L &&
             state.status != SyncStateStore.STATUS_ERROR && online
         val noBooks = list.loaded && list.total == 0
         val noMatches = list.loaded && list.total > 0 && list.rows.isEmpty()
@@ -167,16 +167,22 @@ class OnlineCatalogFragment : Fragment() {
         if (!showEmpty) return
         val action = binding.catalogEmptyAction
         action.icon = null
+        action.isVisible = true
         when {
             noMatches -> {
                 binding.catalogEmptyTitle.setText(R.string.library_no_results_title)
                 binding.catalogEmptyDetail.setText(R.string.library_no_results_detail)
                 action.setText(R.string.library_clear_filters)
             }
-            state?.enabled != true -> {
+            state?.catalogAvailable != true -> {
                 binding.catalogEmptyTitle.setText(R.string.catalog_off_title)
                 binding.catalogEmptyDetail.setText(R.string.catalog_off_detail)
                 action.setText(R.string.sync_connect_drive)
+            }
+            !state.enabled -> {
+                binding.catalogEmptyTitle.setText(R.string.catalog_public_empty_title)
+                binding.catalogEmptyDetail.setText(R.string.catalog_public_empty_detail)
+                action.isVisible = false
             }
             else -> {
                 binding.catalogEmptyTitle.setText(R.string.catalog_empty_title)
@@ -197,7 +203,7 @@ class OnlineCatalogFragment : Fragment() {
                 binding.catalogStatusTitle.setText(R.string.catalog_status_syncing)
                 binding.catalogStatusDetail.text = SyncUi.stageText(requireContext(), progress)
             }
-            !state.enabled -> {
+            !state.catalogAvailable -> {
                 binding.catalogStatusIcon.setImageResource(R.drawable.ic_cloud_off)
                 binding.catalogStatusTitle.setText(R.string.catalog_status_off)
                 binding.catalogStatusDetail.setText(R.string.catalog_off_detail)
@@ -219,7 +225,7 @@ class OnlineCatalogFragment : Fragment() {
             }
             else -> {
                 binding.catalogStatusIcon.setImageResource(R.drawable.ic_cloud_done)
-                binding.catalogStatusTitle.setText(R.string.catalog_status_title_ok)
+                binding.catalogStatusTitle.setText(if (state.enabled) R.string.catalog_status_title_ok else R.string.catalog_status_public_title)
                 binding.catalogStatusDetail.text = if (state.lastSync > 0) {
                     getString(R.string.catalog_status_updated, SyncUi.relativeTime(state.lastSync), catalogView.total)
                 } else {
@@ -267,7 +273,7 @@ class OnlineCatalogFragment : Fragment() {
     // region Actions
 
     private fun refresh() {
-        if (syncState?.enabled != true) {
+        if (syncState?.catalogAvailable != true) {
             binding.catalogRefresh.isRefreshing = false
             Snackbar.make(binding.root, R.string.library_connect_to_refresh, Snackbar.LENGTH_LONG)
                 .setAction(R.string.library_connect_action) { findNavController().navigate(R.id.sync) }
@@ -285,7 +291,7 @@ class OnlineCatalogFragment : Fragment() {
         val list = catalogView
         when {
             list.total > 0 -> clearFilters()
-            syncState?.enabled != true -> findNavController().navigate(R.id.sync)
+            syncState?.catalogAvailable != true -> findNavController().navigate(R.id.sync)
             else -> {
                 val opened = SyncUi.openDriveFolder(requireContext(), syncState?.folderId)
                 if (!opened) Snackbar.make(binding.root, R.string.sync_open_folder_failed, Snackbar.LENGTH_LONG).show()

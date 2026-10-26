@@ -413,7 +413,7 @@ class BookshelfFragment : Fragment() {
     }
 
     private fun refreshFromDrive() {
-        if (!app.syncStateStore.isEnabled) {
+        if (!app.syncStateStore.snapshot().catalogAvailable) {
             binding.bookshelfRefresh.isRefreshing = false
             Snackbar.make(binding.root, R.string.library_connect_to_refresh, Snackbar.LENGTH_LONG)
                 .setAction(R.string.library_connect_action) {
