@@ -253,6 +253,23 @@
                     app:singleLine="true"
                     app:singleSelection="true" />
             </HorizontalScrollView>
+
+            <!-- Who the books belong to; a tap shows the full notice and how to ask for a removal -->
+            <TextView
+                android:id="@+id/catalog_rights_notice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:drawablePadding="6dp"
+                android:gravity="center_vertical"
+                android:minHeight="40dp"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:text="@string/catalog_rights_short"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                app:drawableStartCompat="@drawable/ic_baseline_info_24"
+                app:drawableTint="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
     </com.google.android.material.appbar.AppBarLayout>
 

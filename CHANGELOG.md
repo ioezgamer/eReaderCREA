@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.7.1 - 2026-10-26
+
+- **Aviso sobre los libros del catálogo**: en el Catálogo en línea y en la ficha de cada libro de Drive, una línea indica que los libros los suben sus usuarios y no son propiedad de CREA. Al tocarla se explica que los derechos son de sus autores, traductores y editoriales, que quien sube un libro responde por tener permiso para compartirlo, y que quien tenga los derechos de una obra puede pedir que se retire escribiendo a tecnologia@creanicaragua.org.
+
 ## 1.7.0 - 2026-10-26
 
 - **Catálogo público**: quien no tiene cuenta de CREA ve en el Catálogo en línea los libros de la carpeta «Biblioteca pública» (dentro de «CREA Reader» en Drive, compartida como «cualquier persona con el enlace: lector»), sin iniciar sesión. Puede leerlos en línea o descargarlos, con portada y con los resúmenes que publiquen los dispositivos de CREA. Su avance queda en su dispositivo.

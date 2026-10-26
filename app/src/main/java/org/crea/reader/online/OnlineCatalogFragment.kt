@@ -109,6 +109,7 @@ class OnlineCatalogFragment : Fragment() {
             viewModel.updateQuery { it.copy(filter = filter) }
         }
         binding.catalogSortButton.setOnClickListener { showSortMenu(it) }
+        binding.catalogRightsNotice.setOnClickListener { CatalogRights.show(requireContext()) }
         binding.catalogViewButton.setOnClickListener {
             ViewOptionsSheet.show(requireContext(), layoutInflater, viewOptions) { applyViewOptions(it) }
         }

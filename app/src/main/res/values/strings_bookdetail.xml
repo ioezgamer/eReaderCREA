@@ -27,4 +27,8 @@
     <string name="library_source_drive">In Drive · available offline</string>
     <string name="library_source_device">Only on this device</string>
     <string name="library_recent_label">Recently added</string>
+    <string name="catalog_rights_short">Catalog books are uploaded by its users; they are not owned by CREA. Learn more</string>
+    <string name="catalog_rights_title">About the catalog books</string>
+    <string name="catalog_rights_body">The books in the Online catalog are uploaded by the people who use CREA Reader. CREA does not own those works or their rights: they belong to their authors, translators and publishers.\n\nWhoever uploads a book is responsible for having permission to share it.\n\nIf you hold the rights to a work and want it removed, write to %1$s and we will take it out of the catalog.</string>
+    <string name="catalog_rights_ok">Got it</string>
 </resources>

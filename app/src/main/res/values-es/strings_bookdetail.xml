@@ -27,4 +27,8 @@
     <string name="library_source_drive">En Drive · disponible sin conexión</string>
     <string name="library_source_device">Solo en este dispositivo</string>
     <string name="library_recent_label">Agregados recientemente</string>
+    <string name="catalog_rights_short">Los libros del catálogo los suben sus usuarios; no son propiedad de CREA. Ver más</string>
+    <string name="catalog_rights_title">Sobre los libros del catálogo</string>
+    <string name="catalog_rights_body">Los libros del Catálogo en línea los suben las personas que usan CREA Reader. CREA no es dueña de esas obras ni de sus derechos: pertenecen a sus autores, traductores y editoriales.\n\nQuien sube un libro es responsable de tener permiso para compartirlo.\n\nSi tienes los derechos de una obra y quieres que la retiremos, escríbenos a %1$s y la quitaremos del catálogo.</string>
+    <string name="catalog_rights_ok">Entendido</string>
 </resources>

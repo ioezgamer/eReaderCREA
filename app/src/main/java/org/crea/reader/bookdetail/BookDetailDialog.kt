@@ -233,6 +233,14 @@ class BookDetailDialog : DialogFragment() {
                 }
             }
             if (local?.id != null) item { Contents(local) }
+            if (row != null) item {
+                Text(
+                    stringResource(R.string.catalog_rights_short), fontSize = 12.sp,
+                    color = colorResource(R.color.crea_on_surface_variant),
+                    modifier = Modifier.fillMaxWidth().clickable { org.crea.reader.online.CatalogRights.show(requireContext()) }
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                )
+            }
             val similar = similarBooks(row, local, rows.values.toList())
             if (similar.isNotEmpty()) item {
                 Column {
