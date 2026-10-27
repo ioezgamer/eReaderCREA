@@ -221,8 +221,8 @@ class Application : android.app.Application() {
         syncStateStore = SyncStateStore(this)
         insightsDao = database.insightsDao()
         val aiClient = AiClient(this, deviceId = { syncStateStore.deviceId })
-        aiService = AiService(aiClient, AiAvailability(this, aiClient) { syncStateStore.isEnabled })
-        naturalVoice = NaturalVoice(this, aiClient) { syncStateStore.isEnabled }
+        aiService = AiService(aiClient, AiAvailability(this, aiClient) { syncStateStore.isCrea })
+        naturalVoice = NaturalVoice(this, aiClient) { syncStateStore.isCrea }
         insightsState = insightsDao.observeAll().map { list -> list.associateBy { it.driveFileId } }
             .stateIn(coroutineScope, SharingStarted.Eagerly, emptyMap())
         deviceReadingsStore = DeviceReadingsStore(this)
@@ -254,6 +254,7 @@ class Application : android.app.Application() {
             libraryDir = storageDir,
             tempDir = downloadsDir,
             isDriveConnected = { syncStateStore.isEnabled },
+            isPersonal = { syncStateStore.isPersonal },
             openOnlineFiles = { readerRepository.openOnlineFiles() },
             // Reading progress travels through the Drive manifest, so refresh it after a download.
             onLibraryChanged = { if (syncStateStore.isEnabled) SyncScheduler.runSoon(this) },

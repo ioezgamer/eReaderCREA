@@ -24,15 +24,17 @@ class SyncFragment : Fragment() {
     private val binding get() = requireNotNull(_binding)
     private val app get() = requireContext().applicationContext as Application
 
-    private lateinit var authorization: DriveAuthorizationProvider
     private var authorizing = false
+
+    /** The kind of account being connected: a CREA one, or a personal one with its own folder. */
+    private var connectingPersonal = false
 
     private val consentLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            runCatching { authorization.tokenFromIntent(requireNotNull(result.data)) }
-                .onSuccess { startSync() }
+            runCatching { authorizationFor(connectingPersonal).tokenFromIntent(requireNotNull(result.data)) }
+                .onSuccess { token -> viewLifecycleOwner.lifecycleScope.launch { confirmAccount(token) } }
                 .onFailure { showError(it.message ?: getString(R.string.sync_authorization_failed)) }
         } else {
             showError(getString(R.string.sync_authorization_cancelled))
@@ -41,8 +43,16 @@ class SyncFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        authorization = DriveAuthorizationProvider(requireContext())
+        connectingPersonal = savedInstanceState?.getBoolean(STATE_PERSONAL)
+            ?: app.syncStateStore.isPersonal
     }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(STATE_PERSONAL, connectingPersonal)
+    }
+
+    private fun authorizationFor(personal: Boolean) = DriveAuthorizationProvider(requireContext(), personal)
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -54,7 +64,12 @@ class SyncFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.syncPrimaryButton.setOnClickListener { requestAuthorizationAndSync() }
+        binding.syncPrimaryButton.setOnClickListener {
+            // Connected: sync the same account again. Not connected: the CREA account.
+            val store = app.syncStateStore
+            requestAuthorizationAndSync(personal = store.isEnabled && store.isPersonal)
+        }
+        binding.syncPersonalButton.setOnClickListener { requestAuthorizationAndSync(personal = true) }
         binding.syncDisableButton.setOnClickListener {
             app.syncStateStore.setEnabled(false)
             Snackbar.make(binding.root, R.string.sync_disconnected, Snackbar.LENGTH_LONG).show()
@@ -84,15 +99,16 @@ class SyncFragment : Fragment() {
         text.setText(textRes)
     }
 
-    private fun requestAuthorizationAndSync() {
+    private fun requestAuthorizationAndSync(personal: Boolean) {
         if (authorizing) return
         authorizing = true
+        connectingPersonal = personal
         setBusy(true)
         viewLifecycleOwner.lifecycleScope.launch {
-            runCatching { authorization.requestToken() }
+            runCatching { authorizationFor(personal).requestToken() }
                 .onSuccess { result ->
                     when (result) {
-                        is DriveAuthorizationProvider.TokenResult.Authorized -> startSync()
+                        is DriveAuthorizationProvider.TokenResult.Authorized -> confirmAccount(result.accessToken)
                         is DriveAuthorizationProvider.TokenResult.ConsentRequired -> {
                             setBusy(false)
                             consentLauncher.launch(
@@ -108,9 +124,27 @@ class SyncFragment : Fragment() {
         }
     }
 
+    /**
+     * Checks that the account Google returned matches the button used: a CREA account always gets the
+     * shared library, and an outside account cannot ask for access to the whole Drive.
+     */
+    private suspend fun confirmAccount(token: String) {
+        val email = runCatching { GoogleDriveRestClient(token).currentUser()?.emailAddress }.getOrNull()
+        if (_binding == null) return
+        when {
+            email == null -> showError(getString(R.string.sync_authorization_failed))
+            DriveAuthorizationProvider.isCreaAccount(email) == connectingPersonal -> showError(
+                getString(if (connectingPersonal) R.string.sync_wrong_account_crea else R.string.sync_wrong_account_personal, email)
+            )
+            else -> {
+                app.syncStateStore.connect(email, connectingPersonal)
+                startSync()
+            }
+        }
+    }
+
     /** The worker owns the actual sync, so it keeps going when this screen is closed. */
     private fun startSync() {
-        app.syncStateStore.setEnabled(true)
         SyncScheduler.runNow(requireContext())
         setBusy(false)
     }
@@ -128,7 +162,17 @@ class SyncFragment : Fragment() {
         binding.syncAccountText.text = state.account.orEmpty()
         binding.syncOpenFolderButton.isVisible = state.enabled
         binding.syncFolderDetail.setText(
-            if (state.enabled) R.string.sync_folder_detail else R.string.sync_connect_first
+            when {
+                !state.enabled -> R.string.sync_connect_first
+                state.personal -> R.string.sync_folder_detail_personal
+                else -> R.string.sync_folder_detail
+            }
+        )
+        binding.syncPersonalButton.isVisible = !state.enabled && !running
+        binding.syncPersonalButton.isEnabled = !authorizing
+        binding.syncPersonalHint.isVisible = !state.enabled && !running
+        binding.syncStep1.syncStepText.setText(
+            if (state.enabled && state.personal) R.string.sync_what_detail_personal else R.string.sync_what_detail
         )
 
         when {
@@ -150,7 +194,7 @@ class SyncFragment : Fragment() {
                 binding.syncStatusIcon.setImageResource(R.drawable.ic_cloud_off)
                 binding.syncStatusTitle.setText(R.string.sync_status_off)
                 binding.syncStatusDetail.setText(R.string.sync_off_detail)
-                binding.syncPrimaryButton.setText(R.string.sync_connect_drive)
+                binding.syncPrimaryButton.setText(R.string.sync_connect_crea)
             }
             state.status == SyncStateStore.STATUS_ERROR -> {
                 binding.syncStatusIcon.setImageResource(R.drawable.ic_error)
@@ -196,6 +240,7 @@ class SyncFragment : Fragment() {
 
     private fun setBusy(busy: Boolean) {
         binding.syncPrimaryButton.isEnabled = !busy
+        binding.syncPersonalButton.isEnabled = !busy
         binding.syncProgress.isVisible = busy
         if (busy) binding.syncProgress.isIndeterminate = true
     }
@@ -209,5 +254,9 @@ class SyncFragment : Fragment() {
     override fun onDestroyView() {
         _binding = null
         super.onDestroyView()
+    }
+
+    private companion object {
+        const val STATE_PERSONAL = "connecting_personal"
     }
 }

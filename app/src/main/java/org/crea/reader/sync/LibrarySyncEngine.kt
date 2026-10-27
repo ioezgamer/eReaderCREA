@@ -78,11 +78,15 @@ class LibrarySyncEngine(
     /** Non-null only while a sync is running, whoever started it (screen or background worker). */
     val progress: StateFlow<Progress?> = _progress.asStateFlow()
 
-    suspend fun sync(accessToken: String): Result = mutex.withLock {
+    /**
+     * [publicDrive] reads the public catalog with the app's key: a personal account only sees what
+     * the app created in its own Drive, so the public folder is read separately for it.
+     */
+    suspend fun sync(accessToken: String, publicDrive: GoogleDriveRestClient? = null): Result = mutex.withLock {
         stateStore.markRunning()
         report(Stage.CONNECTING)
         try {
-            run(accessToken)
+            run(accessToken, publicDrive)
         } catch (cancelled: CancellationException) {
             stateStore.markError("La sincronización se interrumpió y se reanudará sola.")
             throw cancelled
@@ -95,14 +99,19 @@ class LibrarySyncEngine(
         }
     }
 
-    private suspend fun run(accessToken: String): Result {
+    private suspend fun run(accessToken: String, publicDrive: GoogleDriveRestClient?): Result {
         val drive = GoogleDriveRestClient(accessToken)
         val user = runCatching { drive.currentUser() }.getOrNull()
         val account = user?.let { it.emailAddress ?: it.displayName }
+        // A personal account: its own folder (only what the app put there) and the public catalog.
+        // The shared CREA features (AI summaries, community) stay with CREA accounts.
+        val personal = stateStore.isPersonal
+        val publicReader = if (personal) publicDrive else drive
         val summary = Counters()
 
         if (!stateStore.folderMigrated) {
-            // Links created by the first release pointed at the hidden app folder.
+            // Links created by the first release pointed at the hidden app folder; also after
+            // switching to another account (SyncStateStore.connect).
             bookRepository.clearRemoteFileIds()
             stateStore.folderMigrated = true
         }
@@ -115,7 +124,7 @@ class LibrarySyncEngine(
         stateStore.categoryFolders = catalogListing.folders
         val listing = catalogListing.entries.toMutableList()
         // The public folder's books show up with the rest (once, if it sits inside the private folder).
-        val publicListing = listPublic(drive, folderId)
+        val publicListing = publicReader?.let { listPublic(it, folderId) }.orEmpty()
         val publicIds = publicListing.mapTo(hashSetOf()) { it.file.id }
         val privateIds = listing.mapTo(hashSetOf()) { it.file.id }
         listing += publicListing.filter { it.file.id !in privateIds }
@@ -219,9 +228,17 @@ class LibrarySyncEngine(
         // Downloaded books follow their folder if someone moved or renamed it in Drive.
         bookRepository.followDriveCategories()
         recordMissingVersions(listing)
-        fetchCovers(drive, listing)
-        syncInsights(drive, folderId, listing)
-        sharePublicInsights(drive, publicIds)
+        if (personal) {
+            fetchCovers(drive, listing.filter { it.file.id !in publicIds })
+            publicReader?.let { reader ->
+                fetchCovers(reader, publicListing)
+                readPublicInsights(reader, publicListing)
+            }
+        } else {
+            fetchCovers(drive, listing)
+            syncInsights(drive, folderId, listing)
+            sharePublicInsights(drive, publicIds)
+        }
 
         for (remoteProgress in plan.applyRemoteProgress) {
             bookRepository.saveProgressionFromSync(
@@ -279,7 +296,7 @@ class LibrarySyncEngine(
             )
         }
 
-        syncCommunity(drive, folderId, myId, user?.permissionId, ownReadings, live, now)
+        if (!personal) syncCommunity(drive, folderId, myId, user?.permissionId, ownReadings, live, now)
         readers?.sync(drive, folderId)
 
         val result = Result(listing.size, now)

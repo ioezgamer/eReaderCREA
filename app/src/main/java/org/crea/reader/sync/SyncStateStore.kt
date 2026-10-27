@@ -23,6 +23,14 @@ class SyncStateStore(context: Context) {
     val isEnabled: Boolean
         get() = preferences.getBoolean(KEY_ENABLED, false)
 
+    /** A personal (non-CREA) Google account is connected: its own folder plus the public catalog. */
+    val isPersonal: Boolean
+        get() = preferences.getString(KEY_ACCOUNT_KIND, KIND_CREA) == KIND_PERSONAL
+
+    /** A CREA account is connected: the shared library, AI and natural voices. */
+    val isCrea: Boolean
+        get() = isEnabled && !isPersonal
+
     var folderId: String?
         get() = preferences.getString(KEY_FOLDER_ID, null)
         set(value) = update { putString(KEY_FOLDER_ID, value) }
@@ -38,6 +46,23 @@ class SyncStateStore(context: Context) {
         set(value) = update { putBoolean(KEY_FOLDER_MIGRATED, value) }
 
     fun setEnabled(enabled: Boolean) = update { putBoolean(KEY_ENABLED, enabled) }
+
+    /**
+     * Connects [account]. A different account than before starts afresh: its folder is looked up
+     * again, and the next sync drops the links of downloaded books to the other account's Drive.
+     */
+    fun connect(account: String, personal: Boolean) = update {
+        val previous = preferences.getString(KEY_ACCOUNT, null)
+        if (previous != null && !previous.equals(account, ignoreCase = true)) {
+            remove(KEY_FOLDER_ID)
+            remove(KEY_CATEGORY_FOLDERS)
+            remove(KEY_LAST_SYNC)
+            putBoolean(KEY_FOLDER_MIGRATED, false)
+        }
+        putString(KEY_ACCOUNT, account)
+        putString(KEY_ACCOUNT_KIND, if (personal) KIND_PERSONAL else KIND_CREA)
+        putBoolean(KEY_ENABLED, true)
+    }
 
     /**
      * Books the user asked to upload, by content hash, with the folder (category path) chosen for
@@ -103,6 +128,7 @@ class SyncStateStore(context: Context) {
         error = preferences.getString(KEY_ERROR, null),
         account = preferences.getString(KEY_ACCOUNT, null),
         folderId = preferences.getString(KEY_FOLDER_ID, null),
+        personal = preferences.getString(KEY_ACCOUNT_KIND, KIND_CREA) == KIND_PERSONAL,
         lastSummary = Summary(
             added = preferences.getInt(KEY_ADDED, 0),
             updated = preferences.getInt(KEY_UPDATED, 0),
@@ -131,10 +157,15 @@ class SyncStateStore(context: Context) {
         val error: String?,
         val account: String?,
         val folderId: String?,
+        /** The connected account is not a CREA one (see [isPersonal]). */
+        val personal: Boolean,
         val lastSummary: Summary,
     ) {
-        /** A catalog to show: the CREA account's Drive, or else the public folder (no account). */
+        /** A catalog to show: the connected account's Drive, or else the public folder (no account). */
         val catalogAvailable: Boolean get() = enabled || PublicCatalog.isConfigured
+
+        /** A CREA account is connected. */
+        val crea: Boolean get() = enabled && !personal
     }
 
     companion object {
@@ -150,6 +181,9 @@ class SyncStateStore(context: Context) {
         private const val KEY_BOOK_COUNT = "book_count"
         private const val KEY_ERROR = "error"
         private const val KEY_ACCOUNT = "account"
+        private const val KEY_ACCOUNT_KIND = "account_kind"
+        private const val KIND_CREA = "crea"
+        private const val KIND_PERSONAL = "personal"
         private const val KEY_FOLDER_ID = "folder_id"
         private const val KEY_FOLDER_MIGRATED = "folder_migrated"
         private const val KEY_ACCOUNT_DEVICES = "account_devices"

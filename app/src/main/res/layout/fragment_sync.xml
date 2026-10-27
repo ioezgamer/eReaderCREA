@@ -107,6 +107,31 @@
                     android:text="@string/sync_connect_drive"
                     app:cornerRadius="28dp"
                     app:icon="@drawable/ic_sync" />
+
+                <!-- Accounts outside CREA: a private folder in their own Drive -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/sync_personal_button"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:minHeight="52dp"
+                    android:text="@string/sync_connect_personal"
+                    android:visibility="gone"
+                    app:cornerRadius="26dp"
+                    tools:visibility="visible" />
+
+                <TextView
+                    android:id="@+id/sync_personal_hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="@string/sync_personal_hint"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

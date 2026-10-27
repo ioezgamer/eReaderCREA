@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sync_connect_crea">Connect CREA account</string>
+    <string name="sync_connect_personal">Use another Google account</string>
+    <string name="sync_personal_hint">Not from CREA? Use your Google account: you get a private folder in your Drive and the public catalog. AI and natural voices are only for CREA accounts.</string>
+    <string name="sync_folder_detail_personal">Your private “CREA Reader” folder in your Google Drive: only you see it. Books you upload from the app with “Upload to Drive” follow you to any device where you connect this account.</string>
+    <string name="sync_what_detail_personal">Add an EPUB or PDF in My library and tap “Upload to Drive”: it is saved in your private folder. Files you put in the folder by hand on the Drive website are not visible in the app.</string>
+    <string name="sync_wrong_account_crea">%1$s is a CREA account. Connect it with “Connect CREA account”.</string>
+    <string name="sync_wrong_account_personal">%1$s is not a CREA account (@creanicaragua.org). Connect it with “Use another Google account”.</string>
+    <string name="catalog_personal_empty_detail">Your folder has no books yet. In My library, open a book and tap “Upload to Drive” to have it on all your devices.</string>
+</resources>

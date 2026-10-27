@@ -157,7 +157,7 @@ class CommunityFragment : Fragment() {
         if (store.enabled) {
             store.changeNickname(typed)
         } else {
-            if (!app.syncStateStore.isEnabled) {
+            if (!app.syncStateStore.isCrea) {
                 Snackbar.make(binding.root, R.string.community_needs_drive, Snackbar.LENGTH_LONG)
                     .setAction(R.string.library_connect_action) { findNavController().navigate(R.id.sync) }
                     .show()

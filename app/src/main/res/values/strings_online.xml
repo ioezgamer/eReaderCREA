@@ -125,7 +125,7 @@
     <string name="community_stop">Stop sharing</string>
     <string name="community_stop_title">Stop sharing?</string>
     <string name="community_stop_message">Your nickname and reading disappear for the others at the next sync, and you stop seeing theirs.</string>
-    <string name="community_needs_drive">Connect Google Drive to share your reading.</string>
+    <string name="community_needs_drive">Connect a CREA account to share your reading.</string>
     <string name="community_recommended">Recommended for you</string>
     <string name="community_recommended_detail">What people with reading like yours read and finish</string>
     <string name="community_reading_now">Reading now</string>

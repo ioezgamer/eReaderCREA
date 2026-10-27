@@ -125,7 +125,7 @@
     <string name="community_stop">Dejar de compartir</string>
     <string name="community_stop_title">¿Dejar de compartir?</string>
     <string name="community_stop_message">Tu apodo y tu lectura dejarán de verse para los demás en la próxima sincronización, y tú dejarás de ver la suya.</string>
-    <string name="community_needs_drive">Conecta Google Drive para compartir tu lectura.</string>
+    <string name="community_needs_drive">Conecta una cuenta de CREA para compartir tu lectura.</string>
     <string name="community_recommended">Recomendados para ti</string>
     <string name="community_recommended_detail">Lo que leen y terminan personas con lecturas parecidas a las tuyas</string>
     <string name="community_reading_now">Leyendo ahora</string>

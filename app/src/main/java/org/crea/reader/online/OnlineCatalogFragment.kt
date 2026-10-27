@@ -187,7 +187,9 @@ class OnlineCatalogFragment : Fragment() {
             }
             else -> {
                 binding.catalogEmptyTitle.setText(R.string.catalog_empty_title)
-                binding.catalogEmptyDetail.setText(R.string.catalog_empty_detail)
+                binding.catalogEmptyDetail.setText(
+                    if (state.personal) R.string.catalog_personal_empty_detail else R.string.catalog_empty_detail
+                )
                 action.setText(R.string.sync_open_folder)
             }
         }

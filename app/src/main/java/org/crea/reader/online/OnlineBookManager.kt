@@ -53,6 +53,8 @@ class OnlineBookManager(
     private val libraryDir: File,
     private val tempDir: File,
     private val isDriveConnected: () -> Boolean,
+    /** The connected account is personal (not CREA): it cannot read the public folder with its token. */
+    private val isPersonal: () -> Boolean,
     private val openOnlineFiles: suspend () -> Set<File>,
     private val onLibraryChanged: () -> Unit,
     private val onTransferStarted: () -> Unit = {},
@@ -258,13 +260,21 @@ class OnlineBookManager(
             PublicCatalog.client(context) ?: throw TransferFailed(Failure.SIGN_IN_NEEDED)
         }
         var lastPublished = 0L
+        val progress = { copied: Long, total: Long ->
+            val now = System.currentTimeMillis()
+            if (now - lastPublished >= PROGRESS_INTERVAL_MS) {
+                lastPublished = now
+                publish(book.driveFileId, Transfer(purpose, copied, if (total > 0) total else book.size))
+            }
+        }
         try {
-            val md5 = drive.download(book.driveFileId, destination) { copied, total ->
-                val now = System.currentTimeMillis()
-                if (now - lastPublished >= PROGRESS_INTERVAL_MS) {
-                    lastPublished = now
-                    publish(book.driveFileId, Transfer(purpose, copied, if (total > 0) total else book.size))
-                }
+            val md5 = try {
+                drive.download(book.driveFileId, destination, progress)
+            } catch (error: GoogleDriveRestClient.DriveApiException) {
+                // A personal account only sees its own files: a public-catalog book is read with the key.
+                val publicDrive = PublicCatalog.client(context)
+                if (error.statusCode !in setOf(403, 404) || !isPersonal() || publicDrive == null) throw error
+                publicDrive.download(book.driveFileId, destination, progress)
             }
             if (book.md5 != null && !book.md5.equals(md5, ignoreCase = true)) {
                 throw TransferFailed(Failure.CORRUPT)

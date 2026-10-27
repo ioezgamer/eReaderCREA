@@ -1,5 +1,11 @@
 # Historial de cambios
 
+## 1.8.0 - 2026-10-26
+
+- **Tu propio Google Drive sin cuenta de CREA**: en la pantalla Drive, «Usar otra cuenta de Google» conecta cualquier cuenta de Google. La app crea una carpeta privada «CREA Reader» en el Drive de esa persona; los libros que suba con «Subir a Drive» y su avance de lectura la siguen a cualquier dispositivo. El catálogo público de CREA se sigue viendo junto con sus libros. La app solo pide acceso a los archivos que ella misma crea, no a todo el Drive.
+- La IA, las voces naturales y la comunidad siguen siendo solo para cuentas de CREA. Si alguien usa el botón que no corresponde a su cuenta, la app se lo indica.
+- Requiere que la pantalla de consentimiento del proyecto de Google Cloud acepte cuentas externas; hasta entonces solo funcionan las cuentas de CREA.
+
 ## 1.7.1 - 2026-10-26
 
 - **Aviso sobre los libros del catálogo**: en el Catálogo en línea y en la ficha de cada libro de Drive, una línea indica que los libros los suben sus usuarios y no son propiedad de CREA. Al tocarla se explica que los derechos son de sus autores, traductores y editoriales, que quien sube un libro responde por tener permiso para compartirlo, y que quien tenga los derechos de una obra puede pedir que se retire escribiendo a tecnologia@creanicaragua.org.

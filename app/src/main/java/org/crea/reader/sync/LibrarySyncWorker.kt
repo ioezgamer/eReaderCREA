@@ -25,7 +25,7 @@ class LibrarySyncWorker(
         return try {
             when (val authorization = DriveAuthorizationProvider(applicationContext).requestToken()) {
                 is DriveAuthorizationProvider.TokenResult.Authorized -> {
-                    app.syncEngine.sync(authorization.accessToken)
+                    app.syncEngine.sync(authorization.accessToken, PublicCatalog.client(applicationContext))
                     Result.success()
                 }
                 is DriveAuthorizationProvider.TokenResult.ConsentRequired -> {

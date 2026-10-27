@@ -233,7 +233,7 @@
 
     <string name="title_sync">Drive</string>
     <string name="sync_heading">Your library, on every device</string>
-    <string name="sync_intro">Only for CREA accounts (@creanicaragua.org). Connect it once: books in the “CREA Reader” folder appear in the Online catalog, and books you add in the app can be uploaded to Drive. Without a CREA account you can read the public catalog, your own books and those in Explore.</string>
+    <string name="sync_intro">With a CREA account (@creanicaragua.org) you get the CREA library, AI summaries and natural voices. With another Google account you get your own private folder in your Drive, together with the public catalog. Either way your books and progress follow you to any device.</string>
     <string name="sync_connect_drive">Connect Google Drive</string>
     <string name="sync_now">Sync now</string>
     <string name="sync_disable">Disconnect Drive</string>
@@ -254,8 +254,8 @@
     <string name="filter_reading">Reading</string>
     <string name="library_empty_title">Your library is empty</string>
     <string name="library_empty_detail">Download books from the Online catalog or add them from this device.</string>
-    <string name="library_sync_off_title">Are you from CREA? Connect your account</string>
-    <string name="library_sync_off_detail">Only @creanicaragua.org: full catalog, AI and natural voices</string>
+    <string name="library_sync_off_title">Connect your Google Drive</string>
+    <string name="library_sync_off_detail">Your books on all your devices. With a CREA account: AI and natural voices</string>
     <string name="library_sync_on_title">Library up to date</string>
     <string name="library_sync_on_detail">Books and progress are protected in Google Drive</string>
     <string name="book_progress_meta">%1$s · %2$d%% read</string>
