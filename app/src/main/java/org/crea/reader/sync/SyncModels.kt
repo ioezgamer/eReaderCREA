@@ -10,6 +10,8 @@ data class SyncManifest(
     val books: List<SyncedBook> = emptyList(),
     val tombstones: List<SyncedTombstone> = emptyList(),
     val devices: List<SyncedDevice> = emptyList(),
+    /** Books a personal account added from anywhere in its Drive with the picker (1.9.0). */
+    val pickedFileIds: List<String> = emptyList(),
 )
 
 @Serializable

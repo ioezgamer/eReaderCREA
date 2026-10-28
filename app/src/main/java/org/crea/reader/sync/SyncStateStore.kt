@@ -48,6 +48,14 @@ class SyncStateStore(context: Context) {
     fun setEnabled(enabled: Boolean) = update { putBoolean(KEY_ENABLED, enabled) }
 
     /**
+     * Drive files a personal account picked to add to its catalog. The sync keeps them in the
+     * account's manifest too, so they show up on every device of the account.
+     */
+    var pickedFiles: Set<String>
+        get() = preferences.getStringSet(KEY_PICKED_FILES, emptySet()).orEmpty()
+        set(value) = preferences.edit().putStringSet(KEY_PICKED_FILES, value).apply()
+
+    /**
      * Connects [account]. A different account than before starts afresh: its folder is looked up
      * again, and the next sync drops the links of downloaded books to the other account's Drive.
      */
@@ -58,6 +66,7 @@ class SyncStateStore(context: Context) {
             remove(KEY_CATEGORY_FOLDERS)
             remove(KEY_LAST_SYNC)
             putBoolean(KEY_FOLDER_MIGRATED, false)
+            remove(KEY_PICKED_FILES)
         }
         putString(KEY_ACCOUNT, account)
         putString(KEY_ACCOUNT_KIND, if (personal) KIND_PERSONAL else KIND_CREA)
@@ -193,6 +202,7 @@ class SyncStateStore(context: Context) {
         private const val KEY_REMOVED = "last_removed"
         private const val KEY_ALREADY_IN_DRIVE = "last_already_in_drive"
         private const val KEY_PENDING_UPLOADS = "pending_uploads"
+        private const val KEY_PICKED_FILES = "picked_files"
         private const val KEY_CATEGORY_FOLDERS = "category_folders"
         private const val PAIR_SEPARATOR = '\t'
     }

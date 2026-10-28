@@ -123,14 +123,6 @@ class LibrarySyncEngine(
         val catalogListing = drive.listCatalog(folderId)
         stateStore.categoryFolders = catalogListing.folders
         val listing = catalogListing.entries.toMutableList()
-        // The public folder's books show up with the rest (once, if it sits inside the private folder).
-        val publicListing = publicReader?.let { listPublic(it, folderId) }.orEmpty()
-        val publicIds = publicListing.mapTo(hashSetOf()) { it.file.id }
-        val privateIds = listing.mapTo(hashSetOf()) { it.file.id }
-        listing += publicListing.filter { it.file.id !in privateIds }
-        val live = listing.map { it.file.id }.toSet()
-
-        linkLocalCopies(listing)
 
         val manifestFile = drive.listAppData().firstOrNull { it.name == MANIFEST_NAME }
         val storedManifest = manifestFile?.let { file ->
@@ -140,6 +132,17 @@ class LibrarySyncEngine(
                 null
             }
         } ?: SyncManifest(generatedAt = 0, deviceId = "remote")
+
+        // Books a personal account picked from elsewhere in its Drive: read where they are.
+        val pickedIds = listPicked(drive, storedManifest.pickedFileIds, listing)
+        // The public folder's books show up with the rest (once, if it sits inside the private folder).
+        val publicListing = publicReader?.let { listPublic(it, folderId) }.orEmpty()
+        val publicIds = publicListing.mapTo(hashSetOf()) { it.file.id }
+        val privateIds = listing.mapTo(hashSetOf()) { it.file.id }
+        listing += publicListing.filter { it.file.id !in privateIds }
+        val live = listing.map { it.file.id }.toSet()
+
+        linkLocalCopies(listing)
         // Deletions are no longer propagated in either direction, so old tombstones are dropped.
         val remoteManifest = storedManifest.copy(
             books = storedManifest.books.filter { it.driveFileId == null || it.driveFileId in live },
@@ -281,13 +284,15 @@ class LibrarySyncEngine(
         val unchanged = manifestFile != null &&
             storedManifest.tombstones.isEmpty() &&
             storedManifest.books.map { it.syncKey() }.sorted() == finalBooks.map { it.syncKey() }.sorted() &&
-            storedManifest.devices.sortedBy { it.deviceId } == finalDevices
+            storedManifest.devices.sortedBy { it.deviceId } == finalDevices &&
+            storedManifest.pickedFileIds == pickedIds
         if (!unchanged) {
             val finalManifest = SyncManifest(
                 generatedAt = now,
                 deviceId = myId,
                 books = finalBooks,
                 devices = finalDevices,
+                pickedFileIds = pickedIds,
             )
             drive.uploadManifest(
                 name = MANIFEST_NAME,
@@ -330,6 +335,31 @@ class LibrarySyncEngine(
         } finally {
             _progress.value = null
         }
+    }
+
+    /**
+     * Adds to [listing] the books picked with [DrivePicker] (on any device of the account), and
+     * returns the ids still valid. Files deleted, trashed or no longer shared drop out; a network
+     * failure throws, so a bad connection never drops them.
+     */
+    private suspend fun listPicked(
+        drive: GoogleDriveRestClient,
+        stored: List<String>,
+        listing: MutableList<GoogleDriveRestClient.CatalogEntry>,
+    ): List<String> {
+        val requested = (stored + stateStore.pickedFiles).distinct()
+        if (requested.isEmpty()) return emptyList()
+        val listed = listing.mapTo(hashSetOf()) { it.file.id }
+        val valid = mutableListOf<String>()
+        for (id in requested) {
+            if (id in listed) continue // already in the app's own folder
+            val file = drive.getFile(id) ?: continue
+            if (!DriveNaming.isBookFile(file.name, file.mimeType)) continue
+            listing += GoogleDriveRestClient.CatalogEntry(file, category = null)
+            valid += id
+        }
+        stateStore.pickedFiles = valid.toSet()
+        return valid.sorted()
     }
 
     /**

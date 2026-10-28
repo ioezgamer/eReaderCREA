@@ -41,6 +41,35 @@ class SyncFragment : Fragment() {
         }
     }
 
+    private val pickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        val data = result.data
+        if (result.resultCode != Activity.RESULT_OK || data == null) return@registerForActivityResult
+        val ids = runCatching { DrivePicker.pickedIds(requireContext(), data) }.getOrDefault(emptyList())
+        if (ids.isEmpty()) return@registerForActivityResult
+        val store = app.syncStateStore
+        store.pickedFiles = store.pickedFiles + ids
+        SyncScheduler.runNow(requireContext())
+        Snackbar.make(
+            binding.root,
+            resources.getQuantityString(R.plurals.sync_pick_books_added, ids.size, ids.size),
+            Snackbar.LENGTH_LONG
+        ).show()
+    }
+
+    private fun pickBooks() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            runCatching { DrivePicker.open(requireContext(), app.syncStateStore.snapshot().account) }
+                .onSuccess { picker ->
+                    picker?.let { pickerLauncher.launch(IntentSenderRequest.Builder(it.intentSender).build()) }
+                }
+                .onFailure {
+                    Snackbar.make(binding.root, R.string.sync_pick_books_failed, Snackbar.LENGTH_LONG).show()
+                }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         connectingPersonal = savedInstanceState?.getBoolean(STATE_PERSONAL)
@@ -70,6 +99,7 @@ class SyncFragment : Fragment() {
             requestAuthorizationAndSync(personal = store.isEnabled && store.isPersonal)
         }
         binding.syncPersonalButton.setOnClickListener { requestAuthorizationAndSync(personal = true) }
+        binding.syncPickBooksButton.setOnClickListener { pickBooks() }
         binding.syncDisableButton.setOnClickListener {
             app.syncStateStore.setEnabled(false)
             Snackbar.make(binding.root, R.string.sync_disconnected, Snackbar.LENGTH_LONG).show()
@@ -168,6 +198,7 @@ class SyncFragment : Fragment() {
                 else -> R.string.sync_folder_detail
             }
         )
+        binding.syncPickBooksButton.isVisible = state.enabled && state.personal
         binding.syncPersonalButton.isVisible = !state.enabled && !running
         binding.syncPersonalButton.isEnabled = !authorizing
         binding.syncPersonalHint.isVisible = !state.enabled && !running

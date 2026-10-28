@@ -85,6 +85,17 @@ class GoogleDriveRestClient(
             .firstOrNull()
     }
 
+    /** A file's catalog metadata, or null when it is gone, trashed or no longer shared with the app. */
+    suspend fun getFile(fileId: String): DriveFile? = withContext(Dispatchers.IO) {
+        val connection = open("$API/files/$fileId?fields=${encode("$CATALOG_FIELDS,trashed")}")
+        connection.requestMethod = "GET"
+        if (connection.responseCode == 404 || connection.responseCode == 403) return@withContext null
+        connection.requireSuccess()
+        connection.inputStream.bufferedReader().use { reader ->
+            json.decodeFromString<DriveFile>(reader.readText()).takeUnless { it.trashed }
+        }
+    }
+
     suspend fun getFolder(folderId: String): DriveFile? = withContext(Dispatchers.IO) {
         val fields = encode("id,name,mimeType,trashed")
         val connection = open("$API/files/$folderId?fields=$fields")

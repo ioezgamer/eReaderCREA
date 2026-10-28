@@ -3,9 +3,15 @@
     <string name="sync_connect_crea">Conectar cuenta de CREA</string>
     <string name="sync_connect_personal">Usar otra cuenta de Google</string>
     <string name="sync_personal_hint">¿No eres de CREA? Usa tu cuenta de Google: tendrás una carpeta privada en tu Drive y el catálogo público. La IA y las voces naturales son solo para cuentas de CREA.</string>
-    <string name="sync_folder_detail_personal">Tu carpeta privada «CREA Reader» en tu Google Drive: solo tú la ves. Los libros que subas desde la app con «Subir a Drive» te siguen a cualquier dispositivo donde conectes esta cuenta.</string>
-    <string name="sync_what_detail_personal">Agrega un EPUB o PDF en Mi biblioteca y toca «Subir a Drive»: se guarda en tu carpeta privada. Los archivos que pongas a mano en la carpeta desde la web de Drive no se ven en la app.</string>
+    <string name="sync_folder_detail_personal">Tu carpeta privada «CREA Reader» en tu Google Drive: solo tú la ves. Los libros que subas desde la app con «Subir a Drive» y los que agregues desde tu Drive te siguen a cualquier dispositivo donde conectes esta cuenta.</string>
+    <string name="sync_what_detail_personal">¿Ya tienes libros en tu Drive? Toca «Agregar libros desde Drive» y elige los EPUB o PDF que quieras, aunque estén en otra carpeta: se leen desde donde están, sin copiarlos. Los libros que agregues después a tu Drive se eligen de la misma forma.</string>
     <string name="sync_wrong_account_crea">%1$s es una cuenta de CREA. Conéctala con «Conectar cuenta de CREA».</string>
     <string name="sync_wrong_account_personal">%1$s no es una cuenta de CREA (@creanicaragua.org). Conéctala con «Usar otra cuenta de Google».</string>
-    <string name="catalog_personal_empty_detail">Aún no hay libros en tu carpeta. En Mi biblioteca, abre un libro y toca «Subir a Drive» para tenerlo en todos tus dispositivos.</string>
+    <string name="catalog_personal_empty_detail">Aún no hay libros tuyos. En la pantalla Drive toca «Agregar libros desde Drive» para elegir los que ya tienes, o en Mi biblioteca abre un libro y toca «Subir a Drive».</string>
+    <string name="sync_pick_books">Agregar libros desde Drive</string>
+    <string name="sync_pick_books_failed">No se pudo abrir Google Drive.</string>
+    <plurals name="sync_pick_books_added">
+        <item quantity="one">Se agregará %d libro al catálogo.</item>
+        <item quantity="other">Se agregarán %d libros al catálogo.</item>
+    </plurals>
 </resources>

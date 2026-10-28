@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.9.0 - 2026-10-28
+
+- **Agregar libros desde Drive** (cuentas que no son de CREA): en la pantalla Drive, el nuevo botón abre el selector de Google Drive; se eligen uno o varios EPUB o PDF de cualquier carpeta y aparecen en el Catálogo en línea, sin copiarlos ni moverlos. Se pueden leer en línea o descargar, y la lista de libros elegidos se guarda en la cuenta, así que aparecen en todos los dispositivos donde se conecte. Con el permiso limitado de Drive, Google solo da acceso a los archivos elegidos uno por uno (elegir una carpeta no da acceso a lo que tiene dentro), por eso los libros nuevos se agregan de la misma forma.
+
 ## 1.8.0 - 2026-10-26
 
 - **Tu propio Google Drive sin cuenta de CREA**: en la pantalla Drive, «Usar otra cuenta de Google» conecta cualquier cuenta de Google. La app crea una carpeta privada «CREA Reader» en el Drive de esa persona; los libros que suba con «Subir a Drive» y su avance de lectura la siguen a cualquier dispositivo. El catálogo público de CREA se sigue viendo junto con sus libros. La app solo pide acceso a los archivos que ella misma crea, no a todo el Drive.
