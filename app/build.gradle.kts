@@ -32,8 +32,8 @@ android {
         applicationId = "org.crea.reader"
         minSdk = 24
         targetSdk = 37
-        versionCode = 42
-        versionName = "1.9.0"
+        versionCode = 43
+        versionName = "1.9.1"
         // Address of the AI server (see server/README.md). Empty = AI features do not exist in this build.
         buildConfigField("String", "PUBLIC_FOLDER_ID", "\"${publicCatalogProperties.getProperty("folderId", "")}\"")
         buildConfigField("String", "PUBLIC_DRIVE_KEY", "\"${publicCatalogProperties.getProperty("apiKey", "")}\"")

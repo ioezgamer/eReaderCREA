@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 1.9.1 - 2026-11-03
+
+- La app ya no se ofrece para abrir enlaces web (http/https) ni enlaces `app://` a EPUB o PDF: solo archivos del dispositivo (Archivos, Descargas, WhatsApp, Drive, «Compartir»). Esa regla venía de Readium y Play Console la marcaba como 44 vínculos directos sin verificar. Un enlace web a un libro ahora se descarga primero en el navegador y se abre desde la descarga.
+
 ## 1.9.0 - 2026-10-28
 
 - **Agregar libros desde Drive** (cuentas que no son de CREA): en la pantalla Drive, el nuevo botón abre el selector de Google Drive; se eligen uno o varios EPUB o PDF de cualquier carpeta y aparecen en el Catálogo en línea, sin copiarlos ni moverlos. Se pueden leer en línea o descargar, y la lista de libros elegidos se guarda en la cuenta, así que aparecen en todos los dispositivos donde se conecte. Con el permiso limitado de Drive, Google solo da acceso a los archivos elegidos uno por uno (elegir una carpeta no da acceso a lo que tiene dentro), por eso los libros nuevos se agregan de la misma forma.

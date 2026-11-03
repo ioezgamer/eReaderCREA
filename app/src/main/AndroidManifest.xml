@@ -117,17 +117,15 @@
 
             <!-- VIEW (Open with) action -->
 
-            <!-- Works when an app knows the media type of a file, e.g. Gmail or Chrome. -->
+            <!-- Works when an app knows the media type of a file, e.g. Gmail or Chrome. Only local
+            files (content, file): web links are not claimed, so Play sees no unverified deep links. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data android:scheme="app" />
                 <data android:scheme="content" />
                 <data android:scheme="file" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
 
                 <!-- Audiobook (Readium) -->
                 <data android:mimeType="application/audiobook+zip" />
@@ -162,11 +160,8 @@
 
                 <data android:host="*" />
 
-                <data android:scheme="app" />
                 <data android:scheme="content" />
                 <data android:scheme="file" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
 
                 <!-- This media type is necessary, otherwise it won't match on the file extension -->
                 <data android:mimeType="*/*" />
