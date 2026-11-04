@@ -1,6 +1,15 @@
 name: iOS unsigned IPA (FlareStore)
 on:
   workflow_dispatch:
+    inputs:
+      validated_artifact_id:
+        description: 'Optional artifact from a successful iOS parity validation'
+        type: string
+        required: false
+      validated_commit:
+        description: 'Full source SHA of that validated artifact'
+        type: string
+        required: false
   push:
     branches:
       - feature/ios-flarestore
@@ -12,17 +21,64 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: macos-15-intel
+    runs-on: ${{ inputs.validated_artifact_id && 'ubuntu-latest' || 'macos-15-intel' }}
+    env:
+      VALIDATED_ARTIFACT_ID: ${{ inputs.validated_artifact_id }}
+      VALIDATED_COMMIT: ${{ inputs.validated_commit }}
     permissions:
+      actions: read
       contents: write
       statuses: write
     steps:
       - uses: actions/checkout@v4
+      - name: Import verified device IPA from validation
+        if: ${{ inputs.validated_artifact_id }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$VALIDATED_ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          [[ "$VALIDATED_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --depth 1 origin "$VALIDATED_COMMIT"
+          git diff --exit-code "$VALIDATED_COMMIT" HEAD -- ios
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$VALIDATED_ARTIFACT_ID" > "$RUNNER_TEMP/validated-metadata.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$VALIDATED_ARTIFACT_ID/zip" > "$RUNNER_TEMP/validated.zip"
+          python3 - <<'PY'
+          import json, os, pathlib, plistlib, re, zipfile
+          root = pathlib.Path(os.environ['RUNNER_TEMP'])
+          metadata = json.loads((root / 'validated-metadata.json').read_text())
+          assert not metadata['expired']
+          assert metadata['workflow_run']['head_sha'] == os.environ['VALIDATED_COMMIT']
+          with zipfile.ZipFile(root / 'validated.zip') as archive:
+              candidates = [n for n in archive.namelist() if n.endswith('-unsigned.ipa')]
+              assert len(candidates) == 1
+              tests = archive.read(next(n for n in archive.namelist() if n.endswith('/parity-build.log'))).decode('utf8')
+              device = archive.read(next(n for n in archive.namelist() if n.endswith('/parity-device.log'))).decode('utf8')
+              assert '** TEST SUCCEEDED **' in tests
+              assert re.search(r'Executed \d+ tests, with 0 failures', tests)
+              assert '** BUILD SUCCEEDED **' in device
+              (root / 'validated.ipa').write_bytes(archive.read(candidates[0]))
+          with zipfile.ZipFile(root / 'validated.ipa') as archive:
+              assert archive.testzip() is None
+              assert all(not pathlib.PurePosixPath(n).is_absolute() and '..' not in pathlib.PurePosixPath(n).parts for n in archive.namelist())
+              info = plistlib.loads(archive.read('Payload/CREAReader.app/Info.plist'))
+              assert info['CFBundleIdentifier'] == 'org.crea.reader.ios'
+              assert info['CFBundleSupportedPlatforms'] == ['iPhoneOS']
+              version = re.search(r'MARKETING_VERSION:\s*(\S+)', pathlib.Path('ios/project.yml').read_text()).group(1)
+              assert info['CFBundleShortVersionString'] == version
+              print('Verified tested device IPA:', version, os.environ['VALIDATED_COMMIT'])
+          PY
+          unzip -q "$RUNNER_TEMP/validated.ipa" -d "$RUNNER_TEMP/validated-app"
+          mkdir -p "$RUNNER_TEMP/crea-build/Build/Products/Release-iphoneos"
+          cp -R "$RUNNER_TEMP/validated-app/Payload/CREAReader.app" "$RUNNER_TEMP/crea-build/Build/Products/Release-iphoneos/"
       - name: Select Xcode
+        if: ${{ !inputs.validated_artifact_id }}
         run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
       - name: Install XcodeGen
+        if: ${{ !inputs.validated_artifact_id }}
         run: brew install xcodegen
       - name: Generate iOS AppIcon assets
+        if: ${{ !inputs.validated_artifact_id }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -43,12 +99,15 @@ jobs:
           print(f"Created {len(records)} AppIcon PNG images for iPhone and iPad")
           PY
       - name: Generate project
+        if: ${{ !inputs.validated_artifact_id }}
         run: |
           cd ios
           xcodegen generate
       - name: Swift syntax check
+        if: ${{ !inputs.validated_artifact_id }}
         run: xcrun swiftc -frontend -parse ios/CREAReader/*.swift ios/Shared/*.swift ios/CREAWidgets/*.swift
       - name: Build for physical iOS devices without signing
+        if: ${{ !inputs.validated_artifact_id }}
         env:
           GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
           GOOGLE_IOS_URL_SCHEME: ${{ vars.GOOGLE_IOS_URL_SCHEME }}
@@ -85,12 +144,16 @@ jobs:
         run: |
           set -euo pipefail
           APP="$RUNNER_TEMP/crea-build/Build/Products/Release-iphoneos/CREAReader.app"
-          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")"
+          VERSION="$(python3 -c 'import plistlib,sys; print(plistlib.load(open(sys.argv[1], "rb"))["CFBundleShortVersionString"])' "$APP/Info.plist")"
           NAME="CREA-Reader-iOS-${VERSION}-unsigned.ipa"
-          mkdir -p "$RUNNER_TEMP/package/Payload"
-          cp -R "$APP" "$RUNNER_TEMP/package/Payload/"
-          cd "$RUNNER_TEMP/package"
-          zip -qr "$GITHUB_WORKSPACE/$NAME" Payload
+          if [ -n "$VALIDATED_ARTIFACT_ID" ]; then
+            cp "$RUNNER_TEMP/validated.ipa" "$GITHUB_WORKSPACE/$NAME"
+          else
+            mkdir -p "$RUNNER_TEMP/package/Payload"
+            cp -R "$APP" "$RUNNER_TEMP/package/Payload/"
+            cd "$RUNNER_TEMP/package"
+            zip -qr "$GITHUB_WORKSPACE/$NAME" Payload
+          fi
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           test -s "$GITHUB_WORKSPACE/$NAME"
