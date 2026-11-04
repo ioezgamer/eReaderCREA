@@ -628,10 +628,9 @@ struct ReaderHomeView: View {
 
     private var welcome: some View {
         HStack(spacing: 14) {
-            Image(systemName: "books.vertical.fill")
-                .font(.largeTitle).foregroundStyle(.white)
-                .frame(width: 64, height: 64)
-                .background(LinearGradient(colors: [CREAStyle.blue, CREAStyle.pink], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 18))
+            Image("CREABrand").resizable().scaledToFit().frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Tu espacio de lectura").font(.title3.bold())
                 Text("CREA · Mentes abiertas").font(.subheadline).foregroundStyle(.secondary)
