@@ -21,6 +21,7 @@ struct CREACatalogScreen: View {
     @State private var selecting = false
     @State private var selected = Set<String>()
     @State private var confirmBatch = false
+    @State private var transferIssue: String?
     private var listMode: CREAListMode { CREAListMode(rawValue: mode) ?? .grid }
     private var size: CREACoverSize { CREACoverSize(rawValue: coverSize) ?? .medium }
     private func local(_ book: CREARemoteBook) -> LocalBook? { library.books.first { $0.driveFileID == book.id } }
@@ -131,6 +132,9 @@ struct CREACatalogScreen: View {
                         Task { await catalog.downloadBatch(batch) }; selected = []; selecting = false
                     }
                 } message: { Text("Se descargarán \(selected.count) libros. Se comprueba el espacio libre antes de comenzar.") }
+                .alert("No se pudo descargar", isPresented: Binding(get: { transferIssue != nil }, set: { if !$0 { transferIssue = nil } })) {
+                    Button("Aceptar") { transferIssue = nil }
+                } message: { Text(transferIssue ?? "") }
         }
     }
     private func activate(_ book: CREARemoteBook) { if selecting { if selected.contains(book.id) { selected.remove(book.id) } else { selected.insert(book.id) } } else { onDetails(book) } }
@@ -201,7 +205,7 @@ struct CREACatalogScreen: View {
                 .font(.caption).foregroundStyle(.secondary)
         } else if !selecting {
             if let transfer = transfers.record(for: book.id), let error = transfer.error {
-                Button { onDetails(book) } label: { Label("No se pudo descargar", systemImage: "exclamationmark.circle").font(.caption) }
+                Button { transferIssue = error } label: { Label("No se pudo descargar", systemImage: "exclamationmark.circle").font(.caption).frame(minHeight: 44) }
                     .accessibilityHint(error)
             }
             if let downloaded {

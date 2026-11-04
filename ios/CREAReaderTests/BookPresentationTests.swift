@@ -73,7 +73,9 @@ private struct ShelfFixture: View {
                         CREABookHeading(title: title, author: index == 0 ? "Horacio Quiroga" : "Un autor con nombre largo", grid: !textSize.isAccessibilitySize)
                         Text("EPUB").font(.caption)
                         CREABookProgress(percent: index * 27)
-                        Text("Descargar").font(.subheadline).foregroundStyle(CREAStyle.blue).frame(maxWidth: .infinity, minHeight: 44)
+                        Button {} label: {
+                            Label("Descargar", systemImage: "arrow.down").frame(maxWidth: .infinity, minHeight: 32)
+                        }.buttonStyle(.bordered)
                     }.modifier(CREAShelfSurface())
                 }
             }
