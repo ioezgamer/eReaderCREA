@@ -38,7 +38,6 @@ final class BookPresentationTests: XCTestCase {
             let shelf = ShelfFixture()
                 .environment(\.colorScheme, scheme)
                 .environment(\.dynamicTypeSize, textSize)
-                .environment(\.accessibilityReduceMotion, true)
                 .frame(width: width)
             let renderer = ImageRenderer(content: shelf)
             renderer.scale = 2
