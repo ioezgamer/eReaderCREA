@@ -1045,7 +1045,7 @@ struct ReaderHomeView: View {
                     Text("CREA Reader · Inspirado en la interfaz Android de CREA").font(.footnote).foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Ajustes")
+            .navigationTitle("Ajustes").navigationBarTitleDisplayMode(.inline)
             .onAppear { temporarySize = CREATemporaryStorage.size() }
         }
     }

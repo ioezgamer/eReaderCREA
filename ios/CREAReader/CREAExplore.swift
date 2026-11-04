@@ -194,7 +194,7 @@ struct CREAExploreScreen: View {
                         if let url = URL(string: href) { NavigationLink(names[href] ?? href) { CREAOPDSFeedScreen(title: names[href] ?? url.host ?? "Catálogo", url: url, library: library) } }
                     }.onDelete { offsets in var urls = saved; urls.remove(atOffsets: offsets); save(urls) }
                 }
-            }.navigationTitle("Explorar")
+            }.navigationTitle("Explorar").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     Button { repositories = true } label: { Label("Agregar repositorios", systemImage: "plus") }
                     Button("Agregar desde la web") { webImport = true }

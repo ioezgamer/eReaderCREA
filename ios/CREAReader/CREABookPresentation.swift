@@ -48,16 +48,23 @@ struct CREABookHeading: View {
     var grid = true
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
-                .lineLimit(grid ? 2 : nil, reservesSpace: grid)
+            Group {
+                if grid { Text(title).lineLimit(2, reservesSpace: true) }
+                else { Text(title).fixedSize(horizontal: false, vertical: true) }
+            }.font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Text(author?.isEmpty == false ? author! : "Autor no indicado")
-                .font(.caption).foregroundStyle(.secondary)
-                .lineLimit(grid ? 1 : nil, reservesSpace: grid)
+            Group {
+                if grid { Text(authorText).lineLimit(1, reservesSpace: true) }
+                else { Text(authorText).fixedSize(horizontal: false, vertical: true) }
+            }.font(.caption).foregroundStyle(.secondary)
             if !grid, let category, !category.isEmpty {
                 Text(category).font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
         }.multilineTextAlignment(.leading)
+    }
+    private var authorText: String {
+        guard let author, !author.isEmpty else { return "Autor no indicado" }
+        return author
     }
 }
 

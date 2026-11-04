@@ -56,11 +56,11 @@ struct CREAProfileScreen: View {
                     achievementsSection
                     DisclosureGroup { community.padding(.top, 8) } label: { Label("Qué leen los demás", systemImage: "person.2").font(.headline) }
                         .padding().creaCard()
-                }.padding()
+                }.padding(16).frame(maxWidth: 1000).frame(maxWidth: .infinity)
             }
             .background(CREAStyle.gradient)
             .onAppear { _ = store.current() }
-            .navigationTitle("Perfil")
+            .navigationTitle("Perfil").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let me {
                     ToolbarItem(placement: .topBarTrailing) { Button { editor = .edit(me.id) } label: { Label("Editar perfil", systemImage: "slider.horizontal.3") } }
