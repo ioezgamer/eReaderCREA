@@ -515,10 +515,9 @@ struct ReaderHomeView: View {
                     if !library.collections.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
-                                Button("Todas las colecciones") { selectedCollection = nil }
+                                CREAFilterChip(title: "Todas las colecciones", selected: selectedCollection == nil) { selectedCollection = nil }
                                 ForEach(library.collections, id: \.self) { name in
-                                    Button(name) { selectedCollection = name }.buttonStyle(.bordered)
-                                        .tint(selectedCollection == name ? CREAStyle.blue : Color.secondary)
+                                    CREAFilterChip(title: name, selected: selectedCollection == name) { selectedCollection = name }
                                 }
                             }
                         }
@@ -649,8 +648,7 @@ struct ReaderHomeView: View {
                     CREALocalCoverView(url: library.url(for: book), kind: book.kind, title: book.name)
                 }
                 if libraryMode != .covers {
-                    Text(book.name).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
-                        .lineLimit(2, reservesSpace: true).frame(maxWidth: .infinity, alignment: .leading)
+                    CREABookHeading(title: book.name, author: book.author)
                 }
                 Text(book.kind).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
                 ProgressView(value: book.progress).tint(CREAStyle.green)

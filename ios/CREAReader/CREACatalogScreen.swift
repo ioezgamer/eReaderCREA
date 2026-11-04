@@ -78,7 +78,7 @@ struct CREACatalogScreen: View {
                             HStack {
                                 Text("\(catalog.books.count) libros en Drive").font(.headline)
                                 Spacer(); if catalog.isLoading { ProgressView() }
-                                Button("Actualizar") { Task { await refresh() } }.disabled(catalog.isLoading)
+                                Button("Actualizar") { Task { await refresh() } }.frame(minHeight: 44).disabled(catalog.isLoading)
                             }
                             if let date = catalog.lastSynced { HStack { Text("Última sincronización:"); Text(date, style: .relative) }.font(.caption).foregroundStyle(.secondary) }
                             if let issue = catalog.errorMessage {
@@ -92,7 +92,8 @@ struct CREACatalogScreen: View {
                             }
                             CREACategoryPicker(paths: categories, selected: $category)
                             if selecting {
-                                HStack {
+                                let layout = dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))
+                                layout {
                                     Button("Seleccionar visibles") { selected.formUnion(visible.filter { local($0) == nil || catalog.needsUpdate($0, local: local($0)) }.map { $0.id }) }
                                     Spacer()
                                     Button("Descargar \(selected.count)") { confirmBatch = true }.disabled(selected.isEmpty)
@@ -157,6 +158,9 @@ struct CREACatalogScreen: View {
         .contextMenu {
             Button("Seleccionar para descarga") { selecting = true; selected.insert(book.id) }
             Button("Ficha y vista previa") { onDetails(book) }
+            if catalog.needsUpdate(book, local: downloaded) {
+                Button("Actualizar copia", systemImage: "arrow.triangle.2.circlepath") { download(book) }
+            }
         }
     }
 
@@ -204,9 +208,6 @@ struct CREACatalogScreen: View {
                 Button { onRead(downloaded) } label: {
                     Label("Leer", systemImage: "book").frame(maxWidth: .infinity, minHeight: 32)
                 }.buttonStyle(.borderedProminent)
-                if catalog.needsUpdate(book, local: downloaded) {
-                    Button("Actualizar copia") { download(book) }.font(.caption).frame(minHeight: 44)
-                }
             } else {
                 Button { download(book) } label: {
                     Label("Descargar", systemImage: "arrow.down").frame(maxWidth: .infinity, minHeight: 32)
@@ -225,6 +226,9 @@ struct CREACatalogScreen: View {
                 .padding(.horizontal, 7).padding(.vertical, 4)
                 .background(Color.primary.opacity(0.05), in: Capsule())
             Spacer(minLength: 0)
+            if catalog.insight(for: book) != nil {
+                Image(systemName: "sparkles").accessibilityLabel("Ficha sugerida con IA")
+            }
             Image(systemName: catalog.needsUpdate(book, local: downloaded) ? "arrow.triangle.2.circlepath" : downloaded == nil ? "cloud" : "checkmark.circle.fill")
                 .foregroundStyle(downloaded == nil ? Color.secondary : CREAStyle.blue)
                 .accessibilityLabel(catalog.needsUpdate(book, local: downloaded) ? "Actualización disponible" : downloaded == nil ? "En línea" : "Descargado")

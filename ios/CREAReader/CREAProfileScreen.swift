@@ -16,6 +16,7 @@ struct CREAAvatarView: View {
 
 /// "Perfil": what each person has read, independent of the books stored on this device.
 struct CREAProfileScreen: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ObservedObject var store: CREAReaderStore
     @ObservedObject var library: LocalLibrary
     @ObservedObject var catalog: CREADriveCatalog
@@ -205,12 +206,12 @@ struct CREAProfileScreen: View {
     private var achievementsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Logros", systemImage: "rosette").font(.headline)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
+            LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
                 ForEach(CREAReaderInsights.achievements(me), id: \.id) { item in
                     HStack(spacing: 8) {
                         Image(systemName: item.id.icon).foregroundStyle(item.unlocked ? CREAStyle.orange : Color.secondary)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(LocalizedStringKey(item.id.title)).font(.caption.bold()).lineLimit(2)
+                            Text(LocalizedStringKey(item.id.title)).font(.caption.bold()).lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                             Text(item.unlocked ? "Logrado" : "\(item.progress) de \(item.goal)").font(.caption2).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 0)
