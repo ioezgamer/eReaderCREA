@@ -12,10 +12,9 @@ struct CREALocalCoverView: View {
     var body: some View {
         ZStack {
             if let cover {
-                Image(uiImage: cover).resizable().scaledToFill()
+                Image(uiImage: cover).resizable().scaledToFit()
             } else {
-                LinearGradient(colors: [.blue, .purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                Color.black.opacity(0.2)
+                LinearGradient(colors: [Color(red: 0.12, green: 0.24, blue: 0.36), Color(red: 0.19, green: 0.36, blue: 0.45)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 VStack(spacing: 10) {
                     Image(systemName: kind == "PDF" ? "doc.richtext" : "book.closed.fill").font(.system(size: 30))
                     if let title { Text(title).font(.headline).multilineTextAlignment(.center).lineLimit(4) }

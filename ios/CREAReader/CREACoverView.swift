@@ -12,11 +12,10 @@ struct CREARemoteCoverView: View {
                 Image(uiImage: cover).resizable().scaledToFit()
             } else {
                 ZStack {
-                    LinearGradient(colors: [CREAStyle.blue, CREAStyle.pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    Color.black.opacity(0.2)
+                    LinearGradient(colors: [Color(red: 0.12, green: 0.24, blue: 0.36), Color(red: 0.19, green: 0.36, blue: 0.45)], startPoint: .topLeading, endPoint: .bottomTrailing)
                     VStack(spacing: 10) {
                         Image(systemName: book.isEPUB ? "book.closed.fill" : "doc.text.fill").font(.title2)
-                        Text(catalog.title(for: book)).font(.headline).multilineTextAlignment(.center).lineLimit(4)
+                        Text(catalog.title(for: book)).font(.subheadline.weight(.medium)).multilineTextAlignment(.center).lineLimit(3)
                     }.foregroundStyle(.white).padding(12)
                 }
             }

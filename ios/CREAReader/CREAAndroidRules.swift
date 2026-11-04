@@ -67,9 +67,9 @@ struct CREACategoryPicker: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack {
-                Button("Todas las categorías") { selected = nil }.buttonStyle(.bordered)
+                CREAFilterChip(title: "Todas las categorías", selected: selected == nil) { selected = nil }
                 ForEach(CREACategoryPaths.chips(paths, selected: selected), id: \.self) { path in
-                    Button(path) { selected = path }.buttonStyle(.bordered).tint(selected == path ? CREAStyle.blue : Color.secondary)
+                    CREAFilterChip(title: path, selected: selected == path) { selected = path }
                 }
             }
         }

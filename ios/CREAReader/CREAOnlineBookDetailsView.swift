@@ -15,6 +15,7 @@ struct CREAOnlineBookDetailsView: View {
     let onDownloaded: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var metadata: CREABookMetadata?
     @State private var onlineFile: URL?
     @State private var transferredToReader = false
@@ -147,7 +148,37 @@ struct CREAOnlineBookDetailsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                HStack(alignment: .top, spacing: 18) {
+                bookHeader(horizontal: !dynamicTypeSize.isAccessibilitySize)
+
+                if !progressSync.devices.filter({ $0.readings.contains { $0.driveFileId == book.id } }).isEmpty {
+                    DisclosureGroup("Lectura en otros dispositivos") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(progressSync.devices.filter { $0.readings.contains { $0.driveFileId == book.id } }) { device in
+                                if let point = device.readings.first(where: { $0.driveFileId == book.id }) {
+                                    LabeledContent(device.name, value: "\(point.percent)%").font(.subheadline)
+                                }
+                            }
+                        }.padding(.top, 12)
+                    }.modifier(CREAShelfSurface())
+                }
+
+                aboutBook
+            }
+            .padding(16).frame(maxWidth: 800).frame(maxWidth: .infinity)
+        }
+        .background(CREAStyle.gradient)
+        .navigationTitle("Información del libro")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Cerrar") { dismiss() } } }
+        .task(id: book.id) { await loadInformation() }
+        .onDisappear {
+            if !transferredToReader, let onlineFile { try? FileManager.default.removeItem(at: onlineFile) }
+        }
+    }
+
+    private func bookHeader(horizontal: Bool) -> some View {
+        let layout = horizontal ? AnyLayout(HStackLayout(alignment: .top, spacing: 18)) : AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
+        return layout {
                     CREARemoteCoverView(book: book, catalog: catalog)
                         .frame(width: 125, height: 178)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -178,6 +209,10 @@ struct CREAOnlineBookDetailsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
+    }
+
+    private var aboutBook: some View {
+        VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Acerca de este libro").font(.headline)
                     if let text = metadata?.summary, !text.isEmpty {
@@ -332,17 +367,9 @@ struct CREAOnlineBookDetailsView: View {
                 Text("La lectura en línea utiliza una copia temporal, no descarga el libro a Mi biblioteca. Necesitas conexión para abrirlo por primera vez.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            .padding(18)
-        }
-        .background(CREAStyle.gradient)
-        .navigationTitle("Información del libro")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Cerrar") { dismiss() }
-            }
-        }
-        .task(id: book.id) {
+    }
+
+    private func loadInformation() async {
             metadata = await catalog.inspect(book)
             if aiInfo == nil { aiInfo = catalog.insight(for: book) }
             // PDFKit must load the PDF to give an accurate page count.
@@ -355,10 +382,4 @@ struct CREAOnlineBookDetailsView: View {
                 } catch { /* The explicit preview action offers a retry. */ }
             }
         }
-        .onDisappear {
-            if !transferredToReader, let onlineFile {
-                try? FileManager.default.removeItem(at: onlineFile)
-            }
-        }
-    }
 }
