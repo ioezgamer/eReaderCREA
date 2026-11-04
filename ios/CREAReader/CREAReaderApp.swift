@@ -14,11 +14,11 @@ struct CREAReaderApp: App {
 }
 
 enum CREAStyle {
-    static let blue = Color(red: 0.14, green: 0.47, blue: 0.88)
+    static let blue = Color(uiColor: .systemBlue)
     static let pink = Color(red: 0.89, green: 0.28, blue: 0.65)
     static let orange = Color(red: 0.98, green: 0.54, blue: 0.22)
     static let green = Color(red: 0.29, green: 0.70, blue: 0.40)
-    static let gradient = LinearGradient(colors: [blue.opacity(0.13), pink.opacity(0.07), orange.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let gradient = LinearGradient(colors: [Color(uiColor: .systemGroupedBackground), Color(uiColor: .systemGroupedBackground)], startPoint: .top, endPoint: .bottom)
 }
 
 struct LocalBook: Identifiable, Codable, Hashable {
@@ -246,6 +246,7 @@ private enum ReaderTab: Int, CaseIterable {
 }
 
 struct ReaderHomeView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var library = LocalLibrary.shared
     @StateObject private var googleAuth = CREAAuthSession()
     @StateObject private var driveCatalog = CREADriveCatalog()
@@ -507,21 +508,16 @@ struct ReaderHomeView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
                             ForEach(["Todos", "Leyendo", "Sin leer", "Terminados", "Favoritos", "Recientes", "Marcadores", "Con notas", "En Drive", "Solo aquí", "EPUB", "PDF", "AUDIO", "IMAGEN"], id: \.self) { value in
-                                Button(LocalizedStringKey(value)) { filter = value }
-                                    .font(.subheadline.weight(.medium))
-                                    .padding(.horizontal, 13).padding(.vertical, 9)
-                                    .background(filter == value ? CREAStyle.blue : Color.primary.opacity(0.07), in: Capsule())
-                                    .foregroundStyle(filter == value ? Color.white : Color.primary)
+                                CREAFilterChip(title: value, selected: filter == value) { filter = value }
                             }
                         }
                     }
                     if !library.collections.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
-                                Button("Todas las colecciones") { selectedCollection = nil }
+                                CREAFilterChip(title: "Todas las colecciones", selected: selectedCollection == nil) { selectedCollection = nil }
                                 ForEach(library.collections, id: \.self) { name in
-                                    Button(name) { selectedCollection = name }.buttonStyle(.bordered)
-                                        .tint(selectedCollection == name ? CREAStyle.blue : Color.secondary)
+                                    CREAFilterChip(title: name, selected: selectedCollection == name) { selectedCollection = name }
                                 }
                             }
                         }
@@ -531,8 +527,8 @@ struct ReaderHomeView: View {
                             systemImage: "books.vertical",
                             description: Text("Importa libros EPUB o PDF desde Archivos para construir tu biblioteca."))
                             .frame(maxWidth: .infinity)
-                    } else if libraryMode != .list {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 125, maximum: 180), spacing: 12)], spacing: 16) {
+                    } else if libraryMode != .list && !dynamicTypeSize.isAccessibilitySize {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: max(160, librarySize.columnWidth(libraryMode))), spacing: 16, alignment: .top)], spacing: 16) {
                             ForEach(visibleBooks) { book in bookCard(book) }
                         }
                     } else {
@@ -541,10 +537,10 @@ struct ReaderHomeView: View {
                         }
                     }
                 }
-                .padding(18)
+                .padding(16).frame(maxWidth: 1000).frame(maxWidth: .infinity)
             }
             .background(CREAStyle.gradient)
-            .navigationTitle("CREA Reader")
+            .navigationTitle("Biblioteca").navigationBarTitleDisplayMode(.inline)
             .task(id: googleAuth.progressAuthorized) {
                 if googleAuth.progressAuthorized {
                     if driveCatalog.needsAutoSync { await driveCatalog.synchronize() }
@@ -632,10 +628,9 @@ struct ReaderHomeView: View {
 
     private var welcome: some View {
         HStack(spacing: 14) {
-            Image(systemName: "books.vertical.fill")
-                .font(.largeTitle).foregroundStyle(.white)
-                .frame(width: 64, height: 64)
-                .background(LinearGradient(colors: [CREAStyle.blue, CREAStyle.pink], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 18))
+            Image("CREABrand").resizable().scaledToFit().frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Tu espacio de lectura").font(.title3.bold())
                 Text("CREA · Mentes abiertas").font(.subheadline).foregroundStyle(.secondary)
@@ -648,14 +643,13 @@ struct ReaderHomeView: View {
     private func bookCard(_ book: LocalBook) -> some View {
         Button { open(book) } label: {
             VStack(alignment: .leading, spacing: 8) {
-                ZStack(alignment: .bottomLeading) {
+                CREABookCoverFrame {
                     CREALocalCoverView(url: library.url(for: book), kind: book.kind, title: book.name)
-                        .clipShape(RoundedRectangle(cornerRadius: 15))
-                    Text(book.kind).font(.caption2.bold()).foregroundStyle(.white)
-                        .padding(7).background(.black.opacity(0.28), in: Capsule()).padding(9)
                 }
-                .aspectRatio(0.76, contentMode: .fit)
-                if libraryMode != .covers { Text(book.name).font(.subheadline.bold()).foregroundStyle(.primary).lineLimit(2).frame(minHeight: 38, alignment: .topLeading) }
+                if libraryMode != .covers {
+                    CREABookHeading(title: book.name, author: book.author)
+                }
+                Text(book.kind).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
                 ProgressView(value: book.progress).tint(CREAStyle.green)
                 HStack {
                     Text("\(Int(book.progress * 100))%").font(.caption2).foregroundStyle(.secondary)
@@ -664,7 +658,7 @@ struct ReaderHomeView: View {
                         .foregroundStyle(book.favorite ? CREAStyle.pink : Color.secondary)
                 }
             }
-            .padding(10).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+            .modifier(CREAShelfSurface())
         }
         .buttonStyle(.plain)
         .contextMenu { bookActions(book) }
@@ -691,7 +685,7 @@ struct ReaderHomeView: View {
                 Image(systemName: book.favorite ? "heart.fill" : "chevron.right")
                     .foregroundStyle(book.favorite ? CREAStyle.pink : Color.secondary)
             }
-            .padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .modifier(CREAShelfSurface())
         }
         .buttonStyle(.plain)
         .contextMenu { bookActions(book) }
@@ -1048,7 +1042,7 @@ struct ReaderHomeView: View {
                     Text("CREA Reader · Inspirado en la interfaz Android de CREA").font(.footnote).foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Ajustes")
+            .navigationTitle("Ajustes").navigationBarTitleDisplayMode(.inline)
             .onAppear { temporarySize = CREATemporaryStorage.size() }
         }
     }

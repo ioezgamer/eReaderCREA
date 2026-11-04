@@ -1,4 +1,10 @@
-# CREA Reader iOS 0.10.1
+# CREA Reader iOS 0.13.1
+
+## Diseño de Biblioteca y Catálogo
+
+Portadas de proporción estable, tarjetas con títulos y autores alineados, filtros uniformes y cabeceras compactas en las cinco pestañas. El progreso de otros dispositivos se conserva en un desplegable de la ficha del libro. Las superficies del sistema se adaptan al modo claro/oscuro y la bienvenida usa el logotipo oficial.
+
+Con tamaños de texto de accesibilidad, las estanterías pasan a lista y la cabecera del libro a vertical. Las reglas están en `design-system/crea-reader/pages/ios.md`. `BookPresentationTests` genera capturas nativas de componentes compartidos con datos de prueba; no sustituyen la comprobación física con una cuenta de Drive.
 
 Aplicación nativa para iPhone/iPad con iOS 17 o posterior, basada en `feature/ios-flarestore`. Esta entrega amplía la versión iOS con las herramientas y flujos de Android. La comparación detallada y las pruebas físicas están en [PARITY.md](PARITY.md).
 

@@ -4,7 +4,8 @@ import SwiftUI
 extension View {
     /// Plain translucent card used across the app.
     func creaCard(radius: CGFloat = 18) -> some View {
-        background(.regularMaterial, in: RoundedRectangle(cornerRadius: radius))
+        background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: radius))
+            .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(.primary.opacity(0.06)))
     }
 
     /// Floating surface (reader bars, panels): blurred glass, real Liquid Glass when the OS has it.

@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   validate:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     permissions:
       contents: read
     steps:
@@ -48,6 +48,13 @@ jobs:
           set -euo pipefail
           DEVICE=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; data=json.load(sys.stdin); print(next(d["udid"] for group in data["devices"].values() for d in group if "iPhone" in d["name"]))')
           xcodebuild test -project ios/CREAReader.xcodeproj -scheme CREAReader -destination "platform=iOS Simulator,id=$DEVICE" -resultBundlePath "$RUNNER_TEMP/parity-tests.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/parity-build.log"
+      - name: Export native design screenshots
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/design-screenshots"
+          if test -d "$RUNNER_TEMP/parity-tests.xcresult"; then
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/parity-tests.xcresult" --output-path "$RUNNER_TEMP/design-screenshots" || true
+          fi
       - name: Build installable unsigned app
         run: |
           set -euo pipefail
@@ -55,7 +62,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/package/Payload"
           cp -R "$RUNNER_TEMP/parity-device/Build/Products/Release-iphoneos/CREAReader.app" "$RUNNER_TEMP/package/Payload/"
           cd "$RUNNER_TEMP/package"
-          zip -qr "$GITHUB_WORKSPACE/CREA-Reader-iOS-0.11.0-unsigned.ipa" Payload
+          zip -qr "$GITHUB_WORKSPACE/CREA-Reader-iOS-0.13.1-unsigned.ipa" Payload
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -63,4 +70,5 @@ jobs:
           path: |
             ${{ runner.temp }}/parity-*.log
             ${{ runner.temp }}/parity-tests.xcresult
-            CREA-Reader-iOS-0.11.0-unsigned.ipa
+            ${{ runner.temp }}/design-screenshots
+            CREA-Reader-iOS-0.13.1-unsigned.ipa

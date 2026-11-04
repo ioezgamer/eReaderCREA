@@ -14,12 +14,14 @@ struct CREACatalogScreen: View {
     @AppStorage("crea.reader.catalog.coverSize") private var coverSize = "medium"
     @AppStorage("crea.reader.catalog.sort") private var sort = "Título"
     @AppStorage("crea.reader.ai.autoInsights") private var autoInsights = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var search = ""
     @State private var status = "Todos"
     @State private var category: String?
     @State private var selecting = false
     @State private var selected = Set<String>()
     @State private var confirmBatch = false
+    @State private var transferIssue: String?
     private var listMode: CREAListMode { CREAListMode(rawValue: mode) ?? .grid }
     private var size: CREACoverSize { CREACoverSize(rawValue: coverSize) ?? .medium }
     private func local(_ book: CREARemoteBook) -> LocalBook? { library.books.first { $0.driveFileID == book.id } }
@@ -77,7 +79,7 @@ struct CREACatalogScreen: View {
                             HStack {
                                 Text("\(catalog.books.count) libros en Drive").font(.headline)
                                 Spacer(); if catalog.isLoading { ProgressView() }
-                                Button("Actualizar") { Task { await refresh() } }.disabled(catalog.isLoading)
+                                Button("Actualizar") { Task { await refresh() } }.frame(minHeight: 44).disabled(catalog.isLoading)
                             }
                             if let date = catalog.lastSynced { HStack { Text("Última sincronización:"); Text(date, style: .relative) }.font(.caption).foregroundStyle(.secondary) }
                             if let issue = catalog.errorMessage {
@@ -86,31 +88,34 @@ struct CREACatalogScreen: View {
                             }
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack { ForEach(["Todos", "Sin descargar", "Descargados", "Leyendo", "Terminados", "Nuevos", "Actualizaciones"], id: \.self) { value in
-                                    Button(LocalizedStringKey(value)) { status = value }.buttonStyle(.bordered).tint(status == value ? CREAStyle.blue : Color.secondary)
+                                    CREAFilterChip(title: value, selected: status == value) { status = value }
                                 } }
                             }
                             CREACategoryPicker(paths: categories, selected: $category)
                             if selecting {
-                                HStack {
+                                let layout = dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))
+                                layout {
                                     Button("Seleccionar visibles") { selected.formUnion(visible.filter { local($0) == nil || catalog.needsUpdate($0, local: local($0)) }.map { $0.id }) }
                                     Spacer()
                                     Button("Descargar \(selected.count)") { confirmBatch = true }.disabled(selected.isEmpty)
                                 }
                             }
                             if ai.canUseForCatalog && auth.communityAuthorized {
-                                Button { Task { await catalog.synchronizeInsights(ai: ai, generate: true) } } label: { Label(catalog.generatingInsights ? "Creando fichas…" : "Crear y compartir fichas faltantes", systemImage: "sparkles") }.disabled(catalog.generatingInsights)
+                                Menu {
+                                    Button("Crear y compartir fichas faltantes", systemImage: "sparkles") { Task { await catalog.synchronizeInsights(ai: ai, generate: true) } }
+                                } label: { Label(catalog.generatingInsights ? "Creando fichas…" : "Fichas de los libros", systemImage: "sparkles").font(.subheadline).frame(minHeight: 44) }.disabled(catalog.generatingInsights)
                             }
                             if let message = catalog.insightStatus { Text(message).font(.caption) }
                             if visible.isEmpty { ContentUnavailableView("Sin resultados", systemImage: "books.vertical") }
-                            if listMode == .list {
+                            if listMode == .list || dynamicTypeSize.isAccessibilitySize {
                                 LazyVStack(spacing: 12) { ForEach(visible) { book in card(book, list: true) } }
                             } else {
-                                LazyVGrid(columns: [GridItem(.adaptive(minimum: size.columnWidth(listMode)), spacing: 12)], spacing: 14) { ForEach(visible) { book in card(book, list: false) } }
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: max(160, size.columnWidth(listMode))), spacing: 16, alignment: .top)], spacing: 16) { ForEach(visible) { book in card(book, list: false) } }
                             }
-                        }.padding()
+                        }.padding(16).frame(maxWidth: 1000).frame(maxWidth: .infinity)
                     }.refreshable { await refresh() }
                 }
-            }.background(CREAStyle.gradient).navigationTitle("Catálogo en línea")
+            }.background(CREAStyle.gradient).navigationTitle("Catálogo").navigationBarTitleDisplayMode(.inline)
                 .searchable(text: $search, prompt: "Buscar título, autor o categoría")
                 .toolbar {
                     CREAViewMenu(mode: $mode, size: $coverSize)
@@ -127,60 +132,110 @@ struct CREACatalogScreen: View {
                         Task { await catalog.downloadBatch(batch) }; selected = []; selecting = false
                     }
                 } message: { Text("Se descargarán \(selected.count) libros. Se comprueba el espacio libre antes de comenzar.") }
+                .alert("No se pudo descargar", isPresented: Binding(get: { transferIssue != nil }, set: { if !$0 { transferIssue = nil } })) {
+                    Button("Aceptar") { transferIssue = nil }
+                } message: { Text(transferIssue ?? "") }
         }
     }
     private func activate(_ book: CREARemoteBook) { if selecting { if selected.contains(book.id) { selected.remove(book.id) } else { selected.insert(book.id) } } else { onDetails(book) } }
     private func card(_ book: CREARemoteBook, list: Bool) -> some View {
         let info = catalog.insight(for: book), downloaded = local(book)
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 12) {
-                Button { activate(book) } label: {
-                    CREARemoteCoverView(book: book, catalog: catalog, height: list ? 88 : nil).aspectRatio(0.72, contentMode: .fit).frame(width: list ? 64 : nil).clipped()
-                }.buttonStyle(.plain).accessibilityLabel(catalog.title(for: book))
-                if list {
-                    VStack(alignment: .leading, spacing: 8) { title(book, info: info); statusLabel(book, downloaded: downloaded) }
-                    Spacer()
+        return VStack(alignment: .leading, spacing: 12) {
+            if list {
+                HStack(alignment: .top, spacing: 14) {
+                    coverButton(book).frame(width: 72)
+                    VStack(alignment: .leading, spacing: 10) {
+                        heading(book, info: info, grid: false)
+                        statusLabel(book, downloaded: downloaded)
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                    selectionMark(book)
                 }
-                if selecting { Image(systemName: selected.contains(book.id) ? "checkmark.circle.fill" : "circle").accessibilityLabel(selected.contains(book.id) ? "Seleccionado" : "Sin seleccionar") }
-            }
-            if !list && listMode != .covers { title(book, info: info) }
-            if !list { statusLabel(book, downloaded: downloaded) }
-            if percent(book) > 0 { ProgressView(value: Double(percent(book)) / 100).tint(CREAStyle.green); Text("\(percent(book))%").font(.caption) }
-            ForEach(Array(progress.devices.filter { $0.readings.contains { $0.driveFileId == book.id } }.prefix(3))) { device in
-                if let point = device.readings.first(where: { $0.driveFileId == book.id }) { Text("\(device.name): \(point.percent)%").font(.caption2).foregroundStyle(.secondary) }
-            }
-            if let transfer = transfers.record(for: book.id), transfer.active {
-                if let amount = transfer.progress { ProgressView(value: amount) } else { ProgressView() }
-                Text(transfer.state == "processing" ? "Verificando y guardando…" : "\(ByteCountFormatter.string(fromByteCount: transfer.copied, countStyle: .file)) descargados").font(.caption)
-                Button("Cancelar descarga") { transfers.cancel(book.id) }.disabled(transfer.state == "processing")
             } else {
-                if let transfer = transfers.record(for: book.id), let error = transfer.error { Text(error).font(.caption).foregroundStyle(.red) }
-                if !selecting {
-                    HStack {
-                        if let downloaded { Button("Leer") { onRead(downloaded) }.buttonStyle(.borderedProminent) }
-                        if downloaded == nil || catalog.needsUpdate(book, local: downloaded) {
-                            Button(downloaded == nil ? "Descargar" : "Actualizar copia") { Task { await catalog.download(book, into: library); progress.promoteDownloadedBook(book.id, library: library) } }.buttonStyle(.bordered)
-                        }
-                    }
-                }
+                coverButton(book).overlay(alignment: .topTrailing) { selectionMark(book).padding(8) }
+                if listMode != .covers { heading(book, info: info, grid: true) }
+                statusLabel(book, downloaded: downloaded)
             }
-        }.padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .contextMenu { Button("Seleccionar para descarga") { selecting = true; selected.insert(book.id) }; Button("Ficha y vista previa") { onDetails(book) } }
-    }
-    private func title(_ book: CREARemoteBook, info: CREAAIBookInfo?) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Button { activate(book) } label: { Text(catalog.title(for: book)).font(.headline).foregroundStyle(.primary).lineLimit(3) }.buttonStyle(.plain)
-            if let author = info?.author ?? book.authorFromName, !author.isEmpty { Text(author).font(.caption).foregroundStyle(.secondary) }
-            Text(catalog.categories(for: book).joined(separator: " · ")).font(.caption2).foregroundStyle(.secondary)
-            if info != nil { Label("Ficha sugerida con IA", systemImage: "sparkles").font(.caption2) }
+            CREABookProgress(percent: percent(book))
+            transferActions(book, downloaded: downloaded)
+        }
+        .modifier(CREAShelfSurface())
+        .contextMenu {
+            Button("Seleccionar para descarga") { selecting = true; selected.insert(book.id) }
+            Button("Ficha y vista previa") { onDetails(book) }
+            if catalog.needsUpdate(book, local: downloaded) {
+                Button("Actualizar copia", systemImage: "arrow.triangle.2.circlepath") { download(book) }
+            }
         }
     }
+
+    private func coverButton(_ book: CREARemoteBook) -> some View {
+        Button { activate(book) } label: {
+            CREABookCoverFrame { CREARemoteCoverView(book: book, catalog: catalog, height: nil) }
+        }.buttonStyle(.plain).accessibilityLabel(catalog.title(for: book))
+    }
+
+    @ViewBuilder private func selectionMark(_ book: CREARemoteBook) -> some View {
+        if selecting {
+            Button { activate(book) } label: {
+                Image(systemName: selected.contains(book.id) ? "checkmark.circle.fill" : "circle")
+                    .font(.title2).foregroundStyle(CREAStyle.blue)
+                    .frame(width: 44, height: 44)
+                    .background(.regularMaterial, in: Circle())
+            }.buttonStyle(.plain)
+                .accessibilityLabel(selected.contains(book.id) ? "Quitar de selección" : "Seleccionar libro")
+        }
+    }
+
+    private func heading(_ book: CREARemoteBook, info: CREAAIBookInfo?, grid: Bool) -> some View {
+        Button { activate(book) } label: {
+            CREABookHeading(title: catalog.title(for: book), author: info?.author ?? book.authorFromName,
+                            category: catalog.categories(for: book).joined(separator: " · "), grid: grid)
+        }.buttonStyle(.plain)
+    }
+
+    @ViewBuilder private func transferActions(_ book: CREARemoteBook, downloaded: LocalBook?) -> some View {
+        if let transfer = transfers.record(for: book.id), transfer.active {
+            HStack {
+                if let amount = transfer.progress { ProgressView(value: amount) } else { ProgressView() }
+                Button { transfers.cancel(book.id) } label: {
+                    Image(systemName: "xmark.circle.fill").frame(width: 44, height: 44)
+                }.accessibilityLabel("Cancelar descarga").disabled(transfer.state == "processing")
+            }
+            Text(transfer.state == "processing" ? "Verificando y guardando…" : "Descargando…")
+                .font(.caption).foregroundStyle(.secondary)
+        } else if !selecting {
+            if let transfer = transfers.record(for: book.id), let error = transfer.error {
+                Button { transferIssue = error } label: { Label("No se pudo descargar", systemImage: "exclamationmark.circle").font(.caption).frame(minHeight: 44) }
+                    .accessibilityHint(error)
+            }
+            if let downloaded {
+                Button { onRead(downloaded) } label: {
+                    Label("Leer", systemImage: "book").frame(maxWidth: .infinity, minHeight: 32)
+                }.buttonStyle(.borderedProminent)
+            } else {
+                Button { download(book) } label: {
+                    Label("Descargar", systemImage: "arrow.down").frame(maxWidth: .infinity, minHeight: 32)
+                }.buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private func download(_ book: CREARemoteBook) {
+        Task { await catalog.download(book, into: library); progress.promoteDownloadedBook(book.id, library: library) }
+    }
+
     private func statusLabel(_ book: CREARemoteBook, downloaded: LocalBook?) -> some View {
-        HStack {
-            Text(book.isEPUB ? "EPUB" : "PDF")
-            Spacer()
-            if catalog.needsUpdate(book, local: downloaded) { Label("Actualización disponible", systemImage: "arrow.triangle.2.circlepath") }
-            else { Label(downloaded == nil ? "En línea" : "Descargado", systemImage: downloaded == nil ? "cloud" : "checkmark.circle") }
-        }.font(.caption).foregroundStyle(.secondary)
+        HStack(spacing: 6) {
+            Text(book.isEPUB ? "EPUB" : "PDF").font(.caption2.weight(.semibold))
+                .padding(.horizontal, 7).padding(.vertical, 4)
+                .background(Color.primary.opacity(0.05), in: Capsule())
+            Spacer(minLength: 0)
+            if catalog.insight(for: book) != nil {
+                Image(systemName: "sparkles").accessibilityLabel("Ficha sugerida con IA")
+            }
+            Image(systemName: catalog.needsUpdate(book, local: downloaded) ? "arrow.triangle.2.circlepath" : downloaded == nil ? "cloud" : "checkmark.circle.fill")
+                .foregroundStyle(downloaded == nil ? Color.secondary : CREAStyle.blue)
+                .accessibilityLabel(catalog.needsUpdate(book, local: downloaded) ? "Actualización disponible" : downloaded == nil ? "En línea" : "Descargado")
+        }.foregroundStyle(.secondary)
     }
 }
