@@ -108,7 +108,7 @@ struct CREACatalogScreen: View {
                             if listMode == .list || dynamicTypeSize.isAccessibilitySize {
                                 LazyVStack(spacing: 12) { ForEach(visible) { book in card(book, list: true) } }
                             } else {
-                                LazyVGrid(columns: [GridItem(.adaptive(minimum: max(160, size.columnWidth(listMode)), spacing: 16, alignment: .top)], spacing: 14) { ForEach(visible) { book in card(book, list: false) } }
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: max(160, size.columnWidth(listMode))), spacing: 16, alignment: .top)], spacing: 16) { ForEach(visible) { book in card(book, list: false) } }
                             }
                         }.padding(16).frame(maxWidth: 1000).frame(maxWidth: .infinity)
                     }.refreshable { await refresh() }

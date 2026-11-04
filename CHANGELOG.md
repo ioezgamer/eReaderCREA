@@ -1,5 +1,13 @@
 # Historial de cambios
 
+## iOS 0.13.1 — 2026-11-04
+
+- Portadas con proporción estable y tarjetas alineadas en Biblioteca y Catálogo, con títulos de dos líneas y autor compacto.
+- Progreso entre dispositivos trasladado a un desplegable de la ficha del libro; filtros de estado y categoría con controles uniformes.
+- Superficies semánticas para modo claro/oscuro, cabeceras compactas y contenido centrado en iPad.
+- Vista de lista automática con tamaños de letra de accesibilidad y ficha vertical en esos tamaños.
+- Comprobaciones de geometría y capturas nativas de componentes en iPhone, iPad, paisaje, modo oscuro y letra grande.
+
 ## iOS 0.13.0 - 2026-10-23
 
 Paridad con Android 1.0 a 1.5.1:
