@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import UIKit
 @testable import CREAReader
 
 @MainActor
@@ -26,7 +27,7 @@ final class BookPresentationTests: XCTestCase {
         XCTAssertEqual(short.sizeThatFits(in: proposal).height, long.sizeThatFits(in: proposal).height, accuracy: 1)
     }
 
-    func testShelfRendersInPhoneTabletDarkAndAccessibilityLayouts() throws {
+    func testShelfRendersInPhoneTabletDarkAndAccessibilityLayouts() async throws {
         let scenarios: [(String, CGFloat, ColorScheme, DynamicTypeSize)] = [
             ("phone-375-light", 375, .light, .large),
             ("phone-393-dark", 393, .dark, .large),
@@ -39,9 +40,20 @@ final class BookPresentationTests: XCTestCase {
                 .environment(\.colorScheme, scheme)
                 .environment(\.dynamicTypeSize, textSize)
                 .frame(width: width)
-            let renderer = ImageRenderer(content: shelf)
-            renderer.scale = 2
-            let image = try XCTUnwrap(renderer.uiImage, name)
+            // UIKit-backed controls (including ProgressView) need a real hosting window.
+            let height: CGFloat = name == "phone-landscape" ? 375 : name.hasPrefix("ipad") ? 1194 : 812
+            let controller = UIHostingController(rootView: shelf)
+            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: height))
+            window.rootViewController = controller
+            window.isHidden = false
+            controller.view.frame = window.bounds
+            controller.view.setNeedsLayout()
+            controller.view.layoutIfNeeded()
+            try await Task.sleep(for: .milliseconds(150))
+            let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
+                controller.view.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+            }
+            window.isHidden = true
             XCTAssertGreaterThan(image.size.height, 100)
             let attachment = XCTAttachment(image: image)
             attachment.name = name
