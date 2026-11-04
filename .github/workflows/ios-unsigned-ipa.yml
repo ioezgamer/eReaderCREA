@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     permissions:
       contents: write
       statuses: write
@@ -109,7 +109,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "CREA Reader iOS ${{ steps.ipa.outputs.version }} beta - prueba ${GITHUB_RUN_NUMBER}" \
-            --notes "IPA iOS ${{ steps.ipa.outputs.version }} sin firmar para FlareStore. Conserva porcentaje y posición de lectura en línea, permite reanudar tras descargar y sincroniza con Android. Mantiene catálogo Drive y Claude IA opcional. Requiere firma con FlareStore." \
+            --notes "IPA iOS ${{ steps.ipa.outputs.version }} sin firmar para FlareStore. Catálogo y biblioteca con portadas uniformes, tarjetas alineadas, filtros coherentes y adaptación a texto grande. Progreso por dispositivo en la ficha del libro y modos claro/oscuro. Requiere firma con FlareStore." \
             --prerelease
 
       - name: Build public FlareStore source
@@ -124,7 +124,7 @@ jobs:
             --ipa "${{ steps.ipa.outputs.name }}" \
             --output "$SITE/source.json" \
             --base-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" \
-            --notes "CREA Reader iOS ${{ steps.ipa.outputs.version }}: continuidad de progreso entre lectura en línea y descargada, sincronización Drive/Android y Claude IA opcional."
+            --notes "CREA Reader iOS ${{ steps.ipa.outputs.version }}: catálogo y biblioteca rediseñados, portadas alineadas, filtros uniformes, modo oscuro y adaptación a texto grande."
           python3 - <<'PY'
           import json
           from pathlib import Path
