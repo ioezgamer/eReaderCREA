@@ -1,6 +1,7 @@
 // Las tareas de IA que la app puede pedir. Los prompts viven aquí, en el servidor: la app solo envía
 // contenido, nunca instrucciones, así que nadie puede usar la clave para otra cosa.
 import { z } from "zod";
+import { aventurasTutor } from "./aventurasTutor.js";
 
 const LEVELS = ["inicial", "primaria_baja", "primaria_alta", "secundaria", "bachillerato", "adultos", "general"];
 
@@ -13,6 +14,7 @@ const SYSTEM_BASE =
 const clip = (value, max) => String(value ?? "").slice(0, max);
 
 export const TASKS = {
+  aventuras_tutor: aventurasTutor,
   // Ficha de un libro del catálogo (se genera una vez y se comparte con todos los dispositivos).
   book_info: {
     limit: { perDevice: 40 },
@@ -129,6 +131,8 @@ export const TASKS = {
 /** Respuestas de ejemplo para probar la app sin gastar créditos (MOCK_AI=1). */
 export function mockResult(task, input) {
   switch (task) {
+    case "aventuras_tutor":
+      return { summary: "Ruta de prueba", choices: [input.candidates[0], input.candidates.find(c => ["matematicas", "patrones"].includes(c.game)), input.candidates[1]].map(c => ({ id: c.id, reason: c.reason })) };
     case "book_info": {
       const name = String(input.fileName ?? "Libro").replace(/\.[a-z]+$/i, "");
       const [title, author] = name.includes(" - ") ? name.split(" - ") : [name, null];

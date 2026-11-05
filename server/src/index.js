@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -74,6 +75,21 @@ export function createServer({ config, service, authenticate, voice }) {
       const url = new URL(request.url, "http://localhost");
       if (url.pathname === "/healthz") return send(response, 200, { ok: true });
       if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) return serveAdmin(url, response);
+
+      if (request.method === "POST" && url.pathname === "/v1/aventuras/tutor") {
+        const expected = config.aventurasServiceToken || "";
+        if (!expected) return send(response, 503, { ok: false, code: "tutor_disabled" });
+        const supplied = String(request.headers.authorization || "").replace(/^Bearer /, "");
+        const a = Buffer.from(expected), b = Buffer.from(supplied);
+        if (a.length !== b.length || !timingSafeEqual(a, b)) return send(response, 401, { ok: false, code: "unauthorized" });
+        let body;
+        try { body = JSON.parse(await readBody(request)); }
+        catch (error) { if (error instanceof service.ServiceError) throw error; return send(response, 400, { ok: false, code: "invalid_json" }); }
+        const device = String(request.headers["x-device-id"] || "");
+        if (!/^[a-f0-9]{64}$/.test(device)) return send(response, 400, { ok: false, code: "invalid_device" });
+        const { result, model } = await service.ask({ email: "aventuras-service@creanicaragua.org" }, "aventuras-" + device, "aventuras_tutor", body);
+        return send(response, 200, { ok: true, result, model });
+      }
 
       const user = await authenticate(request);
       if (!user) return send(response, 401, { ok: false, code: "unauthorized" });

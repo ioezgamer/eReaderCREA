@@ -13,6 +13,7 @@ const DEFAULT_PRICES = {
 export function loadConfig(env = process.env) {
   const fast = env.MODEL_FAST || "claude-haiku-5-5";
   return {
+    aventurasServiceToken: env.CREA_AVENTURAS_SERVICE_TOKEN || "",
     enabled: env.AI_ENABLED !== "false",
     mock: env.MOCK_AI === "1",
     authMode: env.AUTH_MODE === "mock" ? "mock" : "google",
@@ -93,6 +94,10 @@ export function createService({ config, store, claude, now = () => new Date() })
       result = mockResult(taskName, input);
     } else {
       ({ result, usage } = await callClaude(client, task, model, input));
+    }
+
+    if (task.validate && !task.validate(result, input)) {
+      throw new ServiceError(502, "bad_output", "Ruta no válida del modelo");
     }
 
     // Contabilidad después de una respuesta correcta.
