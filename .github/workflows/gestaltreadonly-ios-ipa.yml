@@ -1,0 +1,163 @@
+name: GestaltReadOnly IPA
+on:
+  push:
+    branches:
+      - experiments/wq-mobilegestalt-readonly
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get source for worse_query
+        run: |
+          mkdir -p Sources Config
+          curl --fail --location --retry 3 -o Sources/worse_query.m https://raw.githubusercontent.com/forcequitOS/worse_query/d1540e20cd82b974d891e0551ced6d6aeb570ac2/worse_query/worse_query.m
+          curl --fail --location --retry 3 -o Sources/worse_query.h https://raw.githubusercontent.com/forcequitOS/worse_query/d1540e20cd82b974d891e0551ced6d6aeb570ac2/worse_query/worse_query.h
+          test -s Sources/worse_query.m && test -s Sources/worse_query.h
+          printf '#import "worse_query.h"\n' > Sources/BridgingHeader.h
+      - name: Create iOS project
+        run: |
+          cat > Sources/App.swift <<'SWIFT'
+          import SwiftUI
+          import Foundation
+
+          @main
+          struct GestaltReadOnlyApp: App {
+              var body: some Scene {
+                  WindowGroup { ContentView() }
+              }
+          }
+
+          @MainActor
+          final class ReadModel: ObservableObject {
+              @Published var status = "Listo para lectura puntual"
+              @Published var details = "No se han consultado archivos."
+              @Published var active = false
+              private let group = "group.org.artease.gestaltreadonly"
+              private let directory = "/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches"
+
+              func read() {
+                  guard !active else { return }
+                  active = true
+                  status = "Leyendo MobileGestalt"
+                  let group = self.group
+                  let directory = self.directory
+                  DispatchQueue.global(qos: .userInitiated).async {
+                      let h = worse_query(directory as NSString, group as NSString, false, false)
+                      var result: String
+                      var success = false
+                      if h < 0 {
+                          result = "La extensión no está disponible; código: \(h). Revisa App Groups y la versión iOS."
+                      } else {
+                          defer { worse_query_release(h) }
+                          do {
+                              let url = URL(fileURLWithPath: directory).appendingPathComponent("com.apple.MobileGestalt.plist")
+                              let bytes = try Data(contentsOf: url)
+                              let object = try PropertyListSerialization.propertyList(from: bytes, format: nil)
+                              guard let fields = object as? [String: Any] else {
+                                  throw NSError(domain: "MobileGestalt", code: 1,
+                                                userInfo: [NSLocalizedDescriptionKey: "La raíz no es un diccionario"])
+                              }
+                              let n = (fields["CacheExtra"] as? [String: Any])?.count ?? 0
+                              let size = (fields["CacheData"] as? Data)?.count ?? 0
+                              result = "Extensión consumida: handle \(h)\nLectura: \(bytes.count) bytes\nCacheExtra: \(n) claves\nCacheData: \(size) bytes\nNo se escribió ni exportó el contenido."
+                              success = true
+                          } catch {
+                              result = "Extensión consumida, lectura fallida: \(error.localizedDescription)"
+                          }
+                      }
+                      let final = result
+                      let ok = success
+                      DispatchQueue.main.async {
+                          self.status = ok ? "Lectura completada" : "Sin lectura confirmada"
+                          self.details = final
+                          self.active = false
+                      }
+                  }
+              }
+          }
+
+          struct ContentView: View {
+              @StateObject private var model = ReadModel()
+              var body: some View {
+                  NavigationStack {
+                      ScrollView {
+                          VStack(alignment: .leading, spacing: 20) {
+                              Image(systemName: "lock.doc").font(.system(size: 48)).foregroundStyle(.tint)
+                              Text("GestaltReadOnly").font(.largeTitle.bold())
+                              Text("Lectura puntual de MobileGestalt mediante worse_query. Sin escritura de datos, sin exploración de otras apps y sin acceso a memoria del kernel.")
+                                  .foregroundStyle(.secondary)
+                              GroupBox("Resultado") {
+                                  VStack(alignment: .leading, spacing: 12) {
+                                      Text(model.status).font(.headline)
+                                      Text(model.details).font(.system(.footnote, design: .monospaced))
+                                          .textSelection(.enabled)
+                                  }.frame(maxWidth: .infinity, alignment: .leading)
+                              }
+                              Button(action: model.read) {
+                                  Label(model.active ? "Leyendo..." : "Leer MobileGestalt", systemImage: "doc.text.magnifyingglass")
+                                      .frame(maxWidth: .infinity)
+                              }.buttonStyle(.borderedProminent).controlSize(.large).disabled(model.active)
+                              Text("Requiere firma con el App Group correspondiente. La IPA generada por GitHub Actions no está firmada.")
+                                  .font(.footnote).foregroundStyle(.secondary)
+                          }.padding()
+                      }.navigationTitle("Lectura MobileGestalt")
+                  }
+              }
+          }
+          SWIFT
+          cat > project.yml <<'YAML'
+          name: GestaltReadOnly
+          options:
+            bundleIdPrefix: org.artease
+            deploymentTarget:
+              iOS: '18.0'
+          settings:
+            base:
+              SWIFT_VERSION: '5.0'
+              TARGETED_DEVICE_FAMILY: '1'
+              IPHONEOS_DEPLOYMENT_TARGET: '18.0'
+              SWIFT_OBJC_BRIDGING_HEADER: Sources/BridgingHeader.h
+              GENERATE_INFOPLIST_FILE: YES
+              INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+              INFOPLIST_KEY_UILaunchScreen_Generation: YES
+              ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: NO
+          targets:
+            GestaltReadOnly:
+              type: application
+              platform: iOS
+              sources:
+                - path: Sources
+              settings:
+                base:
+                  PRODUCT_BUNDLE_IDENTIFIER: org.artease.gestaltreadonly
+                  CODE_SIGN_ENTITLEMENTS: Config/GestaltReadOnly.entitlements
+                  INFOPLIST_KEY_CFBundleDisplayName: GestaltReadOnly
+          YAML
+          cat > Config/GestaltReadOnly.entitlements <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+          <key>com.apple.security.application-groups</key>
+          <array><string>group.org.artease.gestaltreadonly</string></array>
+          </dict></plist>
+          PLIST
+          brew install xcodegen
+          xcodegen generate
+      - name: Build iPhone executable
+        run: |
+          xcodebuild -project GestaltReadOnly.xcodeproj -scheme GestaltReadOnly -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$PWD/DerivedData" CODE_SIGNING_ALLOWED=NO build
+      - name: Assemble unsigned IPA
+        run: |
+          mkdir -p Payload
+          cp -R DerivedData/Build/Products/Release-iphoneos/GestaltReadOnly.app Payload/
+          /usr/bin/zip -qr GestaltReadOnly-unsigned.ipa Payload
+          unzip -t GestaltReadOnly-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GestaltReadOnly-unsigned-IPA
+          path: GestaltReadOnly-unsigned.ipa
+          if-no-files-found: error
