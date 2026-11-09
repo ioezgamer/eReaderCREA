@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import UniformTypeIdentifiers
 
 struct StudioPreset: Identifiable {
     let id: String
