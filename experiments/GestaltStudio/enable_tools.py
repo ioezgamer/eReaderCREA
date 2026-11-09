@@ -169,12 +169,8 @@ edit("Sources/EditorStore.swift",
                 at: folder, includingPropertiesForKeys: [.contentModificationDateKey]) else {
             return []
         }
-        return items.filter { $0.pathExtension == "plist" }.sorted {
-            (try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ??
-            .distantPast >
-            (try? $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ??
-            .distantPast
-        }
+        return items.filter { $0.pathExtension == "plist" }
+            .sorted { $0.lastPathComponent > $1.lastPathComponent }
     }
 
     func restoreBackupIntoEditor(_ url: URL) {
