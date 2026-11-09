@@ -208,6 +208,19 @@ fi
 if ! command -v xcodegen >/dev/null 2>&1; then
   brew install xcodegen
 fi
+python3 - <<'PY_FIX'
+from pathlib import Path
+changes = {
+    'Sources/ContentView.swift': ('.badge(store.changeCount == 0 ? nil : store.changeCount)', '.badge(store.changeCount)'),
+    'Sources/EditorStore.swift': ('worse_query(dir as NSString, group as NSString, false, false)', 'worse_query(dir, group, false, false)')
+}
+for name, (before, after) in changes.items():
+    p = Path(name)
+    source = p.read_text(encoding='utf-8')
+    if before not in source: raise SystemExit(f"Expected Xcode compile fix missing: {name}")
+    p.write_text(source.replace(before, after), encoding='utf-8')
+    print(f"Patched: {name}")
+PY_FIX
 xcodegen generate
 xcodebuild -project GestaltStudio.xcodeproj -scheme GestaltStudio -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$ROOT/DerivedData" CODE_SIGNING_ALLOWED=NO build
 mkdir -p "$ROOT/Payload"
