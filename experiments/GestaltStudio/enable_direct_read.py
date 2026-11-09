@@ -14,12 +14,6 @@ edit("Sources/GestaltStudioApp.swift",
      ".environmentObject(editor)\n                .task { editor.startAutomaticReadIfNeeded() }")
 
 edit("Sources/EditorStore.swift",
-     "import UniformTypeIdentifiers",
-     "import UniformTypeIdentifiers\nimport Security")
-edit("Sources/EditorStore.swift",
-     '    static let appGroup = "group.org.artease.gestaltstudio"\n',
-     "")
-edit("Sources/EditorStore.swift",
      '    @Published var status = "Importá un plist o leé una instantánea"',
      '    @Published var status = "Preparando lectura del dispositivo"')
 edit("Sources/EditorStore.swift",
@@ -36,15 +30,11 @@ edit("Sources/EditorStore.swift", "    @Published var lastSavedURL: URL?\n",
         loadSystemSnapshot()
     }
 
-    // Use an App Group actually granted by the signing profile.
+    // Check whether this installation has a usable, configured App Group.
     private nonisolated static func findSignedAppGroup() -> String? {
-        let entitlement = "com.apple.security.application-groups" as CFString
-        guard let task = SecTaskCreateFromSelf(kCFAllocatorDefault),
-              let value = SecTaskCopyValueForEntitlement(task, entitlement, nil),
-              let signedGroups = value as? [String] else { return nil }
-        return signedGroups.first { group in
-            FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) != nil
-        }
+        let configured = GestaltPaths.appGroup
+        return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: configured) != nil
+            ? configured : nil
     }
 ''')
 
