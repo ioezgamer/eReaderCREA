@@ -221,6 +221,8 @@ for name, (before, after) in changes.items():
     p.write_text(source.replace(before, after), encoding='utf-8')
     print(f"Patched: {name}")
 PY_FIX
+python3 "$GITHUB_WORKSPACE/experiments/GestaltStudio/enable_direct_read.py"
+
 xcodegen generate
 xcodebuild -project GestaltStudio.xcodeproj -scheme GestaltStudio -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$ROOT/DerivedData" CODE_SIGNING_ALLOWED=NO build
 mkdir -p "$ROOT/Payload"
