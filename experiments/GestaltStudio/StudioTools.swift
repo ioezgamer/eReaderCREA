@@ -240,10 +240,32 @@ struct StudioBackupsView: View {
                     }
                     .disabled(store.engine == nil)
                 }
-                if let url = store.lastBackupURL {
-                    Section("Último respaldo original") {
-                        Text(url.lastPathComponent)
-                        ShareLink(item: url) { Label("Compartir respaldo", systemImage: "square.and.arrow.up") }
+                Section("Respaldos originales") {
+                    let originals = store.availableBackupURLs()
+                    if originals.isEmpty {
+                        Text("Todavía no hay respaldos locales.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(originals, id: \.path) { url in
+                            VStack(alignment: .leading, spacing: 7) {
+                                Text(url.lastPathComponent)
+                                    .font(.footnote)
+                                    .lineLimit(2)
+                                HStack {
+                                    Button("Abrir en el editor") {
+                                        store.restoreBackupIntoEditor(url)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                    Spacer()
+                                    ShareLink(item: url) {
+                                        Label("Compartir", systemImage: "square.and.arrow.up")
+                                    }
+                                    .controlSize(.small)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
                     }
                 }
                 if let url = store.lastSavedURL {
