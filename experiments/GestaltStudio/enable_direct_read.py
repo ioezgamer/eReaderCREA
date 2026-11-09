@@ -30,11 +30,16 @@ edit("Sources/EditorStore.swift", "    @Published var lastSavedURL: URL?\n",
         loadSystemSnapshot()
     }
 
-    // Check whether this installation has a usable, configured App Group.
+    // Read App Groups from this process's effective code signature.
+    // A re-signing service may replace the original App Group identifiers.
     private nonisolated static func findSignedAppGroup() -> String? {
-        let configured = GestaltPaths.appGroup
-        return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: configured) != nil
-            ? configured : nil
+        for group in GSGetSignedAppGroups() {
+            if group.hasPrefix("group."),
+               FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) != nil {
+                return group
+            }
+        }
+        return nil
     }
 ''')
 
@@ -64,7 +69,7 @@ edit("Sources/EditorStore.swift",
 edit("Sources/EditorStore.swift",
 '''                readFailure = "La extensión no está disponible (código \(handle)). Se necesita una firma con App Groups válida."''',
 '''                readFailure = group == nil
-                    ? "No hay un App Group firmado y accesible en esta instalación. Firmá la IPA con la capacidad App Groups."
+                    ? "La firma instalada no expone ningún App Group accesible. Comprobá que tu perfil de FlareStore incluye App Groups."
                     : "El dispositivo rechazó la extensión de lectura (código \(handle))."''')
 edit("Sources/EditorStore.swift",
 '''                        self.status = "Instantánea cargada"
@@ -110,4 +115,57 @@ edit("Sources/ContentView.swift",
             }
 ''',
 '')
+
+# Use dynamic Security.framework lookups to inspect effective signed entitlements
+# without adding dependencies on private functions absent from the iOS SDK.
+Path("Sources/SigningGroups.h").write_text(r'''#import <Foundation/Foundation.h>
+NS_ASSUME_NONNULL_BEGIN
+FOUNDATION_EXPORT NSArray<NSString *> *GSGetSignedAppGroups(void);
+NS_ASSUME_NONNULL_END
+''', encoding="utf-8")
+Path("Sources/SigningGroups.m").write_text(r'''#import "SigningGroups.h"
+#import <Security/Security.h>
+#import <dlfcn.h>
+
+typedef CFTypeRef (*GSCreateTaskFn)(CFAllocatorRef);
+typedef CFTypeRef (*GSCopyEntitlementFn)(CFTypeRef, CFStringRef, CFErrorRef *);
+
+NSArray<NSString *> *GSGetSignedAppGroups(void) {
+    void *security = dlopen("/System/Library/Frameworks/Security.framework/Security", RTLD_NOW | RTLD_LOCAL);
+    if (!security) return @[];
+    GSCreateTaskFn createTask = (GSCreateTaskFn)dlsym(security, "SecTaskCreateFromSelf");
+    GSCopyEntitlementFn copyEntitlement =
+        (GSCopyEntitlementFn)dlsym(security, "SecTaskCopyValueForEntitlement");
+    if (!createTask || !copyEntitlement) {
+        dlclose(security);
+        return @[];
+    }
+
+    CFTypeRef task = createTask(kCFAllocatorDefault);
+    if (!task) {
+        dlclose(security);
+        return @[];
+    }
+    CFTypeRef found = copyEntitlement(task, CFSTR("com.apple.security.application-groups"), NULL);
+    CFRelease(task);
+    dlclose(security);
+    if (!found) return @[];
+    if (CFGetTypeID(found) != CFArrayGetTypeID()) {
+        CFRelease(found);
+        return @[];
+    }
+    NSArray *values = CFBridgingRelease(found);
+    NSMutableArray<NSString *> *groups = [NSMutableArray array];
+    for (id value in values) {
+        if ([value isKindOfClass:[NSString class]] &&
+            [value hasPrefix:@"group."]) {
+            [groups addObject:value];
+        }
+    }
+    return [groups copy];
+}
+''', encoding="utf-8")
+bridge = Path("Sources/BridgingHeader.h")
+bridge.write_text(bridge.read_text(encoding="utf-8") + '\n#import "SigningGroups.h"\n', encoding="utf-8")
+
 print("Direct-read source patch completed.")
