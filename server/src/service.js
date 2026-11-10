@@ -22,6 +22,9 @@ export function loadConfig(env = process.env) {
     models: { fast, teacher: env.MODEL_TEACHER || fast },
     monthlyBudgetUsd: Number(env.MONTHLY_BUDGET_USD || 200),
     userDailyLimit: Number(env.USER_DAILY_LIMIT || 300),
+    // CREA Aventuras entra con un token de servicio y una sola identidad para todas las tablets, así que
+    // no puede compartir el límite de una persona: tiene su propio tope diario para todo el servicio.
+    aventurasDailyLimit: Number(env.AVENTURAS_DAILY_LIMIT || 5000),
     suspendHours: Number(env.SUSPEND_HOURS || 6),
     prices: { ...DEFAULT_PRICES, ...(env.PRICES ? JSON.parse(env.PRICES) : {}) },
   };
@@ -65,7 +68,11 @@ export function createService({ config, store, claude, now = () => new Date() })
     return { available: reason === null, reason, tasks: Object.keys(TASKS), remaining };
   }
 
-  async function ask(user, deviceId, taskName, rawInput) {
+  /**
+   * [dailyLimit] sustituye al límite diario por persona (USER_DAILY_LIMIT); lo usa CREA Aventuras, que
+   * entra con una identidad de servicio compartida por todas sus tablets.
+   */
+  async function ask(user, deviceId, taskName, rawInput, { dailyLimit = config.userDailyLimit } = {}) {
     const task = TASKS[taskName];
     if (!task) throw new ServiceError(400, "unknown_task", "Tarea desconocida");
     const parsed = task.input.safeParse(rawInput);
@@ -82,7 +89,7 @@ export function createService({ config, store, claude, now = () => new Date() })
       throw new ServiceError(429, "daily_limit", "Límite diario alcanzado para esta función");
     }
     const userUse = await store.get(`user/${day}/${user.email}`);
-    if ((userUse?.total ?? 0) >= config.userDailyLimit) {
+    if ((userUse?.total ?? 0) >= dailyLimit) {
       throw new ServiceError(429, "daily_limit", "Límite diario alcanzado");
     }
 

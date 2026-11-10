@@ -41,7 +41,15 @@ Google Cloud exige vincular una cuenta de facturación (tarjeta) aunque este ser
 
 Si Anthropic responde «This API key is not scoped to a workspace», añade en Render la variable `ANTHROPIC_WORKSPACE_ID` con el ID del workspace (consola de Anthropic → Workspaces), o crea la clave dentro de un workspace.
 
-Limitaciones del plan gratuito: el servicio «duerme» tras ~15 min sin uso (la primera petición tarda ~30–60 s y la app lo trata como no disponible un momento) y los contadores viven en memoria, así que se reinician al dormir. Por eso el **tope real** son los créditos de Anthropic: fija además un límite de gasto en el workspace de la consola de Anthropic.
+Limitaciones del plan gratuito: el servicio «duerme» tras ~15 min sin uso (la primera petición tarda ~30–60 s y la app lo trata como no disponible un momento) y se reinicia al despertar.
+
+**Contadores persistentes (necesario para que los topes valgan).** El presupuesto mensual, los límites diarios y las pausas se guardan en un almacén que sobrevive a los reinicios. En Render, crea una base Redis gratuita en <https://upstash.com> (sin tarjeta) y pega en el panel de Render `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN` (pestaña *REST API* de la base). Sin ellas el servidor funciona, pero guarda los contadores en memoria, los pierde en cada reinicio y lo avisa en el registro: `MONTHLY_BUDGET_USD` y `VOICE_MONTHLY_CHARS` no serían topes reales. En Cloud Run se usa Firestore automáticamente. `STORE=redis|firestore|memory` fuerza uno.
+
+Fija además un límite de gasto en el workspace de la consola de Anthropic como segunda barrera.
+
+**Solo tokens de la app.** Pon en `ALLOWED_AUDIENCES` el ID del cliente OAuth Android de CREA Reader (`…apps.googleusercontent.com`; varios separados por comas: debug, release y el de Play App Signing). Sin esta variable se acepta el token de Google de cualquier aplicación de la organización, y el servidor lo avisa al arrancar.
+
+**CREA Aventuras** (`POST /v1/aventuras/tutor`, con `CREA_AVENTURAS_SERVICE_TOKEN`) usa una sola identidad para todas sus tablets, así que no comparte el límite por persona (`USER_DAILY_LIMIT`): tiene su propio tope diario, `AVENTURAS_DAILY_LIMIT` (5000 por defecto), además de 30 consultas por tablet y del presupuesto mensual.
 
 ## Publicarlo en Google Cloud (proyecto `crea-reader`)
 

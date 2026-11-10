@@ -182,3 +182,18 @@ test("el servidor HTTP responde estado y preguntas, y exige autenticación", asy
     server.close();
   }
 });
+
+test("el panel /admin/ se sirve con una CSP que solo permite su propio script y Google", async (t) => {
+  const { service, config } = setup();
+  const server = createServer({ config, service, authenticate: async () => null, voice: null });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/admin/`);
+  assert.equal(response.status, 200);
+  const csp = response.headers.get("content-security-policy");
+  assert.match(csp, /default-src 'none'/);
+  assert.match(csp, /script-src 'sha256-[A-Za-z0-9+/=]+' https:\/\/accounts\.google\.com\/gsi\/client/);
+  assert.match(csp, /frame-ancestors 'none'/);
+  assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/);
+  assert.match(await response.text(), /<script>/);
+});
