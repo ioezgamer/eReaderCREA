@@ -3,6 +3,7 @@ package org.crea.reader.readers
 import kotlinx.serialization.json.Json
 import org.crea.reader.sync.GoogleDriveRestClient
 import timber.log.Timber
+import org.crea.reader.utils.runSuspendCatching
 
 /**
  * Keeps reader profiles in step with the shared Drive folder: one small file per reader
@@ -22,7 +23,7 @@ class ReaderSync(private val store: ReaderStore) {
                 if (id == null) continue
                 val version = versionOf(file)
                 if (store.knownVersion(id) == version) continue
-                val remote = runCatching {
+                val remote = runSuspendCatching {
                     json.decodeFromString(ReaderProfile.serializer(), drive.downloadText(file.id))
                 }.getOrNull() ?: continue
                 if (remote.id != id) continue

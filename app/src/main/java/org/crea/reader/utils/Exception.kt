@@ -30,3 +30,16 @@ inline fun <T> tryOrLog(closure: () -> T): T? =
         null
     }
 
+
+/**
+ * Like [runCatching], but a coroutine's [kotlinx.coroutines.CancellationException] is never caught:
+ * catching it would keep a cancelled sync, download or screen running. Use it around suspend calls.
+ */
+inline fun <T> runSuspendCatching(block: () -> T): Result<T> =
+    try {
+        Result.success(block())
+    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+    } catch (error: Throwable) {
+        Result.failure(error)
+    }

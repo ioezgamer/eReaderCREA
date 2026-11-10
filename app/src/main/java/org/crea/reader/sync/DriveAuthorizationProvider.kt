@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.ClearTokenRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
 import kotlinx.coroutines.tasks.await
@@ -31,6 +32,20 @@ class DriveAuthorizationProvider(private val context: Context, personal: Boolean
             TokenResult.ConsentRequired(requireNotNull(result.pendingIntent))
         } else {
             TokenResult.Authorized(requireNotNull(result.accessToken))
+        }
+    }
+
+    /**
+     * Forgets a token Google rejected (401): without this, the next [requestToken] can hand back the
+     * same expired token from Google Play services' cache. Failures are ignored.
+     */
+    suspend fun clearToken(token: String) {
+        try {
+            client.clearToken(ClearTokenRequest.builder().setToken(token).build()).await()
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // Nothing else to do: the next attempt asks again.
         }
     }
 

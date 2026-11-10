@@ -166,8 +166,7 @@ class Application : android.app.Application() {
 
         val downloadsDir = File(cacheDir, "downloads")
 
-        // Cleans the download dir.
-        tryOrLog { downloadsDir.delete() }
+        // Temporary files left by a previous process are removed below, off the main thread.
 
         val publicationRetriever =
             PublicationRetriever(
@@ -264,7 +263,9 @@ class Application : android.app.Application() {
         coroutineScope.launch(Dispatchers.IO) {
             // Temporary reading copies expire on their own; also drop transfers a killed process left behind.
             onlineCache.cleanUp()
-            downloadsDir.listFiles { file -> file.name.startsWith("drive-") }?.forEach { it.delete() }
+            // Only files untouched for an hour: an import or download may already be writing here.
+            val stale = System.currentTimeMillis() - 60 * 60 * 1000L
+            tryOrLog { downloadsDir.listFiles { file -> file.lastModified() < stale }?.forEach { it.deleteRecursively() } }
         }
         SyncScheduler.schedule(this)
         // Not on every process start (CREA Home, a shared file...): only if the library is stale.

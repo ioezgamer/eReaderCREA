@@ -23,6 +23,9 @@ class GoogleDriveRestClient(
     /** The signed-in CREA account's token; null when reading the public catalog with [publicAccess]. */
     private val accessToken: String?,
     private val publicAccess: PublicCatalog.Access? = null,
+    /** Drive's addresses; only tests point them elsewhere. */
+    private val api: String = API,
+    private val uploadApi: String = UPLOAD,
 ) {
     @Serializable
     data class DriveFile(
@@ -65,11 +68,12 @@ class GoogleDriveRestClient(
     private val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
     suspend fun currentUser(): DriveUser? = withContext(Dispatchers.IO) {
-        val connection = open("$API/about?fields=${encode("user(displayName,emailAddress,permissionId)")}")
-        connection.requestMethod = "GET"
-        connection.requireSuccess()
-        connection.inputStream.bufferedReader().use { reader ->
-            json.decodeFromString<AboutResponse>(reader.readText()).user
+        open("$api/about?fields=${encode("user(displayName,emailAddress,permissionId)")}").using { connection ->
+            connection.requestMethod = "GET"
+            connection.requireSuccess()
+            connection.inputStream.bufferedReader().use { reader ->
+                json.decodeFromString<AboutResponse>(reader.readText()).user
+            }
         }
     }
 
@@ -78,45 +82,57 @@ class GoogleDriveRestClient(
      * shared with the user so a stray shared copy never replaces the personal library.
      */
     suspend fun findFolder(name: String): DriveFile? {
-        val escaped = name.replace("\\", "\\\\").replace("'", "\\'")
-        val query = "mimeType = '$FOLDER_MIME' and name = '$escaped' and trashed = false"
+        val query = "mimeType = '$FOLDER_MIME' and name = '${escapeQuery(name)}' and trashed = false"
         return list(query = query, spaces = "drive")
             .sortedByDescending { it.ownedByMe }
             .firstOrNull()
     }
 
-    /** A file's catalog metadata, or null when it is gone, trashed or no longer shared with the app. */
+    /**
+     * A file's catalog metadata, or null when it is gone, trashed or no longer shared with the app.
+     * Drive also answers 403 when a quota or rate limit is hit; that is a temporary failure and
+     * throws, so a busy moment never looks like a deleted book.
+     */
     suspend fun getFile(fileId: String): DriveFile? = withContext(Dispatchers.IO) {
-        val connection = open("$API/files/$fileId?fields=${encode("$CATALOG_FIELDS,trashed")}")
-        connection.requestMethod = "GET"
-        if (connection.responseCode == 404 || connection.responseCode == 403) return@withContext null
-        connection.requireSuccess()
-        connection.inputStream.bufferedReader().use { reader ->
-            json.decodeFromString<DriveFile>(reader.readText()).takeUnless { it.trashed }
+        open("$api/files/$fileId?fields=${encode("$CATALOG_FIELDS,trashed")}").using { connection ->
+            connection.requestMethod = "GET"
+            val status = connection.responseCode
+            if (status == 404) return@using null
+            if (status == 403) {
+                val body = connection.errorBody()
+                if (isRateLimit(body)) throw DriveApiException(status, body)
+                return@using null
+            }
+            connection.requireSuccess()
+            connection.inputStream.bufferedReader().use { reader ->
+                json.decodeFromString<DriveFile>(reader.readText()).takeUnless { it.trashed }
+            }
         }
     }
 
     suspend fun getFolder(folderId: String): DriveFile? = withContext(Dispatchers.IO) {
         val fields = encode("id,name,mimeType,trashed")
-        val connection = open("$API/files/$folderId?fields=$fields")
-        connection.requestMethod = "GET"
-        if (connection.responseCode == 404) return@withContext null
-        connection.requireSuccess()
-        connection.inputStream.bufferedReader().use { reader ->
-            json.decodeFromString<DriveFile>(reader.readText()).takeUnless { it.trashed }
+        open("$api/files/$folderId?fields=$fields").using { connection ->
+            connection.requestMethod = "GET"
+            if (connection.responseCode == 404) return@using null
+            connection.requireSuccess()
+            connection.inputStream.bufferedReader().use { reader ->
+                json.decodeFromString<DriveFile>(reader.readText()).takeUnless { it.trashed }
+            }
         }
     }
 
     suspend fun createFolder(name: String): DriveFile = withContext(Dispatchers.IO) {
-        val connection = open("$API/files?fields=${encode(FILE_FIELDS)}")
-        connection.requestMethod = "POST"
-        connection.doOutput = true
-        connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-        connection.outputStream.bufferedWriter().use {
-            it.write(json.encodeToString(CreateMetadata.serializer(), CreateMetadata(name = name, mimeType = FOLDER_MIME)))
+        open("$api/files?fields=${encode(FILE_FIELDS)}").using { connection ->
+            connection.requestMethod = "POST"
+            connection.doOutput = true
+            connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+            connection.outputStream.bufferedWriter().use {
+                it.write(json.encodeToString(CreateMetadata.serializer(), CreateMetadata(name = name, mimeType = FOLDER_MIME)))
+            }
+            connection.requireSuccess()
+            connection.inputStream.bufferedReader().use { json.decodeFromString<DriveFile>(it.readText()) }
         }
-        connection.requireSuccess()
-        connection.inputStream.bufferedReader().use { json.decodeFromString<DriveFile>(it.readText()) }
     }
 
     class CatalogEntry(val file: DriveFile, val category: String?)
@@ -171,7 +187,7 @@ class GoogleDriveRestClient(
         destination: File,
         onProgress: (copied: Long, total: Long) -> Unit = { _, _ -> },
     ): String = withContext(Dispatchers.IO) {
-        val connection = open("$API/files/$fileId?alt=media")
+        val connection = open("$api/files/$fileId?alt=media")
         coroutineScope {
             // A blocked read cannot be interrupted, so cancelling closes the connection instead.
             val watcher = launch(start = CoroutineStart.UNDISPATCHED) {
@@ -213,7 +229,7 @@ class GoogleDriveRestClient(
         override val size: Long = size
 
         override suspend fun read(start: Long, endInclusive: Long): ByteArray = withContext(Dispatchers.IO) {
-            val connection = open("$API/files/$fileId?alt=media")
+            val connection = open("$api/files/$fileId?alt=media")
             try {
                 connection.requestMethod = "GET"
                 connection.setRequestProperty("Range", "bytes=$start-$endInclusive")
@@ -247,20 +263,23 @@ class GoogleDriveRestClient(
             if (connection.responseCode !in 200..299 || connection.contentLengthLong > MAX_THUMBNAIL_BYTES) {
                 return@withContext false
             }
-            destination.outputStream().buffered().use { output ->
-                connection.inputStream.buffered().use { it.copyTo(output) }
+            // Content-Length may be missing (chunked): the size is also checked while reading.
+            val complete = destination.outputStream().buffered().use { output ->
+                connection.inputStream.buffered().use { input -> input.copyAtMost(output, MAX_THUMBNAIL_BYTES) }
             }
-            true
+            if (!complete) destination.delete()
+            complete
         } finally {
             connection.disconnect()
         }
     }
 
     suspend fun downloadText(fileId: String): String = withContext(Dispatchers.IO) {
-        val connection = open("$API/files/$fileId?alt=media")
-        connection.requestMethod = "GET"
-        connection.requireSuccess()
-        connection.inputStream.bufferedReader().use { it.readText() }
+        open("$api/files/$fileId?alt=media").using { connection ->
+            connection.requestMethod = "GET"
+            connection.requireSuccess()
+            connection.inputStream.bufferedReader().use { it.readText() }
+        }
     }
 
     suspend fun uploadBook(
@@ -281,73 +300,56 @@ class GoogleDriveRestClient(
         name: String,
         value: String,
         existingFileId: String?,
+    ): DriveFile = uploadJson(APP_DATA_FOLDER, name, value, existingFileId, kind = "manifest")
+
+    /** Saves [value] as a new file next to the manifest (for example a damaged manifest kept for recovery). */
+    suspend fun uploadAppDataCopy(name: String, value: String): DriveFile =
+        uploadJson(APP_DATA_FOLDER, name, value, existingFileId = null, kind = "backup")
+
+    /** The shared reading-activity files other people's apps left in [folderId] (see [CommunityProfile]). */
+    suspend fun listCommunityFiles(folderId: String): List<DriveFile> = listByPrefix(folderId, COMMUNITY_PREFIX)
+
+    /** Writes this user's own reading-activity file into the shared folder. */
+    suspend fun uploadCommunity(folderId: String, name: String, value: String, existingFileId: String?): DriveFile =
+        uploadJson(folderId, name, value, existingFileId, kind = "community")
+
+    /** Reader profiles (see [org.crea.reader.readers.ReaderProfile]) stored in the shared folder. */
+    suspend fun listReaderFiles(folderId: String): List<DriveFile> = listByPrefix(folderId, READER_PREFIX)
+
+    suspend fun uploadReader(folderId: String, name: String, value: String, existingFileId: String?): DriveFile =
+        uploadJson(folderId, name, value, existingFileId, kind = "reader")
+
+    suspend fun listByName(folderId: String, name: String): List<DriveFile> =
+        list(
+            query = "'$folderId' in parents and trashed = false and name = '${escapeQuery(name)}'",
+            spaces = "drive",
+        )
+
+    /** The shared AI information file of the folder (see [InsightIndex]). */
+    suspend fun uploadInsights(folderId: String, name: String, value: String, existingFileId: String?): DriveFile =
+        uploadJson(folderId, name, value, existingFileId, kind = "insights")
+
+    private suspend fun listByPrefix(folderId: String, prefix: String): List<DriveFile> =
+        list(
+            query = "'$folderId' in parents and trashed = false and name contains '${escapeQuery(prefix)}'",
+            spaces = "drive",
+        ).filter { it.name.startsWith(prefix) }
+
+    private suspend fun uploadJson(
+        parentId: String,
+        name: String,
+        value: String,
+        existingFileId: String?,
+        kind: String,
     ): DriveFile {
         val bytes = value.toByteArray(Charsets.UTF_8)
         return upload(
             name = name,
             size = bytes.size.toLong(),
             mimeType = "application/json",
-            parentId = APP_DATA_FOLDER,
+            parentId = parentId,
             existingFileId = existingFileId,
-            appProperties = mapOf("kind" to "manifest"),
-        ) { bytes.inputStream() }
-    }
-
-    /** The shared reading-activity files other people's apps left in [folderId] (see [CommunityProfile]). */
-    suspend fun listCommunityFiles(folderId: String): List<DriveFile> =
-        list(
-            query = "'$folderId' in parents and trashed = false and name contains '$COMMUNITY_PREFIX'",
-            spaces = "drive",
-        ).filter { it.name.startsWith(COMMUNITY_PREFIX) }
-
-    /** Writes this user's own reading-activity file into the shared folder. */
-    suspend fun uploadCommunity(folderId: String, name: String, value: String, existingFileId: String?): DriveFile {
-        val bytes = value.toByteArray(Charsets.UTF_8)
-        return upload(
-            name = name,
-            size = bytes.size.toLong(),
-            mimeType = "application/json",
-            parentId = folderId,
-            existingFileId = existingFileId,
-            appProperties = mapOf("kind" to "community"),
-        ) { bytes.inputStream() }
-    }
-
-    /** Reader profiles (see [org.crea.reader.readers.ReaderProfile]) stored in the shared folder. */
-    suspend fun listReaderFiles(folderId: String): List<DriveFile> =
-        list(
-            query = "'$folderId' in parents and trashed = false and name contains '$READER_PREFIX'",
-            spaces = "drive",
-        ).filter { it.name.startsWith(READER_PREFIX) }
-
-    suspend fun uploadReader(folderId: String, name: String, value: String, existingFileId: String?): DriveFile {
-        val bytes = value.toByteArray(Charsets.UTF_8)
-        return upload(
-            name = name,
-            size = bytes.size.toLong(),
-            mimeType = "application/json",
-            parentId = folderId,
-            existingFileId = existingFileId,
-            appProperties = mapOf("kind" to "reader"),
-        ) { bytes.inputStream() }
-    }
-
-    suspend fun listByName(folderId: String, name: String): List<DriveFile> =
-        list(
-            query = "'$folderId' in parents and trashed = false and name = '${name.replace("'", "\'")}'",
-            spaces = "drive",
-        )
-
-    /** The shared AI information file of the folder (see [InsightIndex]). */
-    suspend fun uploadInsights(folderId: String, name: String, value: String, existingFileId: String?): DriveFile {
-        val bytes = value.toByteArray(Charsets.UTF_8)
-        return upload(
-            name = name,
-            size = bytes.size.toLong(),
-            mimeType = "application/json",
-            parentId = folderId,
-            existingFileId = existingFileId,
-            appProperties = mapOf("kind" to "insights"),
+            appProperties = mapOf("kind" to kind),
         ) { bytes.inputStream() }
     }
 
@@ -358,16 +360,17 @@ class GoogleDriveRestClient(
             var pageToken: String? = null
             do {
                 val url = buildString {
-                    append("$API/files?spaces=$spaces&pageSize=$PAGE_SIZE&fields=$fieldMask")
+                    append("$api/files?spaces=$spaces&pageSize=$PAGE_SIZE&fields=$fieldMask")
                     if (spaces == "drive" && accessToken != null) append("&corpora=user")
                     if (query != null) append("&q=").append(encode(query))
                     if (pageToken != null) append("&pageToken=").append(encode(pageToken))
                 }
-                val connection = open(url)
-                connection.requestMethod = "GET"
-                connection.requireSuccess()
-                val page = connection.inputStream.bufferedReader().use { reader ->
-                    json.decodeFromString<DriveFileList>(reader.readText())
+                val page = open(url).using { connection ->
+                    connection.requestMethod = "GET"
+                    connection.requireSuccess()
+                    connection.inputStream.bufferedReader().use { reader ->
+                        json.decodeFromString<DriveFileList>(reader.readText())
+                    }
                 }
                 result += page.files
                 pageToken = page.nextPageToken
@@ -391,35 +394,37 @@ class GoogleDriveRestClient(
         )
         val responseFields = encode(FILE_FIELDS)
         val endpoint = if (existingFileId == null) {
-            "$UPLOAD/files?uploadType=resumable&fields=$responseFields"
+            "$uploadApi/files?uploadType=resumable&fields=$responseFields"
         } else {
-            "$UPLOAD/files/$existingFileId?uploadType=resumable&fields=$responseFields"
+            "$uploadApi/files/$existingFileId?uploadType=resumable&fields=$responseFields"
         }
-        val start = open(endpoint)
-        if (existingFileId == null) start.requestMethod = "POST" else start.patch()
-        start.doOutput = true
-        start.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-        start.setRequestProperty("X-Upload-Content-Type", mimeType)
-        start.setRequestProperty("X-Upload-Content-Length", size.toString())
-        start.outputStream.bufferedWriter().use { writer ->
-            writer.write(json.encodeToString(CreateMetadata.serializer(), metadata))
-        }
-        start.requireSuccess()
-        val sessionUrl = requireNotNull(start.getHeaderField("Location")) {
-            "Google Drive did not return a resumable upload URL"
+        val sessionUrl = open(endpoint).using { start ->
+            if (existingFileId == null) start.requestMethod = "POST" else start.patch()
+            start.doOutput = true
+            start.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+            start.setRequestProperty("X-Upload-Content-Type", mimeType)
+            start.setRequestProperty("X-Upload-Content-Length", size.toString())
+            start.outputStream.bufferedWriter().use { writer ->
+                writer.write(json.encodeToString(CreateMetadata.serializer(), metadata))
+            }
+            start.requireSuccess()
+            requireNotNull(start.getHeaderField("Location")) {
+                "Google Drive did not return a resumable upload URL"
+            }
         }
 
-        val put = open(sessionUrl)
-        put.requestMethod = "PUT"
-        put.doOutput = true
-        put.setRequestProperty("Content-Type", mimeType)
-        put.setFixedLengthStreamingMode(size)
-        stream().use { input ->
-            put.outputStream.buffered().use { output -> input.copyTo(output) }
-        }
-        put.requireSuccess()
-        put.inputStream.bufferedReader().use { reader ->
-            json.decodeFromString<DriveFile>(reader.readText())
+        open(sessionUrl).using { put ->
+            put.requestMethod = "PUT"
+            put.doOutput = true
+            put.setRequestProperty("Content-Type", mimeType)
+            put.setFixedLengthStreamingMode(size)
+            stream().use { input ->
+                put.outputStream.buffered().use { output -> input.copyTo(output) }
+            }
+            put.requireSuccess()
+            put.inputStream.bufferedReader().use { reader ->
+                json.decodeFromString<DriveFile>(reader.readText())
+            }
         }
     }
 
@@ -446,16 +451,52 @@ class GoogleDriveRestClient(
 
     private fun HttpURLConnection.requireSuccess() {
         if (responseCode in 200..299) return
-        val body = errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
-        throw DriveApiException(responseCode, body)
+        throw DriveApiException(responseCode, errorBody())
     }
+
+    private fun HttpURLConnection.errorBody(): String =
+        runCatching { errorStream?.bufferedReader()?.use { it.readText() } }.getOrNull().orEmpty()
+
+    /** Runs [block] and always releases the connection. */
+    private inline fun <T> HttpURLConnection.using(block: (HttpURLConnection) -> T): T =
+        try {
+            block(this)
+        } finally {
+            disconnect()
+        }
 
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8.name())
 
-    class DriveApiException(val statusCode: Int, responseBody: String) :
-        Exception("Google Drive request failed ($statusCode): $responseBody")
+    class DriveApiException(val statusCode: Int, val responseBody: String) :
+        Exception("Google Drive request failed ($statusCode): $responseBody") {
+        /** Worth trying again later: server trouble, or a quota or rate limit (429, or 403 with that reason). */
+        val isTemporary: Boolean
+            get() = statusCode in 500..599 || statusCode == 429 || (statusCode == 403 && isRateLimit(responseBody))
+    }
 
     companion object {
+        private val RATE_LIMIT_REASONS = setOf("rateLimitExceeded", "userRateLimitExceeded", "quotaExceeded", "dailyLimitExceeded")
+
+        /** Whether a Drive error body is a quota or rate limit (Drive uses 403 for those too). */
+        fun isRateLimit(body: String): Boolean =
+            RATE_LIMIT_REASONS.any { reason -> body.contains("\"$reason\"") }
+
+        /** Escapes a value for a Drive query string literal ('...'). */
+        fun escapeQuery(value: String): String = value.replace("\\", "\\\\").replace("'", "\\'")
+
+        /** Copies at most [limit] bytes; false when the source had more (the copy is then incomplete). */
+        internal fun InputStream.copyAtMost(output: java.io.OutputStream, limit: Long): Boolean {
+            val buffer = ByteArray(8 * 1024)
+            var copied = 0L
+            while (true) {
+                val read = read(buffer)
+                if (read < 0) return true
+                copied += read
+                if (copied > limit) return false
+                output.write(buffer, 0, read)
+            }
+        }
+
         const val APP_DATA_FOLDER = "appDataFolder"
         const val COMMUNITY_PREFIX = "crea-lector-"
         const val READER_PREFIX = "crea-perfil-"

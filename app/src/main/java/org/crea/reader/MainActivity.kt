@@ -61,6 +61,8 @@ class MainActivity : AppCompatActivity() {
         if (GlassSupport.realBlur) LiquidNavHost.install(this, glassBar)
 
         viewModel.channel.receive(this) { handleEvent(it) }
+        // The last run ended in a crash: show its report once (see CrashReporter).
+        if (savedInstanceState == null && CrashReporter.showPendingReport(this)) return
         handleWidgetIntent(intent)
     }
 
