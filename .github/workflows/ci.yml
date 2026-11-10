@@ -1,0 +1,72 @@
+name: CI
+
+# Compila y prueba todo lo que llega a main (directo o por pull request).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android (tests, lint y APK debug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Tests unitarios
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Android Lint
+        run: ./gradlew lintDebug
+
+      - name: APK debug
+        run: ./gradlew assembleDebug
+
+      - name: Informes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-android
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          retention-days: 14
+
+  server:
+    name: Servidor (tests y auditoría npm)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - run: npm ci
+      - run: npm test
+      - name: Sin vulnerabilidades altas ni críticas
+        run: npm audit --audit-level=high
