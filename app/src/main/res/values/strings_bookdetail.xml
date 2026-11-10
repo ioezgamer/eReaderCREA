@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="book_detail_title">Book details</string>
     <string name="book_detail_back">Back</string>
     <string name="book_detail_loading">Loading…</string>
     <string name="book_detail_read">Read</string>

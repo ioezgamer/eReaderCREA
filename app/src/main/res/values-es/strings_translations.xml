@@ -29,7 +29,6 @@
     <string name="progression">Progreso</string>
     <string name="timestamp">Marca de tiempo</string>
     <string name="landmarks_tab_label">Puntos de referencia</string>
-    <string name="title_about">Acerca de</string>
     <string name="cover_image">Portada</string>
     <string name="confirm_delete_catalog_title">¿Quitar catálogo?</string>
     <string name="confirm_delete_catalog_text">El catálogo dejará de aparecer en Explorar. Tus libros descargados no se borran.</string>
@@ -41,7 +40,6 @@
     <string name="return_button">Devolver</string>
     <string name="opening_publication_cannot_render">No se puede mostrar esta publicación.</string>
     <string name="opening_publication_audio_engine_initialization">No se pudo abrir la publicación porque falló el motor de audio.</string>
-    <string name="import_publication_unexpected_io_exception">No se pudo agregar el libro por un error inesperado del dispositivo.</string>
     <string name="import_publication_download_failed">Falló la descarga del libro.</string>
     <string name="import_publication_no_acquisition">No es posible obtener este libro.</string>
     <string name="import_publication_unable_add_pub_database">No se pudo guardar el libro en la biblioteca.</string>
@@ -57,7 +55,6 @@
     <string name="publication_error_filesystem_forbidden">No tienes permiso para acceder al archivo.</string>
     <string name="publication_error_filesystem_unexpected">Ocurrió un error inesperado en el almacenamiento.</string>
     <string name="publication_error_filesystem_insufficient_space">No hay suficiente espacio en el dispositivo.</string>
-    <string name="publication_error_incorrect_credentials">Las credenciales indicadas son incorrectas.</string>
     <string name="publication_error_restricted">No tienes permiso para abrir esta publicación.</string>
     <string name="publication_error_out_of_memory">No hay suficiente memoria para abrir la publicación.</string>
     <string name="publication_error_scheme_not_supported">El origen de la publicación no es compatible.</string>
@@ -82,7 +79,6 @@
     <string name="lcp_error_parsing">El JSON no representa un documento válido</string>
     <string name="lcp_error_parsing.malformed_json">El JSON está mal formado y no se puede leer</string>
     <string name="lcp_error_parsing.license_document">El JSON no representa un documento de licencia válido</string>
-    <string name="lcp_error_parsing.status_document">El JSON no representa un documento de estado válido</string>
     <string name="lcp_error_container.open_failed">No se pudo abrir el contenedor de la licencia</string>
     <string name="lcp_error_container.file_not_found">No se encontró la licencia en el contenedor</string>
     <string name="lcp_error_container.read_failed">No se pudo leer la licencia del contenedor</string>
@@ -95,9 +91,6 @@
     <string name="lcp_error_decryption.content_key_decrypt_error">No se pudo descifrar la clave de contenido con la clave de usuario</string>
     <string name="lcp_error_decryption.content_decrypt_error">No se pudo descifrar el contenido con la clave de contenido</string>
     <string name="missing_lcp_support">La aplicación se compiló sin soporte LCP.</string>
-    <string name="reader_error">Error</string>
-    <string name="opening_error">No se pudo abrir la publicación</string>
-    <string name="import_error">Error al importar</string>
     <string name="failed_parsing_catalog">No se pudo leer el catálogo</string>
     <string name="no_result">Sin resultados</string>
     <string name="add_an_annotation">Agregar una anotación</string>
@@ -124,7 +117,6 @@
     <string name="tts_stop">Detener</string>
     <string name="tts_voice">Voz</string>
     <string name="search_error_not_searchable">Esta publicación no permite búsquedas</string>
-    <string name="search_error_cancelled">Se canceló la búsqueda</string>
     <string name="search_error_other">Ocurrió un error al buscar</string>
     <string name="error_unexpected">Ocurrió un error inesperado.</string>
     <string name="info">Información</string>

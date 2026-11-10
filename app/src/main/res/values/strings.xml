@@ -70,7 +70,6 @@
 
     <string name="title_catalogs">Catalogs</string>
     <string name="title_bookshelf">My library</string>
-    <string name="title_about">About</string>
     <string name="cover_image">Cover Image</string>
     <string name="repfr">repfr</string>
 
@@ -80,7 +79,6 @@
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
     <string name="confirm_delete_book_title">Delete Book?</string>
-    <string name="confirm_delete_book_text">Are you sure you want to delete this book?</string>
     <string name="confirm_delete_catalog_title">Delete Catalog?</string>
     <string name="confirm_delete_catalog_text">Are you sure you want to delete this Catalog feed?</string>
 
@@ -100,7 +98,6 @@
     <string name="opening_publication_cannot_render">Cannot render publication.</string>
     <string name="opening_publication_audio_engine_initialization">Could not open publication because audio engine initialization failed.</string>
 
-    <string name="import_publication_unexpected_io_exception">Unable to add publication due to an unexpected error on your device</string>
     <string name="import_publication_download_failed">Publication download failed.</string>
     <string name="import_publication_no_acquisition">Acquisition is not possible.</string>
 
@@ -136,7 +133,6 @@
     <string name="publication_error_filesystem_forbidden">You are not allowed to access the file.</string>
     <string name="publication_error_filesystem_unexpected">An unexpected filesystem error occurred.</string>
     <string name="publication_error_filesystem_insufficient_space">There is not enough space left on the device.</string>
-    <string name="publication_error_incorrect_credentials">Provided credentials were incorrect</string>
     <string name="publication_error_restricted">You are not allowed to open this publication</string>
     <string name="publication_error_out_of_memory">There is not enough memory on this device to open the publication.</string>
     <string name="publication_error_scheme_not_supported">Publication source is not supported.</string>
@@ -172,7 +168,6 @@
     <string name="lcp_error_parsing">The JSON is not representing a valid document</string>
     <string name="lcp_error_parsing.malformed_json">The JSON is malformed and can\'t be parsed</string>
     <string name="lcp_error_parsing.license_document">The JSON is not representing a valid License Document</string>
-    <string name="lcp_error_parsing.status_document">The JSON is not representing a valid Status Document</string>
 
     <string name="lcp_error_container.open_failed">Can\'t open the license container</string>
     <string name="lcp_error_container.file_not_found">License not found in container</string>
@@ -189,9 +184,6 @@
     <string name="lcp_error_decryption.content_decrypt_error">Unable to decrypt encrypted content from content key</string>
 
     <string name="missing_lcp_support">The application was compiled without LCP support.</string>
-    <string name="reader_error">Error</string>
-    <string name="opening_error">Could not open publication</string>
-    <string name="import_error">Import error</string>
 
     <string name="failed_parsing_catalog">Failed parsing Catalog</string>
     <string name="no_result">No result</string>
@@ -224,7 +216,6 @@
     <string name="tts_voice">Voice</string>
 
     <string name="search_error_not_searchable">This publication is not searchable</string>
-    <string name="search_error_cancelled">The search was cancelled</string>
     <string name="search_error_other">An error occurred while searching</string>
 
     <string name="error_unexpected">An unexpected error occurred.</string>
@@ -232,23 +223,18 @@
     <string name="info">Information</string>
 
     <string name="title_sync">Drive</string>
-    <string name="sync_heading">Your library, on every device</string>
-    <string name="sync_intro">With a CREA account (@creanicaragua.org) you get the CREA library, AI summaries and natural voices. With another Google account you get your own private folder in your Drive, together with the public catalog. Either way your books and progress follow you to any device.</string>
     <string name="sync_connect_drive">Connect Google Drive</string>
     <string name="sync_now">Sync now</string>
     <string name="sync_disable">Disconnect Drive</string>
     <string name="sync_status_off">Sync is off</string>
     <string name="sync_status_running">Syncing library…</string>
-    <string name="sync_status_ready">Library protected</string>
     <string name="sync_status_attention">Sync needs attention</string>
     <string name="sync_off_detail">Your books remain available offline on this device.</string>
     <string name="sync_waiting_first_run">Ready for the first synchronization.</string>
-    <string name="sync_last_success">Last sync: %1$s · %2$d books</string>
     <string name="sync_what_title">How it works</string>
     <string name="sync_what_detail">Upload EPUB or PDF files to the “CREA Reader” folder in Drive from any device.</string>
     <string name="sync_authorization_failed">Google Drive authorization failed.</string>
     <string name="sync_authorization_cancelled">Google Drive connection was cancelled.</string>
-    <string name="sync_failed">The library could not be synchronized.</string>
     <string name="library_search_hint">Search by title or author</string>
     <string name="filter_all">All</string>
     <string name="filter_reading">Reading</string>
@@ -257,9 +243,6 @@
     <string name="library_sync_off_title">Connect your Google Drive</string>
     <string name="library_sync_off_detail">Your books on all your devices. With a CREA account: AI and natural voices</string>
     <string name="library_sync_on_title">Library up to date</string>
-    <string name="library_sync_on_detail">Books and progress are protected in Google Drive</string>
-    <string name="book_progress_meta">%1$s · %2$d%% read</string>
-    <string name="book_unread_meta">%1$s · Not started</string>
     <string name="page_indicator">Page %1$d of %2$d</string>
 </resources>
 

@@ -2,7 +2,6 @@
 <resources>
     <!-- Library -->
     <string name="library_continue_label">Continue reading</string>
-    <string name="library_continue_action">Continue</string>
     <string name="library_sync_running">Syncing…</string>
     <string name="library_sync_error_title">Sync pending</string>
     <string name="library_sync_ok_detail">%1$s · %2$d books in the catalog</string>
@@ -48,8 +47,6 @@
     <string name="sync_how_4">Deleting a book from My library only removes the copy on this device; the file in Drive is never changed or deleted.</string>
     <string name="sync_summary_uptodate">Everything is up to date</string>
     <string name="sync_summary_changes">%1$d new · %2$d changed · %3$d removed from the catalog</string>
-    <string name="sync_books_count">%1$d books</string>
-    <string name="sync_never">Not synced yet</string>
     <string name="sync_stage_connecting">Connecting to Drive…</string>
     <string name="sync_stage_checking">Looking for changes…</string>
     <string name="sync_stage_uploading">Uploading %1$d of %2$d</string>

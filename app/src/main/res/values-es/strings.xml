@@ -13,7 +13,6 @@
     <string name="save">Guardar</string>
     <string name="close">Cerrar</string>
     <string name="confirm_delete_book_title">¿Eliminar este libro?</string>
-    <string name="confirm_delete_book_text">Se eliminará de este dispositivo.</string>
     <string name="import_publication_success">Libro agregado a tu biblioteca</string>
     <string name="sync_summary_already_in_drive">%1$d no se subieron porque ya estaban en Drive.</string>
     <string name="category_title">Categoría</string>
@@ -51,23 +50,18 @@
     <string name="note">Nota</string>
     <string name="add_a_note">Agregar una nota</string>
     <string name="delete_highlight_or_annotation">Eliminar resaltado o nota</string>
-    <string name="sync_heading">Tu biblioteca, en todos tus dispositivos</string>
-    <string name="sync_intro">Con una cuenta de CREA (@creanicaragua.org) tienes la biblioteca de CREA, resúmenes con IA y voces naturales. Con otra cuenta de Google tienes tu propia carpeta privada en tu Drive, junto con el catálogo público. En los dos casos tus libros y tu avance te siguen a cualquier dispositivo.</string>
     <string name="sync_connect_drive">Conectar Google Drive</string>
     <string name="sync_now">Sincronizar ahora</string>
     <string name="sync_disable">Desconectar Drive</string>
     <string name="sync_status_off">Sincronización desactivada</string>
     <string name="sync_status_running">Sincronizando biblioteca…</string>
-    <string name="sync_status_ready">Biblioteca protegida</string>
     <string name="sync_status_attention">La sincronización necesita atención</string>
     <string name="sync_off_detail">Tus libros continúan disponibles sin conexión en este dispositivo.</string>
     <string name="sync_waiting_first_run">Lista para la primera sincronización.</string>
-    <string name="sync_last_success">Última sincronización: %1$s · %2$d libros</string>
     <string name="sync_what_title">Cómo funciona</string>
     <string name="sync_what_detail">Sube EPUB o PDF a la carpeta «CREA Reader» de Drive desde cualquier dispositivo.</string>
     <string name="sync_authorization_failed">No se pudo autorizar Google Drive.</string>
     <string name="sync_authorization_cancelled">Se canceló la conexión con Google Drive.</string>
-    <string name="sync_failed">No se pudo sincronizar la biblioteca.</string>
     <string name="library_search_hint">Buscar por título o autor</string>
     <string name="filter_all">Todos</string>
     <string name="filter_reading">Leyendo</string>
@@ -76,8 +70,5 @@
     <string name="library_sync_off_title">Conecta tu Google Drive</string>
     <string name="library_sync_off_detail">Tus libros en todos tus dispositivos. Con cuenta de CREA: IA y voces naturales</string>
     <string name="library_sync_on_title">Biblioteca al día</string>
-    <string name="library_sync_on_detail">Libros y progreso protegidos en Google Drive</string>
-    <string name="book_progress_meta">%1$s · %2$d%% leído</string>
-    <string name="book_unread_meta">%1$s · Sin comenzar</string>
     <string name="page_indicator">Página %1$d de %2$d</string>
 </resources>
