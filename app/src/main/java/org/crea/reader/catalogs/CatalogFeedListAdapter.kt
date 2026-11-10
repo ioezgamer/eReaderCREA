@@ -10,7 +10,6 @@ import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.net.toUri
-import androidx.core.os.bundleOf
 import androidx.core.view.ViewCompat
 import androidx.navigation.Navigation
 import androidx.recyclerview.widget.DiffUtil
@@ -20,6 +19,7 @@ import com.google.android.material.color.MaterialColors
 import org.crea.reader.R
 import org.crea.reader.data.model.Catalog
 import org.crea.reader.databinding.ItemCatalogCardBinding
+import android.os.Bundle
 
 class CatalogFeedListAdapter(private val onLongClick: (Catalog) -> Unit) :
     ListAdapter<Catalog, CatalogFeedListAdapter.ViewHolder>(CatalogListDiff()) {
@@ -68,7 +68,7 @@ class CatalogFeedListAdapter(private val onLongClick: (Catalog) -> Unit) :
             )
 
             binding.root.setOnClickListener {
-                val bundle = bundleOf(CATALOGFEED to catalog)
+                val bundle = Bundle().apply { putParcelable(CATALOGFEED, catalog) }
                 Navigation.findNavController(it)
                     .navigate(R.id.action_navigation_catalog_list_to_navigation_catalog, bundle)
             }

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Backup and device-to-device transfer on Android 12+ (android:dataExtractionRules). -->
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Device-specific: copying them to another tablet would give two tablets the same identity
+             (sync, community and AI limits use it) or point the library at book files that are not in the
+             backup. After a restore the app starts clean and is connected to Drive again. -->
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="sharedpref" path="sync-state.xml" />
+        <exclude domain="sharedpref" path="device-readings.xml" />
+        <exclude domain="sharedpref" path="insights-sync.xml" />
+        <exclude domain="sharedpref" path="community.xml" />
+        <exclude domain="sharedpref" path="readers.xml" />
+        <exclude domain="sharedpref" path="ai.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <!-- Device-specific: copying them to another tablet would give two tablets the same identity
+             (sync, community and AI limits use it) or point the library at book files that are not in the
+             backup. After a restore the app starts clean and is connected to Drive again. -->
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="sharedpref" path="sync-state.xml" />
+        <exclude domain="sharedpref" path="device-readings.xml" />
+        <exclude domain="sharedpref" path="insights-sync.xml" />
+        <exclude domain="sharedpref" path="community.xml" />
+        <exclude domain="sharedpref" path="readers.xml" />
+        <exclude domain="sharedpref" path="ai.xml" />
+    </device-transfer>
+</data-extraction-rules>

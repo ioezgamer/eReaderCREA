@@ -12,6 +12,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.annotation.StringRes
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -101,8 +103,11 @@ class AppearanceBottomSheetDialogFragment : DialogFragment() {
         super.onStart()
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
-        val statusBarId = resources.getIdentifier("status_bar_height", "dimen", "android")
-        val statusBar = if (statusBarId > 0) resources.getDimensionPixelSize(statusBarId) else 0
+        // Height of the status bar even while the reader hides it, from the window insets (the
+        // internal "status_bar_height" resource is not a public API).
+        val statusBar = activity?.window?.decorView
+            ?.let { ViewCompat.getRootWindowInsets(it) }
+            ?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.statusBars())?.top ?: 0
         dialog?.window?.apply {
             setLayout(minOf((PANEL_WIDTH_DP * density).toInt(), screenWidth - (16 * density).toInt()), ViewGroup.LayoutParams.WRAP_CONTENT)
             setGravity(Gravity.TOP or Gravity.END)
@@ -151,7 +156,7 @@ class AppearanceBottomSheetDialogFragment : DialogFragment() {
                 )
 
                 if (editor is EpubPreferencesEditor && editor.layout != Layout.FIXED) {
-                    ReadingChoices(editor, commit = { settings?.commit() })
+                    ReadingChoices(editor, commit = { settings.commit() })
                 }
 
                 ReaderLookSection(app.readerLook)

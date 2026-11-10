@@ -57,7 +57,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.activityViewModels
@@ -79,6 +78,7 @@ import org.crea.reader.readers.ReaderAvatar
 import org.crea.reader.readers.ReaderRules
 import org.crea.reader.utils.ReadingProgress
 import org.readium.r2.shared.publication.Link
+import org.crea.reader.utils.runSuspendCatching
 
 /**
  * "Ficha del libro": cover, details, summary and the actions (read, listen, download, favourite) of
@@ -431,7 +431,7 @@ class BookDetailDialog : DialogFragment() {
     }
 
     /** Chapters of a downloaded book (indented by level), each with the place it starts. */
-    private suspend fun loadToc(book: Book): List<Pair<String, String>> = runCatching {
+    private suspend fun loadToc(book: Book): List<Pair<String, String>> = runSuspendCatching {
         val asset = app.readium.assetRetriever.retrieve(book.url, book.mediaType).getOrNull() ?: return emptyList()
         val publication = app.readium.publicationOpener.open(asset, allowUserInteraction = false).getOrNull() ?: return emptyList()
         try {
@@ -473,7 +473,10 @@ class BookDetailDialog : DialogFragment() {
         fun show(manager: FragmentManager, driveFileId: String? = null, bookId: Long? = null) {
             if (manager.findFragmentByTag(TAG) != null) return
             BookDetailDialog().apply {
-                arguments = bundleOf(ARG_DRIVE to driveFileId, ARG_BOOK to (bookId ?: 0L))
+                arguments = Bundle().apply {
+                    putString(ARG_DRIVE, driveFileId)
+                    putLong(ARG_BOOK, bookId ?: 0L)
+                }
             }.show(manager, TAG)
         }
     }

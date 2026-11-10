@@ -9,7 +9,6 @@ package org.crea.reader.catalogs
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.os.bundleOf
 import androidx.navigation.Navigation
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -20,6 +19,7 @@ import org.readium.r2.shared.publication.Publication
 import org.crea.reader.R
 import org.crea.reader.data.model.Catalog
 import org.crea.reader.databinding.ItemGroupViewBinding
+import android.os.Bundle
 
 class GroupAdapter(
     val type: Int,
@@ -59,7 +59,7 @@ class GroupAdapter(
                         title = group.title,
                         type = type
                     )
-                    val bundle = bundleOf(CatalogFeedListAdapter.CATALOGFEED to catalog1)
+                    val bundle = Bundle().apply { putParcelable(CatalogFeedListAdapter.CATALOGFEED, catalog1) }
                     Navigation.findNavController(it)
                         .navigate(R.id.action_navigation_catalog_self, bundle)
                 }

@@ -139,6 +139,8 @@ abstract class AppDatabase : RoomDatabase() {
                 return tempInstance
             }
             synchronized(this) {
+                // Another thread may have built it while this one waited for the lock.
+                INSTANCE?.let { return it }
                 val instance = Room.databaseBuilder<AppDatabase>(
                     context.applicationContext,
                     "database"

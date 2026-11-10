@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import org.crea.reader.Application
 import org.crea.reader.R
 import org.crea.reader.databinding.FragmentSyncBinding
+import org.crea.reader.utils.runSuspendCatching
 
 class SyncFragment : Fragment() {
     private var _binding: FragmentSyncBinding? = null
@@ -135,7 +136,7 @@ class SyncFragment : Fragment() {
         connectingPersonal = personal
         setBusy(true)
         viewLifecycleOwner.lifecycleScope.launch {
-            runCatching { authorizationFor(personal).requestToken() }
+            runSuspendCatching { authorizationFor(personal).requestToken() }
                 .onSuccess { result ->
                     when (result) {
                         is DriveAuthorizationProvider.TokenResult.Authorized -> confirmAccount(result.accessToken)

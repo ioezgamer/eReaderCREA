@@ -4,6 +4,7 @@ import android.content.Context
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -135,7 +136,7 @@ class AiClient(
      */
     suspend fun speech(text: String, language: String?, voice: String? = null, previousText: String? = null): VoiceResult = withContext(Dispatchers.IO) {
         if (!configured) return@withContext VoiceResult.Unavailable("not_configured")
-        val token = accessToken() ?: return@withContext VoiceResult.Unavailable("needs_drive")
+        val token = (googleToken() as? Token.Ok)?.value ?: return@withContext VoiceResult.Unavailable("needs_drive")
         val payload = buildJsonObject {
             put("text", text)
             if (language != null) put("language", language)
@@ -143,13 +144,8 @@ class AiClient(
             // Only the end of the previous sentence is needed for the intonation.
             if (!previousText.isNullOrBlank()) put("previousText", previousText.takeLast(600))
         }
-        val connection = (URI(baseUrl.trimEnd('/') + "/v1/voice").toURL().openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = 6_000
-            readTimeout = 15_000
+        val connection = open("POST", "/v1/voice", token, connectTimeoutMs = 6_000, readTimeoutMs = 15_000).apply {
             doOutput = true
-            setRequestProperty("Authorization", "Bearer $token")
-            setRequestProperty("X-Device-Id", deviceId())
             setRequestProperty("Content-Type", "application/json; charset=UTF-8")
             setRequestProperty("Accept", "audio/mpeg")
         }
@@ -172,15 +168,35 @@ class AiClient(
         }
     }
 
-    /** The Google token Drive already has (the server uses it to check the account), or null. */
-    private suspend fun accessToken(): String? = try {
-        when (val auth = DriveAuthorizationProvider(context).requestToken()) {
-            is DriveAuthorizationProvider.TokenResult.Authorized -> auth.accessToken
-            is DriveAuthorizationProvider.TokenResult.ConsentRequired -> null
-        }
-    } catch (_: Exception) {
-        null
+    private sealed class Token {
+        class Ok(val value: String) : Token()
+        data object ConsentRequired : Token()
+        data object Failed : Token()
     }
+
+    /**
+     * The Google token Drive already has (the server uses it to check the account). A cancelled
+     * coroutine is never turned into a "failed" result: the cancellation goes on.
+     */
+    private suspend fun googleToken(): Token = try {
+        when (val auth = DriveAuthorizationProvider(context).requestToken()) {
+            is DriveAuthorizationProvider.TokenResult.Authorized -> Token.Ok(auth.accessToken)
+            is DriveAuthorizationProvider.TokenResult.ConsentRequired -> Token.ConsentRequired
+        }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        Token.Failed
+    }
+
+    private fun open(method: String, path: String, token: String, connectTimeoutMs: Int, readTimeoutMs: Int): HttpURLConnection =
+        (URI(baseUrl.trimEnd('/') + path).toURL().openConnection() as HttpURLConnection).apply {
+            requestMethod = method
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("X-Device-Id", deviceId())
+        }
 
     private sealed class Raw {
         class Success(val body: JsonObject) : Raw()
@@ -189,20 +205,12 @@ class AiClient(
 
     private suspend fun call(method: String, path: String, body: String?): Raw = withContext(Dispatchers.IO) {
         if (!configured) return@withContext Raw.Error(0, "not_configured", null)
-        val token = try {
-            when (val auth = DriveAuthorizationProvider(context).requestToken()) {
-                is DriveAuthorizationProvider.TokenResult.Authorized -> auth.accessToken
-                is DriveAuthorizationProvider.TokenResult.ConsentRequired -> return@withContext Raw.Error(401, "unauthorized", null)
-            }
-        } catch (_: Exception) {
-            return@withContext Raw.Error(0, null, null)
+        val token = when (val result = googleToken()) {
+            is Token.Ok -> result.value
+            Token.ConsentRequired -> return@withContext Raw.Error(401, "unauthorized", null)
+            Token.Failed -> return@withContext Raw.Error(0, null, null)
         }
-        val connection = (URI(baseUrl.trimEnd('/') + path).toURL().openConnection() as HttpURLConnection).apply {
-            requestMethod = method
-            connectTimeout = 15_000
-            readTimeout = 60_000
-            setRequestProperty("Authorization", "Bearer $token")
-            setRequestProperty("X-Device-Id", deviceId())
+        val connection = open(method, path, token, connectTimeoutMs = 15_000, readTimeoutMs = 60_000).apply {
             setRequestProperty("Accept", "application/json")
         }
         try {

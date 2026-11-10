@@ -10,14 +10,29 @@ services:
     startCommand: node src/index.js
     healthCheckPath: /healthz
     envVars:
-      - key: STORE
-        value: memory
+      # Contadores de gasto y límites: tienen que sobrevivir a los reinicios (el plan gratuito se duerme).
+      # Crea una base Redis gratuita en https://upstash.com (sin tarjeta) y pega aquí su URL y token REST.
+      # Sin ellos el servidor funciona, pero avisa en el registro de que los topes no son reales.
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      # ID del cliente OAuth Android de la app (…apps.googleusercontent.com), separados por comas si hay
+      # varios (debug, release, Play). Así solo se aceptan tokens emitidos para CREA Reader.
+      - key: ALLOWED_AUDIENCES
+        sync: false
       - key: ALLOWED_DOMAINS
         value: creanicaragua.org
       - key: MONTHLY_BUDGET_USD
         value: "50"
       - key: USER_DAILY_LIMIT
         value: "300"
+      # CREA Aventuras usa una identidad de servicio para todas sus tablets: tope diario propio (además del
+      # límite de 30 por tablet y del presupuesto mensual).
+      - key: AVENTURAS_DAILY_LIMIT
+        value: "5000"
+      - key: CREA_AVENTURAS_SERVICE_TOKEN
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: ANTHROPIC_WORKSPACE_ID

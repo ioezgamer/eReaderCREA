@@ -97,11 +97,15 @@ class UserError private constructor(
             private val args: Array<out Any?>,
             private val quantity: Int?,
         ) : Content() {
+            @Suppress("DEPRECATION") // org.readium.r2.shared.util.Instant, see below
             override fun getUserMessage(context: Context): String {
                 // Convert complex objects to strings, such as Date, to be interpolated.
                 val args = args.map { arg ->
                     when (arg) {
                         is Date -> DateFormat.getDateInstance().format(arg)
+                        is kotlin.time.Instant -> DateFormat.getDateInstance()
+                            .format(Date(arg.toEpochMilliseconds()))
+                        // Readium's own Instant (deprecated there) may still come inside its errors.
                         is Instant -> DateFormat.getDateInstance()
                             .format(Date(arg.toEpochMilliseconds()))
                         else -> arg

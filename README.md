@@ -20,7 +20,7 @@ La aplicación está inspirada en los flujos observables de la APK de referencia
 - Biblioteca adaptable a teléfonos y tablets con portadas, autor, formato, progreso, búsqueda y filtros.
 - Los libros importados desde el dispositivo se suben a la carpeta de Drive; el progreso de lectura viaja entre dispositivos mediante un manifiesto privado.
 - Detección de duplicados e integridad mediante SHA-256/MD5 del contenido.
-- La sincronización del catálogo nunca descarga libros: solo lee metadatos (paginados) al abrir la app si pasaron más de 5 minutos, al deslizar para refrescar y cada seis horas en segundo plano.
+- La sincronización del catálogo nunca descarga libros: solo lee metadatos (paginados) al abrir la app si pasaron más de 15 minutos (`SyncScheduler.STALE_AFTER_MS`), al deslizar para refrescar y cada seis horas en segundo plano.
 - Biblioteca con tarjeta «Continuar leyendo», búsqueda, filtros (Todos, Leyendo, Sin leer, Terminados, EPUB, PDF), orden configurable, importación de varios archivos a la vez y estado de Drive siempre visible.
 - Explorar con catálogos gratuitos en español (textos.info y Proyecto Gutenberg filtrado por español) y flecha de regreso dentro del libro.
 - Interfaz en español con estilo «vidrio líquido» (superficies translúcidas, fondo degradado y barra de navegación flotante), tema claro/oscuro con la paleta del logo (azul, rosa, naranja y verde) y controles Material con objetivos táctiles de al menos 48 dp.
@@ -71,15 +71,17 @@ $env:ANDROID_HOME = 'C:\Android\sdk'
 ./gradlew.bat testDebugUnitTest assembleDebug
 ```
 
-El APK se genera en `app/build/outputs/apk/debug/app-debug.apk`. Los tests cubren conflictos de sincronización, descarga/subida, progreso más reciente, eliminaciones, reimportaciones y nombres de archivo en Drive.
+En Linux o macOS: `./gradlew testDebugUnitTest assembleDebug`.
 
-APK optimizada entregada (versión final, sin depuración): `dist/CREA-Reader-0.5.0.apk` (26,635,027 bytes), SHA-256 `0C048DF3423949BB1E54DC1E798466DC404315BD58AB67757D28BCA9B9D10E8B`.
+El APK se genera en `app/build/outputs/apk/debug/app-debug.apk`. Los tests JVM (`app/src/test`) cubren la fusión de la sincronización (progreso más reciente, eliminaciones, reimportaciones), las reglas del manifiesto (copias duplicadas, escrituras simultáneas, manifiesto dañado), el cliente de Drive contra un servidor HTTP local (404/403, límites de cuota, escape de consultas), las migraciones de Room 4 → 6 sobre los esquemas exportados, nombres de archivo en Drive, catálogo, estadísticas, perfiles y el informe de errores. No hay tests instrumentados: la interfaz, OAuth y Drive real se prueban en una tablet.
 
-Para generarla: `./gradlew.bat assembleRelease -PsignWithDebugKey` (salida en `app/build/outputs/apk/release/app-release.apk`). Usa R8 para reducir y ofuscar el código y quitar recursos sin uso, y no es depurable. Con `-PsignWithDebugKey` se firma con la clave de depuración: se instala encima de las versiones de prueba anteriores y la credencial OAuth de Drive ya registrada sigue funcionando. Sin ese parámetro se firma con la clave de subida (ver abajo) y es el binario que corresponde a Google Play.
+**Integración continua**: `.github/workflows/ci.yml` ejecuta en cada push a `main` y en cada pull request los tests, Android Lint y el APK debug, y en `server/` `npm test` y `npm audit --audit-level=high`.
+
+Para generarla: `./gradlew.bat assembleRelease -PsignWithDebugKey` (salida en `app/build/outputs/apk/release/app-release.apk`). Usa R8 para reducir y ofuscar el código y quitar recursos sin uso, y no es depurable. Con `-PsignWithDebugKey` se firma con la clave de depuración: se instala encima de las versiones de prueba anteriores y la credencial OAuth de Drive ya registrada sigue funcionando. Sin ese parámetro se firma con la clave de subida (ver abajo) y es el binario que corresponde a Google Play. Si no existe `keystore.properties` y no se pasa `-PsignWithDebugKey`, el release queda **sin firmar** (`app-release-unsigned.apk`): nunca se firma con la clave de depuración sin pedirlo.
 
 ## Publicación en Google Play (distribución privada)
 
-Bundle para la tienda: `dist/CREA-Reader-0.5.0.aab` (24,337,446 bytes), SHA-256 `40F31A546D316BB9297F2723450D996A3F37127639D979B8D4C4A7FF674FF974`. Se genera con `./gradlew.bat bundleRelease` (salida en `app/build/outputs/bundle/release/app-release.aab`).
+Bundle para la tienda: se genera con `./gradlew.bat bundleRelease` (salida en `app/build/outputs/bundle/release/app-release.aab`).
 
 **Clave de subida (upload key).** El AAB está firmado con `keystore/crea-reader-upload.jks` (alias `crea-reader-upload`), cuyos datos de acceso están en `keystore.properties`. Ambos archivos están excluidos del control de versiones.
 
@@ -125,9 +127,11 @@ Migración desde 0.1.0: los enlaces antiguos a `appDataFolder` se descartan una 
 
 ## Estado de validación
 
-- Compilación debug: correcta.
-- Tests JVM de sincronización: correctos.
-- Android Lint: 0 errores; permanecen avisos no bloqueantes, principalmente actualizaciones de dependencias y código heredado del ejemplo abierto de Readium.
+Se comprueba en cada cambio con la integración continua (ver «Compilar y verificar»): tests JVM, Android Lint (0 errores) y compilación debug; en el servidor, sus tests y `npm audit`.
+
+- **Copias de seguridad de Android**: se guardan las preferencias y las estadísticas, pero no la base de datos, los libros ni la identidad de la instalación (`res/xml/backup_rules.xml` y `data_extraction_rules.xml`). Una tablet restaurada empieza con la biblioteca vacía, se vuelve a conectar a Drive y recupera desde allí el progreso, sin hacerse pasar por la tablet original.
+- **Errores**: `CrashReporter` guarda el informe y deja que Android registre el error (Android vitals de Play Console); el informe se muestra la próxima vez que se abre la app.
+- **LCP**: esta compilación no incluye `liblcp`, así que no se ofrece para abrir archivos protegidos con LCP.
 - Firma APK Signature Scheme v2: verificada.
 - Inspección del APK: paquete, SDK, arquitecturas y actividad principal verificados.
 - No había emulador ni dispositivo ADB conectado durante esta entrega, por lo que la interacción visual y OAuth real deben comprobarse en una tablet/teléfono con la credencial Google registrada.

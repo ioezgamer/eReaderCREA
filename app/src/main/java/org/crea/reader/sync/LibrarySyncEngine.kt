@@ -32,6 +32,7 @@ import org.crea.reader.online.OnlineBookIds
 import org.crea.reader.utils.ReadingProgress
 import org.crea.reader.utils.md5
 import timber.log.Timber
+import org.crea.reader.utils.runSuspendCatching
 
 /**
  * Keeps the online catalog and the reading progress in step with the "CREA Reader" Drive folder.
@@ -101,7 +102,7 @@ class LibrarySyncEngine(
 
     private suspend fun run(accessToken: String, publicDrive: GoogleDriveRestClient?): Result {
         val drive = GoogleDriveRestClient(accessToken)
-        val user = runCatching { drive.currentUser() }.getOrNull()
+        val user = runSuspendCatching { drive.currentUser() }.getOrNull()
         val account = user?.let { it.emailAddress ?: it.displayName }
         // A personal account: its own folder (only what the app put there) and the public catalog.
         // The shared CREA features (AI summaries, community) stay with CREA accounts.
@@ -124,14 +125,12 @@ class LibrarySyncEngine(
         stateStore.categoryFolders = catalogListing.folders
         val listing = catalogListing.entries.toMutableList()
 
-        val manifestFile = drive.listAppData().firstOrNull { it.name == MANIFEST_NAME }
-        val storedManifest = manifestFile?.let { file ->
-            try {
-                json.decodeFromString<SyncManifest>(drive.downloadText(file.id))
-            } catch (_: SerializationException) {
-                null
-            }
-        } ?: SyncManifest(generatedAt = 0, deviceId = "remote")
+        // Two devices syncing at the same moment can leave two manifests: all are read and combined,
+        // and the newest one is the one written (see ManifestRules).
+        val manifestFiles = drive.listAppData().filter { it.name == MANIFEST_NAME }
+        val manifestFile = ManifestRules.primary(manifestFiles)
+        val storedManifest = ManifestRules.merge(manifestFiles.mapNotNull { readManifest(drive, it) })
+            ?: SyncManifest(generatedAt = 0, deviceId = "remote")
 
         // Books a personal account picked from elsewhere in its Drive: read where they are.
         val pickedIds = listPicked(drive, storedManifest.pickedFileIds, listing)
@@ -287,6 +286,11 @@ class LibrarySyncEngine(
             storedManifest.devices.sortedBy { it.deviceId } == finalDevices &&
             storedManifest.pickedFileIds == pickedIds
         if (!unchanged) {
+            // Another device may have written the manifest while this sync ran: never write over it.
+            // The sync is retried and starts again from what that device left.
+            if (manifestFile != null && ManifestRules.changedSinceRead(manifestFile, drive.getFile(manifestFile.id))) {
+                throw ConcurrentManifestChangeException()
+            }
             val finalManifest = SyncManifest(
                 generatedAt = now,
                 deviceId = myId,
@@ -495,7 +499,7 @@ class LibrarySyncEngine(
                 val members = files.filter { it.name != ownName && it.name != legacyName }.mapNotNull { file ->
                     val known = cached[file.id]
                     if (known != null && known.fileModified == file.modifiedTime.orEmpty()) return@mapNotNull known
-                    val profile = runCatching {
+                    val profile = runSuspendCatching {
                         json.decodeFromString<CommunityProfile>(drive.downloadText(file.id))
                     }.getOrNull() ?: return@mapNotNull null
                     if (!profile.active || profile.nickname.isBlank() || profile.userId == deviceId) return@mapNotNull null
@@ -555,7 +559,7 @@ class LibrarySyncEngine(
             for (entry in pending) {
                 val file = entry.file
                 val excerpt = if (DriveNaming.formatOf(file.name, file.mimeType) == "EPUB") {
-                    runCatching { EpubExcerpt.find(drive.rangeSource(file.id, file.size?.toLongOrNull() ?: 0)) }.getOrNull()
+                    runSuspendCatching { EpubExcerpt.find(drive.rangeSource(file.id, file.size?.toLongOrNull() ?: 0)) }.getOrNull()
                 } else {
                     null
                 }
@@ -589,7 +593,7 @@ class LibrarySyncEngine(
     }
 
     private suspend fun readIndex(drive: GoogleDriveRestClient, file: GoogleDriveRestClient.DriveFile): InsightIndex =
-        runCatching { json.decodeFromString<InsightIndex>(drive.downloadText(file.id)) }.getOrDefault(InsightIndex())
+        runSuspendCatching { json.decodeFromString<InsightIndex>(drive.downloadText(file.id)) }.getOrDefault(InsightIndex())
 
     private fun versionOf(file: GoogleDriveRestClient.DriveFile): String = file.md5Checksum ?: parseTime(file.modifiedTime).toString()
 
@@ -811,9 +815,30 @@ class LibrarySyncEngine(
         _progress.value = Progress(stage, current, total, title)
     }
 
+    /**
+     * One copy of the manifest, or null when it cannot be read. A damaged manifest is first saved
+     * as a separate file, so the progress it held can still be recovered by hand; if even that copy
+     * cannot be saved, the sync stops instead of writing over it.
+     */
+    private suspend fun readManifest(drive: GoogleDriveRestClient, file: GoogleDriveRestClient.DriveFile): SyncManifest? {
+        val text = drive.downloadText(file.id)
+        return try {
+            json.decodeFromString<SyncManifest>(text)
+        } catch (damaged: SerializationException) {
+            Timber.w(damaged, "Sync manifest ${file.id} is damaged; keeping a copy")
+            val now = Clock.System.now().toEpochMilliseconds()
+            drive.uploadAppDataCopy(ManifestRules.damagedCopyName(MANIFEST_NAME, now), text)
+            null
+        }
+    }
+
     private fun describe(error: Throwable): String = when {
+        error is ConcurrentManifestChangeException ->
+            "Otro dispositivo estaba sincronizando al mismo tiempo. Se reintentará en un momento."
         error is GoogleDriveRestClient.DriveApiException && error.statusCode == 401 ->
             "Google Drive rechazó el acceso. Vuelve a conectar tu cuenta."
+        error is GoogleDriveRestClient.DriveApiException && error.isTemporary ->
+            "Google Drive recibió demasiadas solicitudes. Se reintentará en unos minutos."
         error is GoogleDriveRestClient.DriveApiException && error.statusCode == 403 ->
             "Falta el permiso para usar tu carpeta de Drive. Vuelve a conectar tu cuenta."
         error is GoogleDriveRestClient.DriveApiException && error.statusCode == 429 ->

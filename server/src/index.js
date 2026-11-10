@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +17,33 @@ const ADMIN_HEADERS = {
   "x-frame-options": "DENY",
 };
 
+let adminPage = null;
+
+/**
+ * El HTML del panel se lee una sola vez. Su política de seguridad (CSP) solo deja ejecutar el script
+ * propio de la página (por su hash) y el de Google Identity Services, y solo conectarse a Google.
+ */
+function loadAdminPage() {
+  if (adminPage) return adminPage;
+  const html = fs.readFileSync(path.join(ADMIN_DIR, "index.html"));
+  const hashes = [...html.toString("utf8").matchAll(/<script>([\s\S]*?)<\/script>/g)]
+    .map((match) => `'sha256-${createHash("sha256").update(match[1], "utf8").digest("base64")}'`);
+  const csp = [
+    "default-src 'none'",
+    `script-src ${hashes.join(" ")} https://accounts.google.com/gsi/client`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
+    "font-src https://fonts.gstatic.com",
+    "img-src 'self' data: https:",
+    "connect-src 'self' https://www.googleapis.com https://accounts.google.com/gsi/",
+    "frame-src https://accounts.google.com/gsi/",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+  adminPage = { html, csp };
+  return adminPage;
+}
+
 /** Panel web: archivos estáticos (sin sesión; los datos se leen desde Drive con la cuenta de quien entra). */
 function serveAdmin(url, response) {
   if (url.pathname === "/admin") {
@@ -31,8 +58,9 @@ function serveAdmin(url, response) {
     }));
   }
   if (url.pathname === "/admin/") {
-    response.writeHead(200, { ...ADMIN_HEADERS, "content-type": "text/html; charset=utf-8" });
-    return response.end(fs.readFileSync(path.join(ADMIN_DIR, "index.html")));
+    const page = loadAdminPage();
+    response.writeHead(200, { ...ADMIN_HEADERS, "content-security-policy": page.csp, "content-type": "text/html; charset=utf-8" });
+    return response.end(page.html);
   }
   const asset = /^\/admin\/assets\/([\w-]+\.png)$/.exec(url.pathname);
   if (asset) {
@@ -87,7 +115,13 @@ export function createServer({ config, service, authenticate, voice }) {
         catch (error) { if (error instanceof service.ServiceError) throw error; return send(response, 400, { ok: false, code: "invalid_json" }); }
         const device = String(request.headers["x-device-id"] || "");
         if (!/^[a-f0-9]{64}$/.test(device)) return send(response, 400, { ok: false, code: "invalid_device" });
-        const { result, model } = await service.ask({ email: "aventuras-service@creanicaragua.org" }, "aventuras-" + device, "aventuras_tutor", body);
+        const { result, model } = await service.ask(
+          { email: "aventuras-service@creanicaragua.org" },
+          "aventuras-" + device,
+          "aventuras_tutor",
+          body,
+          { dailyLimit: config.aventurasDailyLimit },
+        );
         return send(response, 200, { ok: true, result, model });
       }
 
@@ -142,6 +176,9 @@ if (fileURLToPath(import.meta.url) === path.resolve(process.argv[1] ?? "")) {
   const voice = createVoice({ config: loadVoiceConfig(), store, ServiceError: service.ServiceError });
   const port = Number(process.env.PORT || 8787);
   createServer({ config, service, authenticate, voice }).listen(port, () => {
-    console.log(`CREA Reader AI escuchando en :${port} (mock=${config.mock}, auth=${config.authMode}, modelo=${config.models.fast})`);
+    console.log(`CREA Reader AI escuchando en :${port} (mock=${config.mock}, auth=${config.authMode}, modelo=${config.models.fast}, contadores=${store.kind})`);
+    if (config.authMode === "google" && config.allowedAudiences.length === 0) {
+      console.warn("ATENCIÓN: ALLOWED_AUDIENCES está vacío; se acepta el token de cualquier aplicación de Google de la organización.");
+    }
   });
 }

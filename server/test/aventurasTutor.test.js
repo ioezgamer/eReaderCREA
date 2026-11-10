@@ -44,3 +44,21 @@ test("acceso entre servidores exige su propio token y no depende de una sesion G
   assert.equal(response.status,200);assert.deepEqual((await response.json()).result,plan);
   assert.equal(s.calls.length,1);
 });
+test("el tope diario de Aventuras es propio: no se agota con el limite por persona de 300",async()=>{
+  const config=loadConfig({CREA_AVENTURAS_SERVICE_TOKEN:"service-test",AUTH_MODE:"google",USER_DAILY_LIMIT:"300",AVENTURAS_DAILY_LIMIT:"400"});
+  const claude={messages:{parse:async()=>({stop_reason:"end_turn",parsed_output:plan,usage:{input_tokens:1,output_tokens:1}})}};
+  const s=createService({config,store:new MemoryStore(),claude});
+  const servicio={email:"aventuras-service@creanicaragua.org"};
+  let ok=0;
+  // 20 tablets x 20 peticiones: cada una por debajo de su limite de 30, 400 en total.
+  for(let d=0;d<20;d++)for(let i=0;i<20;i++){await s.ask(servicio,"aventuras-"+d,"aventuras_tutor",input,{dailyLimit:config.aventurasDailyLimit});ok++;}
+  assert.equal(ok,400);
+  await assert.rejects(s.ask(servicio,"aventuras-nueva","aventuras_tutor",input,{dailyLimit:config.aventurasDailyLimit}),{status:429,code:"daily_limit"});
+});
+test("sin tope propio el limite por persona sigue aplicandose a las cuentas normales",async()=>{
+  const config=loadConfig({AUTH_MODE:"google",USER_DAILY_LIMIT:"2"});
+  const claude={messages:{parse:async()=>({stop_reason:"end_turn",parsed_output:plan,usage:{input_tokens:1,output_tokens:1}})}};
+  const s=createService({config,store:new MemoryStore(),claude});
+  await s.ask(user,"a","aventuras_tutor",input);await s.ask(user,"b","aventuras_tutor",input);
+  await assert.rejects(s.ask(user,"c","aventuras_tutor",input),{status:429});
+});

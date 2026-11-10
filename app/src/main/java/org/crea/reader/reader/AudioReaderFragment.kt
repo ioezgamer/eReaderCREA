@@ -185,7 +185,7 @@ class AudioReaderFragment : BaseReaderFragment(), SeekBar.OnSeekBarChangeListene
     }
 
     private fun onPlayPause(@Suppress("UNUSED_PARAMETER") view: View) {
-        return when (navigator.playback.value.state) {
+        when (navigator.playback.value.state) {
             is MediaNavigator.State.Ready, is MediaNavigator.State.Buffering -> {
                 model.viewModelScope.launch {
                     if (navigator.playback.value.playWhenReady) {
@@ -194,14 +194,12 @@ class AudioReaderFragment : BaseReaderFragment(), SeekBar.OnSeekBarChangeListene
                         navigator.play()
                     }
                 }
-                Unit
             }
             is MediaNavigator.State.Ended -> {
                 model.viewModelScope.launch {
                     navigator.skipTo(0, Duration.ZERO)
                     navigator.play()
                 }
-                Unit
             }
             is MediaNavigator.State.Failure -> {
                 // Do nothing.
