@@ -8,7 +8,6 @@ package org.crea.reader.catalogs
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.core.os.bundleOf
 import androidx.navigation.Navigation
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -17,6 +16,7 @@ import org.readium.r2.shared.publication.Link
 import org.crea.reader.R
 import org.crea.reader.data.model.Catalog
 import org.crea.reader.databinding.ItemRecycleButtonBinding
+import android.os.Bundle
 
 class NavigationAdapter(val type: Int) :
     ListAdapter<Link, NavigationAdapter.ViewHolder>(LinkDiff()) {
@@ -51,7 +51,7 @@ class NavigationAdapter(val type: Int) :
                     title = link.title!!,
                     type = type
                 )
-                val bundle = bundleOf(CatalogFeedListAdapter.CATALOGFEED to catalog1)
+                val bundle = Bundle().apply { putParcelable(CatalogFeedListAdapter.CATALOGFEED, catalog1) }
                 Navigation.findNavController(it)
                     .navigate(R.id.action_navigation_catalog_self, bundle)
             }

@@ -67,6 +67,42 @@ class DatabaseMigrationTest {
         assertEquals("nota", text("SELECT ANNOTATION FROM highlights WHERE BOOK_ID = 1"))
     }
 
+    /**
+     * Schema 4 is the real one of CREA Reader 0.8.3 (the first version in this repository), exported
+     * from that commit. Versions 1 to 3 predate the repository, so their schemas cannot be recovered.
+     */
+    @Test
+    fun from4To6KeepsBooksNotesCollectionsAndProgress() = runBlocking {
+        create(schema(4))
+        connection.execSQL(
+            "INSERT INTO books (id, href, title, author, identifier, media_type, cover, content_hash, file_size, " +
+                "updated_at, progress_updated_at, remote_file_id, favorite, remote_md5, progression) VALUES " +
+                "(1, 'file:///a.epub', 'Plantas', 'Ana', 'id-a', 'application/epub+zip', '', 'hash-a', 10, 1, 5, 'drive-a', 1, 'md5-a', '{\"p\":1}')"
+        )
+        connection.execSQL(
+            "INSERT INTO drive_catalog (drive_file_id, file_name, title, format, size, modified_at, category, " +
+                "progression_at, reader_id) VALUES ('drive-a', 'Plantas.epub', 'Plantas', 'EPUB', 10, 1, 'Ciencias', 0, -1)"
+        )
+        connection.execSQL("INSERT INTO collections (id, name, created_at) VALUES (7, 'Para el aula', 1)")
+        connection.execSQL("INSERT INTO collection_books (collection_id, content_hash) VALUES (7, 'hash-a')")
+        connection.execSQL(
+            "INSERT INTO highlight_stash (content_hash, style, tint, href, type, total_progression, locations, text, annotation) " +
+                "VALUES ('hash-b', 'highlight', 0, 'c1.xhtml', 'application/xhtml+xml', 0.5, '{}', '{}', 'nota guardada')"
+        )
+
+        AppDatabase.MIGRATION_4_5.migrate(connection)
+        assertEquals(columnsOf(schema(5)), actualColumns())
+        AppDatabase.MIGRATION_5_6.migrate(connection)
+        assertEquals(columnsOf(schema(6)), actualColumns())
+
+        assertEquals("Ciencias", text("SELECT category FROM books WHERE id = 1"))
+        assertEquals("1", text("SELECT favorite FROM books WHERE id = 1"))
+        assertEquals("md5-a", text("SELECT remote_md5 FROM books WHERE id = 1"))
+        assertEquals("{\"p\":1}", text("SELECT progression FROM books WHERE id = 1"))
+        assertEquals("hash-a", text("SELECT content_hash FROM collection_books WHERE collection_id = 7"))
+        assertEquals("nota guardada", text("SELECT annotation FROM highlight_stash WHERE content_hash = 'hash-b'"))
+    }
+
     @Test
     fun everyMigrationHasAStep() {
         val steps = AppDatabase.MIGRATIONS.map { it.startVersion to it.endVersion }

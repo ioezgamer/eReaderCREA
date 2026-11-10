@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- Everything else is HTTPS only (the default since Android 9). -->
     <domain-config cleartextTrafficPermitted="true">
         <!--
         Required with LCP support.
@@ -11,19 +12,5 @@
 
         <!-- Local test server for the AI features (adb reverse); nothing outside the device is reachable this way -->
         <domain includeSubdomains="false">localhost</domain>
-
-        <!-- Publications from Feedbooks' catalog are downloaded through HTTP -->
-        <domain includeSubdomains="true">feedbooks.com</domain>
-        <domain includeSubdomains="true">feedbooks.net</domain>
-
-        <!--
-        Required for the Open Textbooks Catalog OPDS feed to load properly
-        open.minitex.org is for the publications
-        s3.amazonaws.com is for the cover images
-        -->
-        <domain includeSubdomains="false">open.minitex.org</domain>
-        <domain includeSubdomains="false">s3.amazonaws.com</domain>
-
     </domain-config>
 </network-security-config>
-

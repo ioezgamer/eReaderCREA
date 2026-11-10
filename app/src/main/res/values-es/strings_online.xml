@@ -86,6 +86,7 @@
     <string name="transfer_notification_progress">%1$d%% completado</string>
     <plurals name="transfer_notification_title">
         <item quantity="one">Descargando %1$d libro</item>
+        <item quantity="many">Descargando %1$d libros</item>
         <item quantity="other">Descargando %1$d libros</item>
     </plurals>
 
@@ -136,10 +137,12 @@
     <string name="community_similar">Lectores como tú</string>
     <plurals name="community_readers">
         <item quantity="one">%1$d lector</item>
+        <item quantity="many">%1$d lectores</item>
         <item quantity="other">%1$d lectores</item>
     </plurals>
     <plurals name="community_finished">
         <item quantity="one">%1$d lo terminó</item>
+        <item quantity="many">%1$d lo terminaron</item>
         <item quantity="other">%1$d lo terminaron</item>
     </plurals>
     <string name="community_empty_off">Activa «Compartir mi lectura» para ver qué leen los demás y recibir recomendaciones.</string>

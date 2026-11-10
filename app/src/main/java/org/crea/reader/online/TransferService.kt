@@ -40,7 +40,8 @@ class TransferService : Service() {
             this,
             NOTIFICATION_ID,
             notification(emptyMap()),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            // The type exists from Android 10; before that a foreground service has none.
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC else 0
         )
         if (intent?.action == ACTION_CANCEL_ALL) app.onlineBooks.cancelAll()
 
@@ -57,6 +58,17 @@ class TransferService : Service() {
             }
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * Android 15+ limits "data sync" foreground services to about 6 hours a day and asks them to stop
+     * here; one that keeps running after this is ended with an error. The service steps out of the
+     * foreground and stops: transfers already running go on while the process lives.
+     */
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        Timber.w("Transfer service reached the Android time limit for data sync")
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     override fun onDestroy() {

@@ -14,7 +14,6 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.os.BundleCompat
-import androidx.core.os.bundleOf
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
@@ -110,7 +109,7 @@ class CatalogFragment : Fragment() {
                                             href = link.href.toString(),
                                             type = catalog.type
                                         )
-                                        val bundle = bundleOf(CATALOGFEED to catalog1)
+                                        val bundle = Bundle().apply { putParcelable(CATALOGFEED, catalog1) }
                                         Navigation.findNavController(requireView())
                                             .navigate(R.id.action_navigation_catalog_self, bundle)
                                         true

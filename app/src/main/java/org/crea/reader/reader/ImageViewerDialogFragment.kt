@@ -35,7 +35,6 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
 import kotlinx.coroutines.Dispatchers
@@ -119,11 +118,11 @@ class ImageViewerDialogFragment : DialogFragment() {
         @OptIn(ExperimentalReadiumApi::class)
         fun newInstance(image: Content.ImageElement): ImageViewerDialogFragment =
             ImageViewerDialogFragment().apply {
-                arguments = bundleOf(
-                    ARG_HREF to image.embeddedLink.url().toString(),
-                    ARG_CAPTION to (image.caption ?: image.text),
-                    ARG_ACCESSIBILITY_LABEL to image.accessibilityLabel
-                )
+                arguments = Bundle().apply {
+                    putString(ARG_HREF, image.embeddedLink.url().toString())
+                    putString(ARG_CAPTION, image.caption ?: image.text)
+                    putString(ARG_ACCESSIBILITY_LABEL, image.accessibilityLabel)
+                }
             }
     }
 }

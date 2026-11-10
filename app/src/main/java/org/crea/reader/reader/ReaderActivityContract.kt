@@ -15,7 +15,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContract
-import androidx.core.os.bundleOf
 
 class ReaderActivityContract :
     ActivityResultContract<ReaderActivityContract.Arguments, ReaderActivityContract.Arguments?>() {
@@ -25,8 +24,8 @@ class ReaderActivityContract :
 
     override fun createIntent(context: Context, input: Arguments): Intent {
         val intent = Intent(context, ReaderActivity::class.java)
-        val arguments = bundleOf("bookId" to input.bookId, "listen" to input.listen)
-        intent.putExtras(arguments)
+        intent.putExtra("bookId", input.bookId)
+        intent.putExtra("listen", input.listen)
         return intent
     }
 

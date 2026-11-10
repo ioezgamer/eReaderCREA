@@ -132,10 +132,12 @@
     <string name="stats_note">Las estadísticas se guardan solo en este dispositivo. Cuentan el tiempo con el lector abierto y una página por cada vuelta hacia adelante.</string>
     <plurals name="stats_days">
         <item quantity="one">%d día</item>
+        <item quantity="many">%d días</item>
         <item quantity="other">%d días</item>
     </plurals>
     <plurals name="stats_pages">
         <item quantity="one">%d página</item>
+        <item quantity="many">%d páginas</item>
         <item quantity="other">%d páginas</item>
     </plurals>
 </resources>

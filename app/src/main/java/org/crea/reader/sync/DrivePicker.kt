@@ -38,6 +38,9 @@ object DrivePicker {
         idsOf(Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(data))
 
     private fun idsOf(result: AuthorizationResult): List<String> {
+        // Google does not document the type of this value (array, list or text), so the untyped getter
+        // is the only one that reads all three.
+        @Suppress("DEPRECATION")
         val raw = result.tokenResponseParams?.get(PICKED_FILE_IDS) ?: return emptyList()
         val values = when (raw) {
             is Array<*> -> raw.map { it.toString() }

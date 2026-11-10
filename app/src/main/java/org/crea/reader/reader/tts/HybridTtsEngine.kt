@@ -168,8 +168,8 @@ class HybridTtsEngineProvider(
 
     override fun getPlaybackParameters(settings: AndroidTtsSettings): PlaybackParameters = device.getPlaybackParameters(settings)
 
-    override fun updatePlaybackParameters(preferences: AndroidTtsPreferences, playbackParameters: PlaybackParameters): AndroidTtsPreferences =
-        device.updatePlaybackParameters(preferences, playbackParameters)
+    override fun updatePlaybackParameters(previousPreferences: AndroidTtsPreferences, playbackParameters: PlaybackParameters): AndroidTtsPreferences =
+        device.updatePlaybackParameters(previousPreferences, playbackParameters)
 
     override fun mapEngineError(error: AndroidTtsEngine.Error): PlaybackException = device.mapEngineError(error)
 }

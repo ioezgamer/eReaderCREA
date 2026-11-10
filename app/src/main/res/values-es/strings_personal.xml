@@ -12,6 +12,7 @@
     <string name="sync_pick_books_failed">No se pudo abrir Google Drive.</string>
     <plurals name="sync_pick_books_added">
         <item quantity="one">Se agregará %d libro al catálogo.</item>
+        <item quantity="many">Se agregarán %d libros al catálogo.</item>
         <item quantity="other">Se agregarán %d libros al catálogo.</item>
     </plurals>
 </resources>

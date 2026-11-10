@@ -202,7 +202,7 @@ class OnlineBookAdapter(
             val selecting = selection.isNotEmpty()
             binding.catalogActions.isVisible = !busy && !selecting
             binding.catalogBusy.isVisible = busy
-            if (busy && transfer != null) bindBusy(context, transfer) else bindActions(row)
+            if (busy) bindBusy(context, transfer) else bindActions(row)
 
             binding.catalogBusyButton.setOnClickListener { onCancel(row) }
         }

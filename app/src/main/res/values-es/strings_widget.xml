@@ -12,6 +12,7 @@
     <string name="widget_stats_streak">Racha</string>
     <plurals name="widget_stats_streak_days">
         <item quantity="one">%1$d día</item>
+        <item quantity="many">%1$d días</item>
         <item quantity="other">%1$d días</item>
     </plurals>
     <string name="widget_stats_finished">Libros terminados</string>

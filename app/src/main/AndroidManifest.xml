@@ -14,7 +14,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.DOWNLOAD_WITHOUT_NOTIFICATION" />
 
     <queries>
         <intent>
@@ -22,7 +21,10 @@
         </intent>
     </queries>
 
-    <!-- android:networkSecurityConfig is required for r2-lcp-kotlin and r2-navigator-kotlin -->
+    <!-- android:networkSecurityConfig is required for r2-lcp-kotlin and r2-navigator-kotlin.
+         Backups keep preferences and statistics, but never the library database, the book files or the
+         identity of this installation (see res/xml/backup_rules.xml and data_extraction_rules.xml).
+         LCP-protected files are not claimed: this build has no liblcp, so it could not open them. -->
     <application
         android:name=".Application"
         android:icon="@mipmap/ic_launcher"
@@ -32,7 +34,10 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:networkSecurityConfig="@xml/network_security_config"
-        tools:targetApi="n">
+        android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        tools:targetApi="s">
         <activity
             android:name=".CrashActivity"
             android:excludeFromRecents="true"
@@ -102,10 +107,6 @@
                 <data android:mimeType="application/divina+json" />
                 <!-- EPUB -->
                 <data android:mimeType="application/epub+zip" />
-                <!-- LCP -->
-                <data android:mimeType="application/audiobook+lcp" />
-                <data android:mimeType="application/pdf+lcp" />
-                <data android:mimeType="application/vnd.readium.lcp.license.v1.0+json" />
                 <!-- LPF -->
                 <data android:mimeType="application/lpf+zip" />
                 <!-- PDF -->
@@ -139,10 +140,6 @@
                 <data android:mimeType="application/divina+json" />
                 <!-- EPUB -->
                 <data android:mimeType="application/epub+zip" />
-                <!-- LCP -->
-                <data android:mimeType="application/audiobook+lcp" />
-                <data android:mimeType="application/pdf+lcp" />
-                <data android:mimeType="application/vnd.readium.lcp.license.v1.0+json" />
                 <!-- LPF -->
                 <data android:mimeType="application/lpf+zip" />
                 <!-- PDF -->
@@ -174,12 +171,6 @@
                 <data android:pathPattern=".*\\.DIVINA" />
                 <data android:pathPattern=".*\\.epub" />
                 <data android:pathPattern=".*\\.EPUB" />
-                <data android:pathPattern=".*\\.lcpa" />
-                <data android:pathPattern=".*\\.LCPA" />
-                <data android:pathPattern=".*\\.lcpdf" />
-                <data android:pathPattern=".*\\.LCPDF" />
-                <data android:pathPattern=".*\\.lcpl" />
-                <data android:pathPattern=".*\\.LCPL" />
                 <data android:pathPattern=".*\\.lpf" />
                 <data android:pathPattern=".*\\.LPF" />
                 <data android:pathPattern=".*\\.pdf" />

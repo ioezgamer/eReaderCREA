@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auto Backup on Android 6 to 11 (android:fullBackupContent). Android 12+ uses data_extraction_rules.xml. -->
+<full-backup-content>
+    <!-- Device-specific: copying them to another tablet would give two tablets the same identity
+         (sync, community and AI limits use it) or point the library at book files that are not in the
+         backup. After a restore the app starts clean and is connected to Drive again. -->
+    <exclude domain="database" path="." />
+    <exclude domain="file" path="." />
+    <exclude domain="sharedpref" path="sync-state.xml" />
+    <exclude domain="sharedpref" path="device-readings.xml" />
+    <exclude domain="sharedpref" path="insights-sync.xml" />
+    <exclude domain="sharedpref" path="community.xml" />
+    <exclude domain="sharedpref" path="readers.xml" />
+    <exclude domain="sharedpref" path="ai.xml" />
+</full-backup-content>

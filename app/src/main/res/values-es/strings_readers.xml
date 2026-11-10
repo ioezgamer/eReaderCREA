@@ -67,10 +67,12 @@
     <string name="profile_reason_new">Nuevo en el catálogo</string>
     <plurals name="profile_reason_group">
         <item quantity="one">Lo terminó alguien de tu grupo</item>
+        <item quantity="many">Lo terminaron %1$d de tu grupo</item>
         <item quantity="other">Lo terminaron %1$d de tu grupo</item>
     </plurals>
     <plurals name="profile_reason_popular">
         <item quantity="one">Lo terminó %1$d lector</item>
+        <item quantity="many">Lo terminaron %1$d lectores</item>
         <item quantity="other">Lo terminaron %1$d lectores</item>
     </plurals>
     <string name="profile_achievements">Logros (%1$d de %2$d)</string>
