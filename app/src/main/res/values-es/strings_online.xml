@@ -31,13 +31,7 @@
     <string name="catalog_preparing_percent">Preparando lectura… %1$d%%</string>
     <string name="catalog_available_online">Disponible en línea</string>
     <string name="catalog_available_offline">Disponible sin conexión</string>
-    <string name="catalog_sheet_read_detail">Ábrelo ahora sin agregarlo a Mi biblioteca. Requiere conexión a Internet.</string>
-    <string name="catalog_sheet_download_title">Descargar a Mi biblioteca</string>
-    <string name="catalog_sheet_download_detail">Guárdalo en este dispositivo para leerlo sin Internet (%1$s).</string>
-    <string name="catalog_sheet_open_title">Abrir desde Mi biblioteca</string>
-    <string name="catalog_sheet_open_detail">Ya está descargado y se abre sin Internet.</string>
     <string name="catalog_sheet_cancel_title">Cancelar</string>
-    <string name="catalog_sheet_cancel_detail">Detener esta transferencia.</string>
     <string name="catalog_downloaded_message">«%1$s» se agregó a Mi biblioteca</string>
     <string name="catalog_downloaded_action">Ver</string>
 
@@ -95,7 +89,6 @@
     <string name="catalog_update">Actualizar</string>
     <string name="catalog_updating_percent">Actualizando… %1$d%%</string>
     <string name="catalog_sheet_update_title">Actualizar la copia descargada</string>
-    <string name="catalog_sheet_update_detail">Drive tiene una versión más nueva. Se conservan tu posición de lectura, tus marcadores y el favorito.</string>
     <string name="catalog_updated_message">«%1$s» se actualizó</string>
     <string name="selection_count">%1$d seleccionados · %2$s</string>
     <string name="selection_download">Descargar</string>
@@ -114,7 +107,6 @@
     <string name="collection_add_to">Agregar a una colección</string>
 
     <!-- Comunidad -->
-    <string name="title_community">Comunidad</string>
     <string name="title_community_screen">Qué leen los demás</string>
     <string name="community_nickname_hint">Apodo de este dispositivo</string>
     <string name="community_off_title">Comparte lo que lees</string>
@@ -196,9 +188,7 @@
     <string name="ai_error_busy">El servicio está ocupado. Inténtalo de nuevo en un momento.</string>
     <string name="ai_error_refused">El asistente no pudo trabajar con este texto.</string>
     <string name="ai_error_generic">Algo salió mal. Inténtalo de nuevo.</string>
-    <string name="ai_settings_title">Asistente de IA</string>
     <string name="ai_settings_detail">Explicaciones, resúmenes y datos de los libros generados con IA. El texto que seleccionas se envía a un servidor de CREA para responder; mientras esté desactivado no se envía nada.</string>
-    <string name="ai_settings_unavailable">No disponible en esta versión.</string>
     <string name="tts_voice_item">Voz %1$d (%2$s)</string>
     <string name="tts_quality_highest">calidad muy alta</string>
     <string name="tts_quality_high">calidad alta</string>

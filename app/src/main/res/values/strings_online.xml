@@ -31,13 +31,7 @@
     <string name="catalog_preparing_percent">Preparing to read… %1$d%%</string>
     <string name="catalog_available_online">Available online</string>
     <string name="catalog_available_offline">Available offline</string>
-    <string name="catalog_sheet_read_detail">Open it now without adding it to My library. Needs an Internet connection.</string>
-    <string name="catalog_sheet_download_title">Download to My library</string>
-    <string name="catalog_sheet_download_detail">Keep it on this device to read without Internet (%1$s).</string>
-    <string name="catalog_sheet_open_title">Open from My library</string>
-    <string name="catalog_sheet_open_detail">It is already downloaded and opens without Internet.</string>
     <string name="catalog_sheet_cancel_title">Cancel</string>
-    <string name="catalog_sheet_cancel_detail">Stop this transfer.</string>
     <string name="catalog_downloaded_message">“%1$s” was added to My library</string>
     <string name="catalog_downloaded_action">View</string>
 
@@ -94,7 +88,6 @@
     <string name="catalog_update">Update</string>
     <string name="catalog_updating_percent">Updating… %1$d%%</string>
     <string name="catalog_sheet_update_title">Update the downloaded copy</string>
-    <string name="catalog_sheet_update_detail">Drive has a newer version. Your reading position, bookmarks and favorite are kept.</string>
     <string name="catalog_updated_message">“%1$s” was updated</string>
     <string name="selection_count">%1$d selected · %2$s</string>
     <string name="selection_download">Download</string>
@@ -113,7 +106,6 @@
     <string name="collection_add_to">Add to a collection</string>
 
     <!-- Community -->
-    <string name="title_community">Community</string>
     <string name="title_community_screen">What others are reading</string>
     <string name="community_nickname_hint">Nickname for this device</string>
     <string name="community_off_title">Share what you read</string>
@@ -193,9 +185,7 @@
     <string name="ai_error_busy">The service is busy. Try again in a moment.</string>
     <string name="ai_error_refused">The assistant could not work with this text.</string>
     <string name="ai_error_generic">Something went wrong. Try again.</string>
-    <string name="ai_settings_title">AI assistant</string>
     <string name="ai_settings_detail">Explanations, summaries and book information generated with AI. The selected text is sent to a CREA server to answer; nothing is sent while this is off.</string>
-    <string name="ai_settings_unavailable">Not available in this version.</string>
     <string name="tts_voice_item">Voice %1$d (%2$s)</string>
     <string name="tts_quality_highest">very high quality</string>
     <string name="tts_quality_high">high quality</string>

@@ -35,7 +35,6 @@
     <string name="profile_finish_button">Terminé, devolver el dispositivo</string>
     <string name="profile_community">Qué leen los demás</string>
     <string name="profile_community_detail">Lo que se lee en los demás dispositivos</string>
-    <string name="profile_options">Opciones del perfil</string>
     <string name="profile_edit">Cambiar nombre o dibujo</string>
     <string name="profile_hide">Ocultar mi lectura a los demás</string>
     <string name="profile_show">Mostrar mi lectura a los demás</string>

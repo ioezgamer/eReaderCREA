@@ -35,7 +35,6 @@
     <string name="profile_finish_button">I\'m done, hand the device back</string>
     <string name="profile_community">What others are reading</string>
     <string name="profile_community_detail">What is being read on the other devices</string>
-    <string name="profile_options">Profile options</string>
     <string name="profile_edit">Change name or drawing</string>
     <string name="profile_hide">Hide my reading from others</string>
     <string name="profile_show">Show my reading to others</string>

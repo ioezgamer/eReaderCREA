@@ -2,7 +2,6 @@
 <resources>
     <!-- Biblioteca -->
     <string name="library_continue_label">Seguir leyendo</string>
-    <string name="library_continue_action">Continuar</string>
     <string name="library_sync_running">Sincronizando…</string>
     <string name="library_sync_error_title">Sincronización pendiente</string>
     <string name="library_sync_ok_detail">%1$s · %2$d libros en el catálogo</string>
@@ -48,8 +47,6 @@
     <string name="sync_how_4">Eliminar un libro de Mi biblioteca solo borra la copia de este dispositivo; el archivo en Drive nunca se modifica ni se elimina.</string>
     <string name="sync_summary_uptodate">Todo está al día</string>
     <string name="sync_summary_changes">%1$d nuevos · %2$d modificados · %3$d quitados del catálogo</string>
-    <string name="sync_books_count">%1$d libros</string>
-    <string name="sync_never">Aún no se ha sincronizado</string>
     <string name="sync_stage_connecting">Conectando con Drive…</string>
     <string name="sync_stage_checking">Buscando cambios…</string>
     <string name="sync_stage_uploading">Subiendo %1$d de %2$d</string>
