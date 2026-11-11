@@ -29,6 +29,9 @@ export function loadConfig(env = process.env) {
     aventurasDailyLimit: Number(env.AVENTURAS_DAILY_LIMIT || 5000),
     // Tope diario de todas las tablets que entran con la llave de la app (ademas de 30 por tablet).
     aventurasAppDailyLimit: Number(env.AVENTURAS_APP_DAILY_LIMIT || 1500),
+    // Reportes de contenido del tutor: por tablet y día, y tope diario de todo el servicio.
+    aventurasReportDeviceLimit: Number(env.AVENTURAS_REPORT_DEVICE_LIMIT || 5),
+    aventurasReportDailyLimit: Number(env.AVENTURAS_REPORT_DAILY_LIMIT || 200),
     suspendHours: Number(env.SUSPEND_HOURS || 6),
     prices: { ...DEFAULT_PRICES, ...(env.PRICES ? JSON.parse(env.PRICES) : {}) },
   };

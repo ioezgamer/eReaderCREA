@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createAuthenticator } from "./auth.js";
+import { createReports } from "./aventurasReport.js";
 import { createService, loadConfig } from "./service.js";
 import { createStore } from "./store.js";
 import { createVoice, loadVoiceConfig } from "./voice.js";
@@ -76,7 +77,7 @@ function serveAdmin(url, response) {
   return response.end();
 }
 
-export function createServer({ config, service, authenticate, voice }) {
+export function createServer({ config, service, authenticate, voice, reports }) {
   const send = (response, status, body) => {
     const text = JSON.stringify(body);
     response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -104,7 +105,7 @@ export function createServer({ config, service, authenticate, voice }) {
       if (url.pathname === "/healthz") return send(response, 200, { ok: true });
       if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) return serveAdmin(url, response);
 
-      if (request.method === "POST" && url.pathname === "/v1/aventuras/tutor") {
+      if (request.method === "POST" && (url.pathname === "/v1/aventuras/tutor" || url.pathname === "/v1/aventuras/tutor/report")) {
         // Dos llaves para la misma ruta: la de servicio (CREA OS llama entre servidores) y la de la app
         // (tablets sin CREA Home que llaman directo). La de la app viaja dentro del APK, asi que se trata
         // como una llave publica de bajo privilegio: identidad y tope diario propios, y se puede rotar o
@@ -122,9 +123,18 @@ export function createServer({ config, service, authenticate, voice }) {
         catch (error) { if (error instanceof service.ServiceError) throw error; return send(response, 400, { ok: false, code: "invalid_json" }); }
         const device = String(request.headers["x-device-id"] || "");
         if (!/^[a-f0-9]{64}$/.test(device)) return send(response, 400, { ok: false, code: "invalid_device" });
+        const deviceKey = (direct ? "aventuras-app-" : "aventuras-") + device;
+
+        // Reporte de una sugerencia de la IA (mismas llaves y mismo código de tablet que el tutor).
+        if (url.pathname === "/v1/aventuras/tutor/report") {
+          if (!reports) return send(response, 503, { ok: false, code: "reports_disabled" });
+          const saved = await reports.submit(deviceKey, direct ? "app" : "service", body);
+          return send(response, 200, { ok: true, ...saved });
+        }
+
         const { result, model } = await service.ask(
           { email: direct ? "aventuras-app@creanicaragua.org" : "aventuras-service@creanicaragua.org" },
-          (direct ? "aventuras-app-" : "aventuras-") + device,
+          deviceKey,
           "aventuras_tutor",
           body,
           { dailyLimit: direct ? config.aventurasAppDailyLimit : config.aventurasDailyLimit },
@@ -136,6 +146,12 @@ export function createServer({ config, service, authenticate, voice }) {
       if (!user) return send(response, 401, { ok: false, code: "unauthorized" });
       const deviceId = String(request.headers["x-device-id"] ?? "").slice(0, 80) || "sin-id";
 
+      // Reportes de contenido del tutor de Aventuras, para revisarlos: con la sesión de Google de CREA.
+      if (request.method === "GET" && url.pathname === "/v1/aventuras/tutor/reports") {
+        if (!reports) return send(response, 503, { ok: false, code: "reports_disabled" });
+        const day = url.searchParams.get("day") || new Date().toISOString().slice(0, 10);
+        return send(response, 200, { ok: true, ...(await reports.list(day)) });
+      }
       if (request.method === "GET" && url.pathname === "/v1/status") {
         const voiceStatus = voice ? await voice.status(deviceId) : { available: false, reason: "disabled" };
         return send(response, 200, { ok: true, ...(await service.status(user, deviceId)), voice: voiceStatus });
@@ -182,7 +198,8 @@ if (fileURLToPath(import.meta.url) === path.resolve(process.argv[1] ?? "")) {
   const authenticate = createAuthenticator({ config });
   const voice = createVoice({ config: loadVoiceConfig(), store, ServiceError: service.ServiceError });
   const port = Number(process.env.PORT || 8787);
-  createServer({ config, service, authenticate, voice }).listen(port, () => {
+  const reports = createReports({ config, store, ServiceError: service.ServiceError });
+  createServer({ config, service, authenticate, voice, reports }).listen(port, () => {
     console.log(`CREA Reader AI escuchando en :${port} (mock=${config.mock}, auth=${config.authMode}, modelo=${config.models.fast}, contadores=${store.kind})`);
     if (config.authMode === "google" && config.allowedAudiences.length === 0) {
       console.warn("ATENCIÓN: ALLOWED_AUDIENCES está vacío; se acepta el token de cualquier aplicación de Google de la organización.");

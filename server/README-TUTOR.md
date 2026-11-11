@@ -17,3 +17,14 @@ Algunas tablets no tienen CREA Home. Para ellas, CREA Aventuras puede llamar a e
 - **Activarla:** genera un valor aleatorio de 32 bytes, ponlo en Render como `CREA_AVENTURAS_APP_TOKEN` y en el archivo de configuración con el que se compila el APK de conexión directa (ver el README de CREA Aventuras). No lo escribas en Git ni en mensajes.
 - **Apagarla o rotarla:** quita o cambia la variable en Render. Las tablets con la llave anterior reciben 401 y siguen con la ruta local; CREA OS no se ve afectado.
 - `X-Device-Id` es el SHA-256 de un identificador al azar de la instalación (no del dispositivo ni de la persona).
+
+## Reportar una sugerencia de la IA
+
+Google Play pide que las apps con contenido generado con IA permitan reportarlo a los desarrolladores sin salir de la app. La ruta del tutor incluye texto escrito por Claude (un resumen y tres motivos), así que CREA Aventuras tiene «Reportar esta sugerencia».
+
+- **`POST /v1/aventuras/tutor/report`**: mismas llaves y mismo `X-Device-Id` que el tutor. Cuerpo estricto: `version`, `reason` (`ofensivo`, `inadecuado_edad` o `confuso_o_erroneo`), `summary` (el resumen reportado), `choices` (1 a 3, con `id` y `reason`) y `app` (versión). Cualquier otro campo se rechaza.
+- **Qué se guarda:** el texto reportado, el motivo, la versión de la app, la fecha y el canal (`app` o `service`). **No** se guarda el código de la tablet con el reporte (solo cuenta para el límite), ni perfil, apodo o resultados.
+- **Límites:** 5 reportes por tablet y día (`AVENTURAS_REPORT_DEVICE_LIMIT`) y 200 al día en total (`AVENTURAS_REPORT_DAILY_LIMIT`). No gasta consultas del tutor ni presupuesto: no llama a Claude.
+- **Conservación:** 90 días en Redis; después se borran solos. (En Firestore no hay caducidad automática; el despliegue actual usa Redis.)
+- **Cómo se revisan:** cada reporte deja una línea en el registro del servidor («Reporte de contenido del tutor de Aventuras»), y `GET /v1/aventuras/tutor/reports?day=AAAA-MM-DD` devuelve los de ese día a quien entre con la sesión de Google de CREA (la misma autenticación de CREA Reader). No hay aviso por correo: alguien tiene que mirarlos.
+- **Para CREA Home:** si CREA OS reenvía los reportes de las tablets con CREA Home, llama a esta misma ruta con la llave de servicio.

@@ -3,7 +3,8 @@ import { test } from "node:test";
 import { aventurasTutor } from "../src/aventurasTutor.js";
 import { createServer } from "../src/index.js";
 import { createService, loadConfig } from "../src/service.js";
-import { MemoryStore } from "../src/store.js";
+import { MemoryStore, ttlFor, createRedisStore } from "../src/store.js";
+import { createReports } from "../src/aventurasReport.js";
 
 const input = { version: 1, evaluated: true, candidates: Object.entries({silabas:"SILABAS",rimas:"RIMAS",matematicas:"MATEMATICAS"}).map(([game,id]) => ({id:`${id}:INICIAL:1`,game,stage:"inicial",level:1,objective:"Practicar.",reason:"Evaluación inicial.",recentAttempts:0,recentPercent:-1})) };
 const plan = {summary:"Practicaremos lectura y números.",choices:input.candidates.map(c=>({id:c.id,reason:"Practicar esta habilidad."}))};
@@ -112,4 +113,89 @@ test("sin ninguna llave el tutor queda apagado", async t => {
   const s = appService({ CREA_AVENTURAS_SERVICE_TOKEN: "", CREA_AVENTURAS_APP_TOKEN: "" });
   const url = await listen(t, createServer({ ...s, authenticate: async () => null }));
   assert.equal((await post(url, "app-test")).status, 503);
+});
+
+// ---------- Reportes de contenido del tutor ----------
+const report = { version: 1, reason: "ofensivo", summary: "Texto que escribió la IA.", choices: [{ id: "SILABAS:INICIAL:1", reason: "Motivo que escribió la IA." }], app: "1.12.0-directo" };
+function reportServer(env = {}) {
+  const s = appService(env);
+  const lines = [];
+  const reports = createReports({ config: s.config, store: s.store, ServiceError: s.service.ServiceError, now: () => new Date("2026-11-11T15:00:00Z"), log: (...a) => lines.push(a.join(" ")) });
+  return { ...s, reports, lines };
+}
+const postReport = (url, token, body = report, device = "c".repeat(64)) => fetch(url + "/report", {
+  method: "POST",
+  headers: { "content-type": "application/json", "x-device-id": device, ...(token ? { authorization: "Bearer " + token } : {}) },
+  body: JSON.stringify(body),
+});
+test("un reporte se guarda sin el código de la tablet y se puede revisar con la sesión de CREA", async t => {
+  const s = reportServer();
+  const server = createServer({ ...s, authenticate: async request => request.headers.authorization === "Bearer google" ? { email: "docente@creanicaragua.org" } : null });
+  const url = await listen(t, server);
+  const response = await postReport(url, "app-test");
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ok: true, day: "2026-11-11", number: 1 });
+  const stored = await s.store.get("aventuras_report/2026-11-11/1");
+  assert.deepEqual(stored, { at: "2026-11-11T15:00:00.000Z", channel: "app", ...report });
+  assert.equal(JSON.stringify([...s.store.data.entries()].filter(([k]) => k.startsWith("aventuras_report/"))).includes("c".repeat(64)), false);
+  assert.equal(s.lines.length, 1);
+  assert.equal(s.lines[0].includes("Texto que escribió"), false); // el registro no repite el texto
+  // No gasta consultas del tutor.
+  assert.equal(await s.store.get("use/2026-11-11/aventuras-app-" + "c".repeat(64)), null);
+  // Lectura: solo con sesión de Google de CREA; las llaves de la app no sirven para leer.
+  const reportsUrl = url + "/reports?day=2026-11-11";
+  assert.equal((await fetch(reportsUrl)).status, 401);
+  assert.equal((await fetch(reportsUrl, { headers: { authorization: "Bearer app-test" } })).status, 401);
+  const listed = await (await fetch(reportsUrl, { headers: { authorization: "Bearer google" } })).json();
+  assert.equal(listed.count, 1);
+  assert.equal(listed.reports[0].summary, report.summary);
+  assert.equal((await fetch(url + "/reports?day=hoy", { headers: { authorization: "Bearer google" } })).status, 400);
+});
+test("los reportes exigen llave y contrato estricto, sin identidad ni campos de más", async t => {
+  const s = reportServer();
+  const url = await listen(t, createServer({ ...s, authenticate: async () => null }));
+  assert.equal((await postReport(url, null)).status, 401);
+  assert.equal((await postReport(url, "otra")).status, 401);
+  assert.equal((await postReport(url, "service-test")).status, 200);
+  assert.equal((await s.store.get("aventuras_report/2026-11-11/1")).channel, "service");
+  for (const bad of [
+    { ...report, nickname: "Ana" },
+    { ...report, reason: "otro" },
+    { ...report, summary: "x".repeat(401) },
+    { ...report, choices: [] },
+    { ...report, choices: [{ id: "cualquier cosa", reason: "x" }] },
+    { ...report, choices: [{ ...report.choices[0], profile: "p1" }] },
+    { ...report, app: "<script>" },
+    { ...report, version: 2 },
+  ]) assert.equal((await postReport(url, "app-test", bad)).status, 400, JSON.stringify(bad).slice(0, 60));
+  assert.equal((await postReport(url, "app-test", report, "no-es-un-hash")).status, 400);
+});
+test("límite de reportes por tablet y tope diario del servicio", async t => {
+  const s = reportServer({ AVENTURAS_REPORT_DEVICE_LIMIT: "2", AVENTURAS_REPORT_DAILY_LIMIT: "3" });
+  const url = await listen(t, createServer({ ...s, authenticate: async () => null }));
+  assert.equal((await postReport(url, "app-test", report, "1".repeat(64))).status, 200);
+  assert.equal((await postReport(url, "app-test", report, "1".repeat(64))).status, 200);
+  assert.equal((await postReport(url, "app-test", report, "1".repeat(64))).status, 429);
+  assert.equal((await postReport(url, "app-test", report, "2".repeat(64))).status, 200);
+  assert.equal((await postReport(url, "app-test", report, "3".repeat(64))).status, 429);
+  // El tutor sigue funcionando: los reportes no tocan sus contadores.
+  assert.equal((await post(url, "app-test", "1".repeat(64))).status, 200);
+});
+test("sin el módulo de reportes la ruta responde 503 y el tutor no cambia", async t => {
+  const s = appService();
+  const url = await listen(t, createServer({ ...s, authenticate: async () => null }));
+  assert.equal((await postReport(url, "app-test")).status, 503);
+  assert.equal((await post(url, "app-test")).status, 200);
+});
+test("los reportes caducan a los 90 días y sus contadores a los 40, también al escribirlos en Redis", async () => {
+  assert.equal(ttlFor("aventuras_report/2026-11-11/1"), 90 * 86400);
+  assert.equal(ttlFor("aventuras_report_day/2026-11-11"), 40 * 86400);
+  assert.equal(ttlFor("aventuras_report_use/2026-11-11/aventuras-app-x"), 40 * 86400);
+  assert.equal(ttlFor("control"), null);
+  const sent = [];
+  const redis = createRedisStore({ url: "https://redis.invalid", token: "t", fetchImpl: async (_url, options) => { sent.push(JSON.parse(options.body)); return { ok: true, json: async () => JSON.parse(options.body).map(() => ({ result: "OK" })) }; } });
+  await redis.set("aventuras_report/2026-11-11/1", report);
+  assert.deepEqual(sent[0].at(-1), ["EXPIRE", "aventuras_report/2026-11-11/1", String(90 * 86400)]);
+  await redis.set("control", { paused: true });
+  assert.equal(sent[1].some(c => c[0] === "EXPIRE"), false);
 });
