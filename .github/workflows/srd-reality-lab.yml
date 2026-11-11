@@ -1,0 +1,65 @@
+name: SRD Reality Lab iOS unsigned IPA
+on:
+  push:
+    branches:
+      - experiments/srd-reality-lab
+  pull_request:
+    branches:
+      - main
+    paths:
+      - SRDRealityLab/**
+      - .github/workflows/srd-reality-lab.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-ios:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode and verify iOS app source
+        shell: bash
+        run: |
+          mkdir -p SRDRealityLab
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, hashlib, io, tarfile
+          contents = Path("SRDRealityLab/source.tar.gz.b64").read_text(encoding="ascii")
+          raw = base64.b64decode("".join(contents.split()), validate=True)
+          expected = "cd3883b399b4beade8d88df74bba5f9bcbc49ecaabe7ef62f816a4a0da888389"
+          actual = hashlib.sha256(raw).hexdigest()
+          if actual != expected:
+              raise SystemExit("Source SHA-256 mismatch: " + actual)
+          with tarfile.open(fileobj=io.BytesIO(raw),mode="r:gz") as archive:
+              for entry in archive.getmembers():
+                  if entry.issym() or entry.islnk() or entry.name.startswith("/") or ".." in entry.name.split("/"):
+                      raise SystemExit("Unsafe archive member: " + entry.name)
+              archive.extractall("SRDRealityLab")
+          print("Verified source archive: " + actual)
+          PY
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Create Xcode project
+        run: |
+          cd SRDRealityLab
+          xcodegen generate
+      - name: Build unsigned arm64 iOS app
+        shell: bash
+        run: |
+          cd SRDRealityLab
+          xcodebuild -project SRDRealityLab.xcodeproj -scheme SRDRealityLab -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$PWD/DerivedData" CODE_SIGNING_ALLOWED=NO build
+      - name: Package IPA
+        shell: bash
+        run: |
+          mkdir -p Payload
+          cp -R SRDRealityLab/DerivedData/Build/Products/Release-iphoneos/SRDRealityLab.app Payload/
+          zip -qr SRDRealityLab-unsigned.ipa Payload
+          unzip -t SRDRealityLab-unsigned.ipa
+          shasum -a 256 SRDRealityLab-unsigned.ipa
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: SRDRealityLab-unsigned-IPA
+          path: SRDRealityLab-unsigned.ipa
+          if-no-files-found: error
