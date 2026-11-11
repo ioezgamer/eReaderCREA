@@ -14,6 +14,8 @@ export function loadConfig(env = process.env) {
   const fast = env.MODEL_FAST || "claude-haiku-5-5";
   return {
     aventurasServiceToken: env.CREA_AVENTURAS_SERVICE_TOKEN || "",
+    // Llave de la app CREA Aventuras para tablets sin CREA Home (va dentro del APK: bajo privilegio).
+    aventurasAppToken: env.CREA_AVENTURAS_APP_TOKEN || "",
     enabled: env.AI_ENABLED !== "false",
     mock: env.MOCK_AI === "1",
     authMode: env.AUTH_MODE === "mock" ? "mock" : "google",
@@ -25,6 +27,8 @@ export function loadConfig(env = process.env) {
     // CREA Aventuras entra con un token de servicio y una sola identidad para todas las tablets, así que
     // no puede compartir el límite de una persona: tiene su propio tope diario para todo el servicio.
     aventurasDailyLimit: Number(env.AVENTURAS_DAILY_LIMIT || 5000),
+    // Tope diario de todas las tablets que entran con la llave de la app (ademas de 30 por tablet).
+    aventurasAppDailyLimit: Number(env.AVENTURAS_APP_DAILY_LIMIT || 1500),
     suspendHours: Number(env.SUSPEND_HOURS || 6),
     prices: { ...DEFAULT_PRICES, ...(env.PRICES ? JSON.parse(env.PRICES) : {}) },
   };

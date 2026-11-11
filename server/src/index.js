@@ -105,22 +105,29 @@ export function createServer({ config, service, authenticate, voice }) {
       if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) return serveAdmin(url, response);
 
       if (request.method === "POST" && url.pathname === "/v1/aventuras/tutor") {
-        const expected = config.aventurasServiceToken || "";
-        if (!expected) return send(response, 503, { ok: false, code: "tutor_disabled" });
-        const supplied = String(request.headers.authorization || "").replace(/^Bearer /, "");
-        const a = Buffer.from(expected), b = Buffer.from(supplied);
-        if (a.length !== b.length || !timingSafeEqual(a, b)) return send(response, 401, { ok: false, code: "unauthorized" });
+        // Dos llaves para la misma ruta: la de servicio (CREA OS llama entre servidores) y la de la app
+        // (tablets sin CREA Home que llaman directo). La de la app viaja dentro del APK, asi que se trata
+        // como una llave publica de bajo privilegio: identidad y tope diario propios, y se puede rotar o
+        // quitar sin tocar a CREA OS.
+        const supplied = Buffer.from(String(request.headers.authorization || "").replace(/^Bearer /, ""));
+        const matches = (expected) => {
+          const a = Buffer.from(expected || "");
+          return a.length > 0 && a.length === supplied.length && timingSafeEqual(a, supplied);
+        };
+        if (!config.aventurasServiceToken && !config.aventurasAppToken) return send(response, 503, { ok: false, code: "tutor_disabled" });
+        const direct = !matches(config.aventurasServiceToken) && matches(config.aventurasAppToken);
+        if (!direct && !matches(config.aventurasServiceToken)) return send(response, 401, { ok: false, code: "unauthorized" });
         let body;
         try { body = JSON.parse(await readBody(request)); }
         catch (error) { if (error instanceof service.ServiceError) throw error; return send(response, 400, { ok: false, code: "invalid_json" }); }
         const device = String(request.headers["x-device-id"] || "");
         if (!/^[a-f0-9]{64}$/.test(device)) return send(response, 400, { ok: false, code: "invalid_device" });
         const { result, model } = await service.ask(
-          { email: "aventuras-service@creanicaragua.org" },
-          "aventuras-" + device,
+          { email: direct ? "aventuras-app@creanicaragua.org" : "aventuras-service@creanicaragua.org" },
+          (direct ? "aventuras-app-" : "aventuras-") + device,
           "aventuras_tutor",
           body,
-          { dailyLimit: config.aventurasDailyLimit },
+          { dailyLimit: direct ? config.aventurasAppDailyLimit : config.aventurasDailyLimit },
         );
         return send(response, 200, { ok: true, result, model });
       }
