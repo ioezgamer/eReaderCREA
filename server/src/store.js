@@ -38,9 +38,10 @@ const DAY_SECONDS = 86_400;
 
 /** Cuánto se guarda cada contador: los diarios unas semanas, los mensuales algo más de un año. */
 export function ttlFor(key) {
-  if (/^(use|user|voice_day|aventuras_report_use|aventuras_report_day)\//.test(key)) return 40 * DAY_SECONDS;
-  // Reportes de contenido del tutor de Aventuras: se conservan 90 días para revisarlos y luego se borran solos.
-  if (/^aventuras_report\//.test(key)) return 90 * DAY_SECONDS;
+  if (/^(use|user|voice_day|aventuras_report_use)\//.test(key)) return 40 * DAY_SECONDS;
+  // Reportes de contenido del tutor de Aventuras: se conservan 90 días para revisarlos y luego se borran
+  // solos. El índice del día (aventuras_report_day) dura lo mismo: sin él no se pueden encontrar.
+  if (/^(aventuras_report|aventuras_report_day)\//.test(key)) return 90 * DAY_SECONDS;
   if (/^(spend|voice_month)\//.test(key)) return 400 * DAY_SECONDS;
   return null; // control y voice_control no caducan
 }

@@ -187,9 +187,10 @@ test("sin el módulo de reportes la ruta responde 503 y el tutor no cambia", asy
   assert.equal((await postReport(url, "app-test")).status, 503);
   assert.equal((await post(url, "app-test")).status, 200);
 });
-test("los reportes caducan a los 90 días y sus contadores a los 40, también al escribirlos en Redis", async () => {
+test("los reportes y su índice del día duran 90 días; el contador por tablet, 40; también al escribirlos en Redis", async () => {
   assert.equal(ttlFor("aventuras_report/2026-11-11/1"), 90 * 86400);
-  assert.equal(ttlFor("aventuras_report_day/2026-11-11"), 40 * 86400);
+  // El índice del día debe durar lo mismo que los reportes: es lo que usa la lectura para encontrarlos.
+  assert.equal(ttlFor("aventuras_report_day/2026-11-11"), 90 * 86400);
   assert.equal(ttlFor("aventuras_report_use/2026-11-11/aventuras-app-x"), 40 * 86400);
   assert.equal(ttlFor("control"), null);
   const sent = [];
@@ -198,4 +199,90 @@ test("los reportes caducan a los 90 días y sus contadores a los 40, también al
   assert.deepEqual(sent[0].at(-1), ["EXPIRE", "aventuras_report/2026-11-11/1", String(90 * 86400)]);
   await redis.set("control", { paused: true });
   assert.equal(sent[1].some(c => c[0] === "EXPIRE"), false);
+  // Los contadores se escriben con increment: el índice lleva 90 días y el de la tablet 40.
+  await redis.increment("aventuras_report_day/2026-11-11", { total: 1 });
+  assert.deepEqual(sent[2].find(c => c[0] === "EXPIRE"), ["EXPIRE", "aventuras_report_day/2026-11-11", String(90 * 86400)]);
+  await redis.increment("aventuras_report_use/2026-11-11/aventuras-app-x", { total: 1 });
+  assert.deepEqual(sent[3].find(c => c[0] === "EXPIRE"), ["EXPIRE", "aventuras_report_use/2026-11-11/aventuras-app-x", String(40 * 86400)]);
+});
+/** Almacén con caducidad, como Redis: aplica ttlFor a cada escritura y borra lo vencido al avanzar el reloj. */
+class ExpiringStore extends MemoryStore {
+  constructor(clock) { super(); this.clock = clock; this.expires = new Map(); }
+  touch(key) { const ttl = ttlFor(key); if (ttl) this.expires.set(key, this.clock() + ttl * 1000); }
+  alive(key) { const at = this.expires.get(key); if (at !== undefined && this.clock() >= at) { this.data.delete(key); this.expires.delete(key); } }
+  async get(key) { this.alive(key); return super.get(key); }
+  async set(key, value) { await super.set(key, value); this.touch(key); }
+  async increment(key, fields) { this.alive(key); const next = await super.increment(key, fields); this.touch(key); return next; }
+}
+test("los reportes se pueden leer hasta los 90 días (el índice no caduca antes) y después desaparecen", async () => {
+  let nowMs = Date.parse("2026-11-11T15:00:00Z");
+  const config = loadConfig({ CREA_AVENTURAS_APP_TOKEN: "app-test" });
+  const store = new ExpiringStore(() => nowMs);
+  const { ServiceError } = createService({ config, store, claude: {} });
+  const reports = createReports({ config, store, ServiceError, now: () => new Date(nowMs), log: () => {} });
+  await reports.submit("aventuras-app-" + "a".repeat(64), "app", report);
+  await reports.submit("aventuras-app-" + "b".repeat(64), "app", { ...report, reason: "confuso_o_erroneo" });
+  const day = 86400 * 1000;
+  for (const days of [1, 41, 89]) {
+    nowMs = Date.parse("2026-11-11T15:00:00Z") + days * day;
+    const listed = await reports.list("2026-11-11");
+    assert.equal(listed.count, 2, `a los ${days} días`);
+    assert.deepEqual(listed.reports.map(r => r.reason), ["ofensivo", "confuso_o_erroneo"]);
+  }
+  // A los 41 días el contador por tablet ya caducó (no hace falta para leer).
+  nowMs = Date.parse("2026-11-11T15:00:00Z") + 41 * day;
+  assert.equal(await store.get("aventuras_report_use/2026-11-11/aventuras-app-" + "a".repeat(64)), null);
+  nowMs = Date.parse("2026-11-11T15:00:00Z") + 91 * day;
+  assert.deepEqual(await reports.list("2026-11-11"), { day: "2026-11-11", count: 0, reports: [] });
+});
+/** Almacén que cede el turno en cada operación, para que las peticiones simultáneas se entrelacen de verdad. */
+class SlowStore extends MemoryStore {
+  async get(key) { await new Promise(r => setImmediate(r)); return super.get(key); }
+  async set(key, value) { await new Promise(r => setImmediate(r)); return super.set(key, value); }
+  async increment(key, fields) { await new Promise(r => setImmediate(r)); return super.increment(key, fields); }
+}
+function concurrentReports(env) {
+  const config = loadConfig({ CREA_AVENTURAS_APP_TOKEN: "app-test", ...env });
+  const store = new SlowStore();
+  const { ServiceError } = createService({ config, store, claude: {} });
+  const reports = createReports({ config, store, ServiceError, now: () => new Date("2026-11-11T15:00:00Z"), log: () => {} });
+  return { store, reports };
+}
+const outcome = promise => promise.then(() => "ok", error => error.status);
+test("concurrencia: la misma tablet no pasa de su límite aunque envíe todo a la vez", async () => {
+  const { store, reports } = concurrentReports({ AVENTURAS_REPORT_DEVICE_LIMIT: "5", AVENTURAS_REPORT_DAILY_LIMIT: "200" });
+  const device = "aventuras-app-" + "d".repeat(64);
+  const results = await Promise.all(Array.from({ length: 20 }, () => outcome(reports.submit(device, "app", report))));
+  assert.equal(results.filter(r => r === "ok").length, 5);
+  assert.equal(results.filter(r => r === 429).length, 15);
+  const listed = await reports.list("2026-11-11");
+  assert.equal(listed.reports.length, 5);
+  assert.deepEqual(listed.reports.map(r => r.number), [1, 2, 3, 4, 5]); // números únicos, sin pisarse
+  // Los rechazados por el límite de la tablet no gastaron cupo global.
+  assert.equal((await store.get("aventuras_report_day/2026-11-11")).total, 5);
+  // Documentado: los intentos de más siguen contando para esa tablet.
+  assert.equal((await store.get(`aventuras_report_use/2026-11-11/${device}`)).total, 20);
+  assert.equal(await outcome(reports.submit(device, "app", report)), 429);
+});
+test("concurrencia: muchas tablets a la vez no pasan del tope diario del servicio", async () => {
+  const { store, reports } = concurrentReports({ AVENTURAS_REPORT_DEVICE_LIMIT: "5", AVENTURAS_REPORT_DAILY_LIMIT: "3" });
+  const devices = Array.from({ length: 12 }, (_, i) => "aventuras-app-" + String(i % 10).repeat(63) + (i < 10 ? "a" : "b"));
+  const results = await Promise.all(devices.map(d => outcome(reports.submit(d, "app", report))));
+  assert.equal(results.filter(r => r === "ok").length, 3);
+  assert.equal(results.filter(r => r === 429).length, 9);
+  const listed = await reports.list("2026-11-11");
+  assert.equal(listed.count, 3);
+  assert.deepEqual(listed.reports.map(r => r.number), [1, 2, 3]);
+  // No se guardó ningún reporte por encima del tope, aunque el contador de reservas lo supere.
+  assert.equal((await store.get("aventuras_report_day/2026-11-11")).total, 12);
+  assert.equal(await store.get("aventuras_report/2026-11-11/4"), null);
+  // Documentado: el rechazo por tope global también gastó un cupo de cada tablet.
+  assert.equal((await store.get(`aventuras_report_use/2026-11-11/${devices[11]}`)).total, 1);
+});
+test("un reporte con datos no válidos no reserva ningún cupo", async () => {
+  const { store, reports } = concurrentReports({});
+  const device = "aventuras-app-" + "e".repeat(64);
+  assert.equal(await outcome(reports.submit(device, "app", { ...report, nickname: "Ana" })), 400);
+  assert.equal(await store.get(`aventuras_report_use/2026-11-11/${device}`), null);
+  assert.equal(await store.get("aventuras_report_day/2026-11-11"), null);
 });
