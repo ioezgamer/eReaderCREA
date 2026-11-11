@@ -33,6 +33,13 @@ services:
         value: "5000"
       - key: CREA_AVENTURAS_SERVICE_TOKEN
         sync: false
+      # Llave de la app CREA Aventuras para tablets SIN CREA Home (conexion directa). Va dentro del APK, asi
+      # que es de bajo privilegio: solo sirve para /v1/aventuras/tutor, con tope diario propio. Sin ella, la
+      # conexion directa queda apagada (401).
+      - key: CREA_AVENTURAS_APP_TOKEN
+        sync: false
+      - key: AVENTURAS_APP_DAILY_LIMIT
+        value: "1500"
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: ANTHROPIC_WORKSPACE_ID

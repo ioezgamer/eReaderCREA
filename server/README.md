@@ -49,7 +49,7 @@ Fija además un límite de gasto en el workspace de la consola de Anthropic como
 
 **Solo tokens de la app.** Pon en `ALLOWED_AUDIENCES` el ID del cliente OAuth Android de CREA Reader (`…apps.googleusercontent.com`; varios separados por comas: debug, release y el de Play App Signing). Sin esta variable se acepta el token de Google de cualquier aplicación de la organización, y el servidor lo avisa al arrancar.
 
-**CREA Aventuras** (`POST /v1/aventuras/tutor`, con `CREA_AVENTURAS_SERVICE_TOKEN`) usa una sola identidad para todas sus tablets, así que no comparte el límite por persona (`USER_DAILY_LIMIT`): tiene su propio tope diario, `AVENTURAS_DAILY_LIMIT` (5000 por defecto), además de 30 consultas por tablet y del presupuesto mensual.
+**CREA Aventuras** (`POST /v1/aventuras/tutor`, con `CREA_AVENTURAS_SERVICE_TOKEN`) usa una sola identidad para todas sus tablets, así que no comparte el límite por persona (`USER_DAILY_LIMIT`): tiene su propio tope diario, `AVENTURAS_DAILY_LIMIT` (5000 por defecto), además de 30 consultas por tablet y del presupuesto mensual. Las tablets sin CREA Home entran a la misma ruta con `CREA_AVENTURAS_APP_TOKEN` (llave de bajo privilegio que va en el APK), con su propio tope `AVENTURAS_APP_DAILY_LIMIT` (1500 por defecto); ver `README-TUTOR.md`.
 
 ## Publicarlo en Google Cloud (proyecto `crea-reader`)
 
