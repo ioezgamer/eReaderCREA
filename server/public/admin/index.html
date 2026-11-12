@@ -170,6 +170,20 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .sec.group .rows .status { grid-column: 1 / -1; font-size: 13.5px; color: var(--muted); }
 .streak { font-weight: 400; font-size: 13.5px; color: var(--muted); }
 @media (max-width: 760px) { .sec.group .facts { grid-template-columns: 1fr 1fr; } }
+
+/* ---------- Aventuras: códigos de activación ---------- */
+.av-form { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; margin: 0 0 18px; }
+.av-form label { display: grid; gap: 4px; font-weight: 700; font-size: 14px; }
+.av-form input, .av-form select { border: 1.5px solid var(--ink); background: transparent; color: inherit; border-radius: 10px; padding: 9px 12px; font: inherit; }
+.av-new { border: 2px solid var(--green); border-radius: 14px; padding: 16px 18px; margin: 0 0 22px; }
+.av-new .code { font-family: ui-monospace, Consolas, monospace; font-size: 34px; font-weight: 800; letter-spacing: 2px; margin: 6px 0 10px; word-break: break-all; }
+.av-new p { margin: 4px 0; }
+.av-status { font-weight: 700; }
+.av-status.ok { color: var(--green); }
+.av-status.off { color: var(--red); }
+.av-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn.small { padding: 5px 14px; font-size: 14px; }
+@media (max-width: 760px) { .av-form { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
 <body>
@@ -197,6 +211,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         <button class="tab" data-view="groups">Grupos</button>
         <button class="tab" data-view="readers">Lectores</button>
         <button class="tab" data-view="books">Libros</button>
+        <button class="tab" data-view="aventuras">Aventuras</button>
       </nav>
       <div class="tools-top">
         <span class="updated" id="updated"></span>
@@ -550,6 +565,7 @@ function render() {
       : m.source === "people"
       ? `<p class="note">Cada persona lectora es un perfil de la app (apodo y grupo, sin correo), con lo que leyó en cualquier dispositivo.${m.hidden ? ` ${plural(m.hidden, "persona pidió", "personas pidieron")} ocultar su lectura: cuenta en los totales, sin su apodo.` : ""}</p>`
       : `<p class="note">Aquí aparecen solo quienes activaron <b>«Compartir mi lectura»</b> en la app${m.optedOut ? ` (${plural(m.optedOut, "persona dejó", "personas dejaron")} de compartir y no se muestran)` : ""}. Se ve el avance de su dispositivo, con apodo y sin correo. Con la app 1.4 o posterior verás a cada persona y su grupo.</p>`);
+  if (state.view === "aventuras") { $("#banners").innerHTML = ""; return renderAventuras(c); }
   ({ summary: renderSummary, groups: renderGroups, readers: renderReaders, books: renderBooks })[state.view](c, m);
 }
 
@@ -741,6 +757,95 @@ function exportCsv() {
   const blob = new Blob(["﻿" + rows.map((r) => r.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
   const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `crea-reader-avance-${new Date().toISOString().slice(0, 10)}.csv` });
   a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- Aventuras: códigos de activación (ADR-058) ---------- */
+// Gestiona los códigos con los que se enciende el tutor con Claude en CREA Aventuras. Habla con el propio
+// servidor (/v1/aventuras/codes) con la sesión de Google de quien entra. El código en claro solo se muestra
+// al crearlo: el servidor guarda un identificador derivado y no puede volver a mostrarlo.
+async function aventurasApi(method, path, body) {
+  const r = await fetch(path, {
+    method, headers: { authorization: "Bearer " + state.token, ...(body ? { "content-type": "application/json" } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await r.json().catch(() => ({}));
+  if (r.ok) return data;
+  if (r.status === 401) throw new Error("El servidor no aceptó tu sesión de Google. Si no venció, el ID de cliente de este panel debe estar en ALLOWED_AUDIENCES del servidor.");
+  if (r.status === 503) throw new Error("La activación por código está apagada en el servidor: falta AVENTURAS_TOKEN_SECRET en Render.");
+  if (r.status === 400) throw new Error("Datos no válidos. Revisa la etiqueta, las tablets y los días.");
+  throw new Error(data.message || "El servidor respondió " + r.status);
+}
+const fmtDay = (t) => new Date(t).toLocaleDateString("es-NI", { day: "numeric", month: "short", year: "numeric" });
+
+async function renderAventuras(c) {
+  if (state.demo || !state.token) {
+    c.innerHTML = `<p class="empty">Los códigos de CREA Aventuras se gestionan con tu cuenta de Google. Entra con Google para verlos.</p>`;
+    return;
+  }
+  c.innerHTML = `<p class="loading">Leyendo los códigos de activación…</p>`;
+  let codes;
+  try { codes = (await aventurasApi("GET", "/v1/aventuras/codes")).codes; }
+  catch (e) { c.innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
+
+  const now = Date.now();
+  const stateOf = (k) => k.revoked ? ["off", "Revocado"] : k.expiresAt <= now ? ["off", "Vencido"] : ["ok", "Activo"];
+  const rows = codes.map((k) => {
+    const [cls, label] = stateOf(k);
+    return `<tr><td><b>${esc(k.label)}</b><br><small class="sub">${esc(k.id)}</small></td>
+      <td class="num">${k.devices} / ${k.maxDevices}</td><td class="num">${k.queriesToday}</td>
+      <td>${esc(fmtDay(k.expiresAt))}</td><td><span class="av-status ${cls}">${label}</span></td>
+      <td>${cls === "ok" ? `<button class="btn small" data-revoke="${esc(k.id)}" data-label="${esc(k.label)}">Revocar</button>` : ""}</td></tr>`;
+  }).join("");
+
+  c.innerHTML = `
+    <section class="sec">
+      <h2>Códigos de activación de CREA Aventuras</h2>
+      <p class="sub">Un código enciende el tutor con Claude y el modo facilitador en las tablets que lo escriban (Ayuda → «Tengo un código»). Cada tablet cuenta un cupo; revocar apaga todas las de ese código.</p>
+      <form class="av-form" id="av-form">
+        <label>Etiqueta (familia, centro o grupo)<input id="av-label" maxlength="60" required placeholder="Escuela Rubén Darío"></label>
+        <label>Tablets permitidas<input id="av-max" type="number" min="1" max="500" value="20" required></label>
+        <label>Vence en<select id="av-days"><option value="30">30 días</option><option value="90">3 meses</option><option value="180" selected>6 meses</option><option value="365">1 año</option><option value="730">2 años</option></select></label>
+        <button class="btn primary" type="submit">Crear código</button>
+      </form>
+      <div id="av-new"></div>
+      ${codes.length ? `<div class="table-wrap"><table><thead><tr><th>Código</th><th class="num">Tablets</th><th class="num">Consultas hoy</th><th>Vence</th><th>Estado</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
+        : `<p class="empty">Todavía no hay códigos. Crea el primero arriba.</p>`}
+    </section>`;
+
+  $("#av-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const btn = ev.submitter || ev.target.querySelector("button[type=submit]"); btn.disabled = true;
+    try {
+      const made = await aventurasApi("POST", "/v1/aventuras/codes", {
+        label: $("#av-label").value.trim(), maxDevices: Number($("#av-max").value), days: Number($("#av-days").value),
+      });
+      $("#av-new").innerHTML = `<div class="av-new" role="status">
+        <p><b>Código creado.</b> Cópialo ahora: <b>no se puede volver a ver</b>. Entrégalo solo a la persona que lo va a usar.</p>
+        <div class="code" id="av-code">${esc(made.code)}</div>
+        <p>Vence el ${esc(fmtDay(made.expiresAt))}. Si se pierde, revócalo y crea otro.</p>
+        <div class="av-actions"><button class="btn small" type="button" id="av-copy">Copiar código</button></div></div>`;
+      $("#av-copy").addEventListener("click", async (e) => {
+        try { await navigator.clipboard.writeText(made.code); e.target.textContent = "Copiado"; } catch { e.target.textContent = "Selecciona el código y cópialo"; }
+      });
+      $("#av-label").value = "";
+      // La lista se actualiza sin borrar el código recién creado.
+      const keep = $("#av-new").innerHTML;
+      await renderAventuras(c);
+      $("#av-new").innerHTML = keep;
+      $("#av-copy")?.addEventListener("click", async (e) => {
+        try { await navigator.clipboard.writeText(made.code); e.target.textContent = "Copiado"; } catch { e.target.textContent = "Selecciona el código y cópialo"; }
+      });
+    } catch (e) {
+      $("#av-new").innerHTML = `<p class="error" role="alert">${esc(e.message)}</p>`;
+      btn.disabled = false;
+    }
+  });
+  c.querySelectorAll("[data-revoke]").forEach((b) => b.addEventListener("click", async () => {
+    if (!confirm(`¿Revocar «${b.dataset.label}»? Las tablets que lo usan dejarán de tener el tutor (en unos 30 segundos). No se puede deshacer.`)) return;
+    b.disabled = true;
+    try { await aventurasApi("POST", "/v1/aventuras/codes/revoke", { id: b.dataset.revoke }); await renderAventuras(c); }
+    catch (e) { b.disabled = false; alert(e.message); }
+  }));
 }
 
 /* ---------- flujo ---------- */
