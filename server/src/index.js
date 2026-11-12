@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createAuthenticator } from "./auth.js";
+import { createActivation } from "./aventurasActivation.js";
 import { createReports } from "./aventurasReport.js";
 import { createService, loadConfig } from "./service.js";
 import { createStore } from "./store.js";
@@ -77,7 +78,7 @@ function serveAdmin(url, response) {
   return response.end();
 }
 
-export function createServer({ config, service, authenticate, voice, reports }) {
+export function createServer({ config, service, authenticate, voice, reports, activation }) {
   const send = (response, status, body) => {
     const text = JSON.stringify(body);
     response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -99,45 +100,75 @@ export function createServer({ config, service, authenticate, voice, reports }) 
       request.on("error", reject);
     });
 
+  const readJson = async (request) => {
+    try {
+      return JSON.parse(await readBody(request));
+    } catch (error) {
+      if (error instanceof service.ServiceError) throw error;
+      throw new service.ServiceError(400, "invalid_json", "JSON no válido");
+    }
+  };
+  // Huella de la red de quien llama (Render pone la IP real en X-Forwarded-For): solo para frenar abusos.
+  const clientIp = (request) => String(request.headers["x-forwarded-for"] || request.socket.remoteAddress || "").split(",")[0].trim();
+
   return http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url, "http://localhost");
       if (url.pathname === "/healthz") return send(response, 200, { ok: true });
       if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) return serveAdmin(url, response);
 
+      // Activación por código: sin sesión ni llave (es de donde sale el token). Lleva freno de intentos.
+      if (request.method === "POST" && url.pathname === "/v1/aventuras/activate") {
+        if (!activation) return send(response, 503, { ok: false, code: "activation_disabled" });
+        const body = await readJson(request);
+        const result = await activation.activate({ code: body?.code, device: body?.device }, clientIp(request));
+        return send(response, 200, { ok: true, result });
+      }
+
       if (request.method === "POST" && (url.pathname === "/v1/aventuras/tutor" || url.pathname === "/v1/aventuras/tutor/report")) {
-        // Dos llaves para la misma ruta: la de servicio (CREA OS llama entre servidores) y la de la app
-        // (tablets sin CREA Home que llaman directo). La de la app viaja dentro del APK, asi que se trata
-        // como una llave publica de bajo privilegio: identidad y tope diario propios, y se puede rotar o
-        // quitar sin tocar a CREA OS.
-        const supplied = Buffer.from(String(request.headers.authorization || "").replace(/^Bearer /, ""));
+        // Tres credenciales para la misma ruta: (1) el token de instalación que da la activación por código
+        // (la versión global de Google Play; atado a la tablet, revocable); (2) la llave de servicio (CREA OS
+        // llama entre servidores) y (3) la llave antigua de la app, solo para el APK 1.12.0-directo ya
+        // repartido (se retira con AVENTURAS_APP_TOKEN vacío).
+        const bearer = String(request.headers.authorization || "").replace(/^Bearer /, "");
+        const device = String(request.headers["x-device-id"] || "");
+        let code = null;
+        if (bearer.startsWith("v1.")) {
+          if (!activation) return send(response, 503, { ok: false, code: "activation_disabled" });
+          if (!/^[a-f0-9]{64}$/.test(device)) return send(response, 400, { ok: false, code: "invalid_device" });
+          code = await activation.verifyToken(bearer, device);
+          if (!code) return send(response, 401, { ok: false, code: "unauthorized" });
+        }
+        const supplied = Buffer.from(bearer);
         const matches = (expected) => {
           const a = Buffer.from(expected || "");
           return a.length > 0 && a.length === supplied.length && timingSafeEqual(a, supplied);
         };
-        if (!config.aventurasServiceToken && !config.aventurasAppToken) return send(response, 503, { ok: false, code: "tutor_disabled" });
-        const direct = !matches(config.aventurasServiceToken) && matches(config.aventurasAppToken);
-        if (!direct && !matches(config.aventurasServiceToken)) return send(response, 401, { ok: false, code: "unauthorized" });
+        if (!code && !config.aventurasServiceToken && !config.aventurasAppToken) return send(response, 503, { ok: false, code: "tutor_disabled" });
+        const direct = !code && !matches(config.aventurasServiceToken) && matches(config.aventurasAppToken);
+        if (!code && !direct && !matches(config.aventurasServiceToken)) return send(response, 401, { ok: false, code: "unauthorized" });
         let body;
         try { body = JSON.parse(await readBody(request)); }
         catch (error) { if (error instanceof service.ServiceError) throw error; return send(response, 400, { ok: false, code: "invalid_json" }); }
-        const device = String(request.headers["x-device-id"] || "");
         if (!/^[a-f0-9]{64}$/.test(device)) return send(response, 400, { ok: false, code: "invalid_device" });
-        const deviceKey = (direct ? "aventuras-app-" : "aventuras-") + device;
+        const deviceKey = (code ? "aventuras-code-" : direct ? "aventuras-app-" : "aventuras-") + device;
 
         // Reporte de una sugerencia de la IA (mismas llaves y mismo código de tablet que el tutor).
         if (url.pathname === "/v1/aventuras/tutor/report") {
           if (!reports) return send(response, 503, { ok: false, code: "reports_disabled" });
-          const saved = await reports.submit(deviceKey, direct ? "app" : "service", body);
+          const saved = await reports.submit(deviceKey, code || direct ? "app" : "service", body);
           return send(response, 200, { ok: true, ...saved });
         }
 
+        // Tope diario del código (todas sus tablets): se cuenta antes de gastar una consulta.
+        if (code && !(await activation.countQuery(code.id))) return send(response, 429, { ok: false, code: "daily_limit", message: "Límite diario del código alcanzado" });
+        const identity = code ? `aventuras-code-${code.id}@creanicaragua.org` : direct ? "aventuras-app@creanicaragua.org" : "aventuras-service@creanicaragua.org";
         const { result, model } = await service.ask(
-          { email: direct ? "aventuras-app@creanicaragua.org" : "aventuras-service@creanicaragua.org" },
+          { email: identity },
           deviceKey,
           "aventuras_tutor",
           body,
-          { dailyLimit: direct ? config.aventurasAppDailyLimit : config.aventurasDailyLimit },
+          { dailyLimit: code ? config.aventurasCodeDailyLimit : direct ? config.aventurasAppDailyLimit : config.aventurasDailyLimit },
         );
         return send(response, 200, { ok: true, result, model });
       }
@@ -151,6 +182,13 @@ export function createServer({ config, service, authenticate, voice, reports }) 
         if (!reports) return send(response, 503, { ok: false, code: "reports_disabled" });
         const day = url.searchParams.get("day") || new Date().toISOString().slice(0, 10);
         return send(response, 200, { ok: true, ...(await reports.list(day)) });
+      }
+      // Códigos de activación de Aventuras: los gestiona quien entra con la cuenta de CREA.
+      if (url.pathname === "/v1/aventuras/codes" || url.pathname === "/v1/aventuras/codes/revoke") {
+        if (!activation) return send(response, 503, { ok: false, code: "activation_disabled" });
+        if (request.method === "GET" && url.pathname === "/v1/aventuras/codes") return send(response, 200, { ok: true, codes: await activation.listCodes() });
+        if (request.method === "POST" && url.pathname === "/v1/aventuras/codes") return send(response, 200, { ok: true, ...(await activation.createCode(await readJson(request), user.email)) });
+        if (request.method === "POST" && url.pathname === "/v1/aventuras/codes/revoke") return send(response, 200, { ok: true, ...(await activation.revoke((await readJson(request))?.id)) });
       }
       if (request.method === "GET" && url.pathname === "/v1/status") {
         const voiceStatus = voice ? await voice.status(deviceId) : { available: false, reason: "disabled" };
@@ -199,7 +237,9 @@ if (fileURLToPath(import.meta.url) === path.resolve(process.argv[1] ?? "")) {
   const voice = createVoice({ config: loadVoiceConfig(), store, ServiceError: service.ServiceError });
   const port = Number(process.env.PORT || 8787);
   const reports = createReports({ config, store, ServiceError: service.ServiceError });
-  createServer({ config, service, authenticate, voice, reports }).listen(port, () => {
+  const activation = createActivation({ config, store, ServiceError: service.ServiceError });
+  if (!activation.enabled) console.warn("Activación por código apagada: define AVENTURAS_TOKEN_SECRET (32 caracteres o más).");
+  createServer({ config, service, authenticate, voice, reports, activation }).listen(port, () => {
     console.log(`CREA Reader AI escuchando en :${port} (mock=${config.mock}, auth=${config.authMode}, modelo=${config.models.fast}, contadores=${store.kind})`);
     if (config.authMode === "google" && config.allowedAudiences.length === 0) {
       console.warn("ATENCIÓN: ALLOWED_AUDIENCES está vacío; se acepta el token de cualquier aplicación de Google de la organización.");

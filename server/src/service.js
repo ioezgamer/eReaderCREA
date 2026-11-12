@@ -29,6 +29,16 @@ export function loadConfig(env = process.env) {
     aventurasDailyLimit: Number(env.AVENTURAS_DAILY_LIMIT || 5000),
     // Tope diario de todas las tablets que entran con la llave de la app (ademas de 30 por tablet).
     aventurasAppDailyLimit: Number(env.AVENTURAS_APP_DAILY_LIMIT || 1500),
+    // Activación por código (ADR-058): secreto para firmar los tokens de instalación (mínimo 32 caracteres; sin
+    // él la activación queda apagada), duración del token y topes. El secreto NO va en ningún APK.
+    aventurasTokenSecret: env.AVENTURAS_TOKEN_SECRET || "",
+    aventurasTokenDays: Number(env.AVENTURAS_TOKEN_DAYS || 90),
+    // Consultas del tutor por día de TODAS las tablets de un mismo código (además de 30 por tablet).
+    aventurasCodeDailyLimit: Number(env.AVENTURAS_CODE_DAILY_LIMIT || 600),
+    // Intentos de activar por hora: por tablet, por red y en total.
+    aventurasActivateDeviceHourly: Number(env.AVENTURAS_ACTIVATE_DEVICE_HOURLY || 10),
+    aventurasActivateIpHourly: Number(env.AVENTURAS_ACTIVATE_IP_HOURLY || 30),
+    aventurasActivateHourly: Number(env.AVENTURAS_ACTIVATE_HOURLY || 600),
     // Reportes de contenido del tutor: por tablet y día, y tope diario de todo el servicio.
     aventurasReportDeviceLimit: Number(env.AVENTURAS_REPORT_DEVICE_LIMIT || 5),
     aventurasReportDailyLimit: Number(env.AVENTURAS_REPORT_DAILY_LIMIT || 200),
