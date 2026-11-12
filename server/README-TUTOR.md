@@ -47,7 +47,11 @@ Plan completo: `CREA-Aventuras/docs/PLAN_VERSION_GLOBAL.md`.
   huella de su ID de instalación y la fecha. **No** se guarda el código en claro, la IP ni nada de lo que envía el tutor.
 - **Transición:** la llave antigua de la app (`CREA_AVENTURAS_APP_TOKEN`) sigue valiendo para el APK `1.12.0-directo`
   ya repartido por CREA; cuando no quede ninguno, quítala de Render.
-- **Pendiente:** pantalla en el panel (`/admin/`) para crear y revocar códigos sin usar la API (fase 3 del plan).
+- **Panel (`/admin/` → pestaña Aventuras):** crea códigos (etiqueta, tablets, vencimiento), los lista con tablets usadas y
+  consultas de hoy, y los revoca. El código recién creado se muestra una sola vez, con botón de copiar. Usa la
+  sesión de Google del panel; si el servidor responde 401, el ID de cliente del panel (`GOOGLE_CLIENT_ID`) debe estar
+  en `ALLOWED_AUDIENCES` (si esa variable no está vacía). El servidor guarda el HTML del panel en memoria: tras
+  cambiarlo hay que reiniciar.
 
 ## Reportar una sugerencia de la IA
 
