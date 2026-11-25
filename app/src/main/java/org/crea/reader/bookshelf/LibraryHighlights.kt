@@ -107,6 +107,7 @@ private fun ContinueCarousel(items: List<ContinueItem>, onOpen: (ContinueItem) -
 @Composable
 private fun ContinueCard(item: ContinueItem, onOpen: (ContinueItem) -> Unit, onDetails: (ContinueItem) -> Unit) {
     val shape = RoundedCornerShape(28.dp)
+    val onHero = colorResource(R.color.hero_on)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -119,17 +120,20 @@ private fun ContinueCard(item: ContinueItem, onOpen: (ContinueItem) -> Unit, onD
     ) {
         BookCover(item.cover, 84.dp, 126.dp)
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
-            Text(stringResource(R.string.library_continue_label), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.8f))
             Text(
-                item.title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White,
+                stringResource(R.string.library_continue_label).uppercase(), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.8.sp, color = onHero.copy(alpha = 0.75f),
+            )
+            Text(
+                item.title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = onHero,
                 maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp),
             )
             item.author?.takeIf { it.isNotBlank() }?.let {
-                Text(it, fontSize = 13.sp, color = Color.White.copy(alpha = 0.9f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(it, fontSize = 13.sp, color = onHero.copy(alpha = 0.85f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             item.summary?.let {
                 Text(
-                    it, fontSize = 12.sp, lineHeight = 16.sp, color = Color.White.copy(alpha = 0.85f),
+                    it, fontSize = 12.sp, lineHeight = 16.sp, color = onHero.copy(alpha = 0.8f),
                     maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp),
                 )
             }
@@ -137,12 +141,12 @@ private fun ContinueCard(item: ContinueItem, onOpen: (ContinueItem) -> Unit, onD
                 LinearProgressIndicator(
                     progress = { item.percent / 100f },
                     modifier = Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)),
-                    color = Color.White,
-                    trackColor = Color.White.copy(alpha = 0.3f),
+                    color = onHero,
+                    trackColor = onHero.copy(alpha = 0.18f),
                 )
                 Text(
                     stringResource(R.string.book_progress_label, item.percent), fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                    color = Color.White, modifier = Modifier.padding(start = 10.dp),
+                    color = onHero, modifier = Modifier.padding(start = 10.dp),
                 )
             }
         }

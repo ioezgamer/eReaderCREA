@@ -56,6 +56,13 @@ class MainActivity : AppCompatActivity() {
             )
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
+        // NavigationUI draws its own Material arrow; use the chevron of the CREA icon set instead.
+        // Added after NavigationUI's listener, so it runs last on every destination change.
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            if (destination.id !in appBarConfiguration.topLevelDestinations) {
+                supportActionBar?.setHomeAsUpIndicator(R.drawable.ic_reader_back)
+            }
+        }
         val glassBar = GlassNavigationBar.attach(this, navHostFragment)
         // Android 12+ gets the real-blur Liquid Glass bar; older versions keep the translucent pill.
         if (GlassSupport.realBlur) LiquidNavHost.install(this, glassBar)

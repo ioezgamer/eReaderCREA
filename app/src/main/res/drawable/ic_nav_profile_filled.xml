@@ -1,10 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- CREA icon set: 24dp, 2dp round strokes, one optical size, tinted where it is shown. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
-    android:viewportHeight="24">
-    <!-- Reader profile (filled) -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M12,12.25c2.35,0 4.25,-1.9 4.25,-4.25S14.35,3.75 12,3.75 7.75,5.65 7.75,8s1.9,4.25 4.25,4.25zM12,13.5c-3.73,0 -7.5,1.83 -7.5,4.75v1.25c0,0.41 0.34,0.75 0.75,0.75h13.5c0.41,0 0.75,-0.34 0.75,-0.75v-1.25c0,-2.92 -3.77,-4.75 -7.5,-4.75z" />
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <path android:pathData="M8.1,8 a3.9,3.9 0 1,0 7.8,0 a3.9,3.9 0 1,0 -7.8,0" android:fillColor="#FFFFFFFF" android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2" android:strokeLineJoin="round" />
+    <path android:pathData="M4.75,20 a7.25,6.25 0 0,1 14.5,0 Z" android:fillColor="#FFFFFFFF" android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2" android:strokeLineJoin="round" />
 </vector>

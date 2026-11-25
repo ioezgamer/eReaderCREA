@@ -132,7 +132,7 @@ class OnlineBookAdapter(
                     transfer.percent
                 ) to MaterialColors.getColor(binding.root, androidx.appcompat.R.attr.colorPrimary)
                 row.downloaded && row.updateAvailable ->
-                    context.getString(R.string.catalog_update_available) to ContextCompat.getColor(context, R.color.crea_tertiary)
+                    context.getString(R.string.catalog_update_available) to ContextCompat.getColor(context, R.color.crea_attention)
                 row.downloaded -> context.getString(R.string.catalog_downloaded) to green
                 else -> context.getString(R.string.catalog_available_online) to muted
             }
@@ -230,10 +230,10 @@ class OnlineBookAdapter(
                 binding.catalogStatusIcon.setImageResource(R.drawable.ic_check_circle)
                 binding.catalogStatusIcon.imageTintList = ColorStateList.valueOf(green)
                 if (row.updateAvailable) {
-                    val tertiary = ContextCompat.getColor(context, R.color.crea_tertiary)
-                    binding.catalogStatusIcon.imageTintList = ColorStateList.valueOf(tertiary)
+                    val attention = ContextCompat.getColor(context, R.color.crea_attention)
+                    binding.catalogStatusIcon.imageTintList = ColorStateList.valueOf(attention)
                     binding.catalogStatusText.setText(R.string.catalog_update_available)
-                    binding.catalogStatusText.setTextColor(tertiary)
+                    binding.catalogStatusText.setTextColor(attention)
                 } else {
                     binding.catalogStatusText.setText(R.string.catalog_available_offline)
                     binding.catalogStatusText.setTextColor(green)

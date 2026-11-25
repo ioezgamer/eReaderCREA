@@ -88,7 +88,7 @@ class ProfileFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent { ProfileScreen() }
+            setContent { org.crea.reader.utils.compose.AppTheme { ProfileScreen() } }
         }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -306,13 +306,17 @@ class ProfileFragment : Fragment() {
                         if (streak >= 2) {
                             Text(
                                 stringResource(R.string.profile_streak, streak), fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                                color = colorResource(R.color.crea_tertiary),
+                                color = colorResource(R.color.crea_attention),
                             )
                         }
                     }
                     Box {
-                        TextButton(onClick = { menu = true }) {
-                            Text("⋯", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = colorResource(R.color.crea_on_surface))
+                        androidx.compose.material3.IconButton(onClick = { menu = true }) {
+                            androidx.compose.material3.Icon(
+                                androidx.compose.ui.res.painterResource(R.drawable.ic_more),
+                                contentDescription = stringResource(R.string.profile_edit),
+                                tint = colorResource(R.color.crea_on_surface),
+                            )
                         }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(text = { Text(stringResource(R.string.profile_edit)) }, onClick = { menu = false; editing = true })
@@ -533,13 +537,19 @@ class ProfileFragment : Fragment() {
                     .padding(18.dp),
             ) {
                 Box(Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(colorResource(R.color.crea_primary_container)), contentAlignment = Alignment.Center) {
-                    Text("👥", fontSize = 20.sp)
+                    androidx.compose.material3.Icon(
+                        androidx.compose.ui.res.painterResource(R.drawable.ic_group), contentDescription = null,
+                        tint = colorResource(R.color.crea_primary), modifier = Modifier.size(22.dp),
+                    )
                 }
                 Column(Modifier.weight(1f).padding(start = 14.dp)) {
                     Text(stringResource(R.string.profile_community), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = colorResource(R.color.crea_on_surface))
                     Text(stringResource(R.string.profile_community_detail), fontSize = 13.sp, color = colorResource(R.color.crea_on_surface_variant))
                 }
-                Text("›", fontSize = 26.sp, color = colorResource(R.color.crea_on_surface_variant))
+                androidx.compose.material3.Icon(
+                    androidx.compose.ui.res.painterResource(R.drawable.ic_chevron_right), contentDescription = null,
+                    tint = colorResource(R.color.crea_on_surface_variant), modifier = Modifier.size(20.dp),
+                )
             }
         }
         Spacer(Modifier.height(4.dp))

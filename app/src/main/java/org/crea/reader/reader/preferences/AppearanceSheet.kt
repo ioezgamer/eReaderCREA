@@ -134,8 +134,8 @@ class AppearanceBottomSheetDialogFragment : DialogFragment() {
 
         Surface(
             shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-            tonalElevation = 6.dp,
+            // Opaque: the book text must not show through the options (the light dim keeps the page visible).
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 12.dp,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
@@ -179,13 +179,13 @@ private fun ReadingChoices(editor: EpubPreferencesEditor, commit: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            StepButton("−") { fontSize.decrement(); commit() }
+            StepButton(R.drawable.remove) { fontSize.decrement(); commit() }
             Text(
                 text = fontSize.formatValue(fontSize.value ?: fontSize.effectiveValue),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            StepButton("+") { fontSize.increment(); commit() }
+            StepButton(R.drawable.add) { fontSize.increment(); commit() }
         }
     }
 
@@ -314,14 +314,17 @@ internal fun OptionCard(@StringRes title: Int, content: @Composable () -> Unit) 
 
 /** Round outlined − / + button used by the steppers. */
 @Composable
-internal fun StepButton(label: String, onClick: () -> Unit) {
+internal fun StepButton(@androidx.annotation.DrawableRes icon: Int, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
         shape = CircleShape,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
         modifier = Modifier.size(40.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.titleLarge)
+        androidx.compose.material3.Icon(
+            androidx.compose.ui.res.painterResource(icon), contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp),
+        )
     }
 }
 
@@ -343,7 +346,10 @@ internal fun <T> DropdownField(options: List<Pair<T, String>>, selected: T?, onS
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )
-            Text("▾", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 18.sp)
+            androidx.compose.material3.Icon(
+                androidx.compose.ui.res.painterResource(R.drawable.ic_chevron_down), contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp),
+            )
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             options.forEach { (value, label) ->

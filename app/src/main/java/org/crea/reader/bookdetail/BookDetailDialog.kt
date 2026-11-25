@@ -30,8 +30,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -105,7 +109,7 @@ class BookDetailDialog : DialogFragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent { Screen() }
+            setContent { org.crea.reader.utils.compose.AppTheme { Screen() } }
         }
 
     override fun onStart() {
@@ -184,11 +188,23 @@ class BookDetailDialog : DialogFragment() {
                     modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
                     TextButton(onClick = { dismiss() }) {
-                        Text("‹  " + stringResource(R.string.book_detail_back), fontSize = 17.sp, color = colorResource(R.color.crea_on_surface))
+                        Icon(
+                            painterResource(R.drawable.ic_reader_back), contentDescription = null,
+                            tint = colorResource(R.color.crea_primary), modifier = Modifier.size(22.dp),
+                        )
+                        Text(
+                            stringResource(R.string.book_detail_back), fontSize = 17.sp, color = colorResource(R.color.crea_primary),
+                            modifier = Modifier.padding(start = 2.dp),
+                        )
                     }
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { toggleFavorite(local, ref, !favorite) }) {
-                        Text(if (favorite) "♥" else "♡", fontSize = 26.sp, color = colorResource(if (favorite) R.color.crea_secondary else R.color.crea_on_surface))
+                    IconButton(onClick = { toggleFavorite(local, ref, !favorite) }) {
+                        Icon(
+                            painterResource(if (favorite) R.drawable.ic_favorite else R.drawable.ic_favorite_outline),
+                            contentDescription = stringResource(if (favorite) R.string.favorite_remove else R.string.favorite_add),
+                            tint = colorResource(if (favorite) R.color.crea_favorite else R.color.crea_on_surface),
+                            modifier = Modifier.size(26.dp),
+                        )
                     }
                 }
             }
@@ -313,14 +329,25 @@ class BookDetailDialog : DialogFragment() {
                     modifier = Modifier.weight(1f).height(52.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.crea_primary), contentColor = colorResource(R.color.crea_on_primary)),
                 ) {
-                    Text(stringResource(if (percent in 1..99) R.string.book_detail_continue else R.string.book_detail_read), fontSize = 16.sp)
+                    // Bold capitals, like the call-to-action buttons of creanicaragua.org
+                    Text(
+                        stringResource(if (percent in 1..99) R.string.book_detail_continue else R.string.book_detail_read).uppercase(),
+                        fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp,
+                    )
                 }
                 OutlinedButton(
                     onClick = { read(local, row, listen = true) },
                     modifier = Modifier.weight(1f).height(52.dp),
                     border = BorderStroke(1.5.dp, colorResource(R.color.crea_primary)),
                 ) {
-                    Text("🎧  " + stringResource(R.string.book_detail_listen), fontSize = 16.sp, color = colorResource(R.color.crea_on_surface))
+                    Icon(
+                        painterResource(R.drawable.ic_reader_listen), contentDescription = null,
+                        tint = colorResource(R.color.crea_primary), modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        stringResource(R.string.book_detail_listen), fontSize = 16.sp, color = colorResource(R.color.crea_on_surface),
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
                 }
             }
             if (row != null) {
@@ -346,20 +373,24 @@ class BookDetailDialog : DialogFragment() {
         val format = row?.book?.format ?: local?.let { if (it.mediaType.matches(org.readium.r2.shared.util.mediatype.MediaType.PDF)) "PDF" else "EPUB" }
         val size = (row?.book?.size ?: local?.fileSize)?.takeIf { it > 0 }?.let { Formatter.formatShortFileSize(context, it) }
         val lines = listOfNotNull(
-            (row?.displayCategory ?: local?.category)?.let { "📚" to it },
-            level?.let { "🎓" to stringResource(R.string.book_detail_level, stringResource(it)) },
-            listOfNotNull(format, size).joinToString(" · ").takeIf { it.isNotBlank() }?.let { "📄" to it },
-            if (local != null) "📱" to stringResource(R.string.book_detail_here) else "☁️" to stringResource(R.string.book_detail_drive),
+            (row?.displayCategory ?: local?.category)?.let { R.drawable.ic_folder to it },
+            level?.let { R.drawable.ic_level to stringResource(R.string.book_detail_level, stringResource(it)) },
+            listOfNotNull(format, size).joinToString(" · ").takeIf { it.isNotBlank() }?.let { R.drawable.ic_file to it },
+            if (local != null) R.drawable.ic_device to stringResource(R.string.book_detail_here)
+            else R.drawable.ic_nav_online_outline to stringResource(R.string.book_detail_drive),
             (local?.creation ?: row?.book?.modifiedAt)?.takeIf { it > 0 }?.let {
-                "📅" to stringResource(R.string.book_detail_added, java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(it)))
+                R.drawable.ic_calendar to stringResource(R.string.book_detail_added, java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(it)))
             },
         )
         GlassCard(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 lines.forEach { (icon, text) ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(icon, fontSize = 16.sp, modifier = Modifier.width(30.dp))
-                        Text(text, fontSize = 15.sp, color = colorResource(R.color.crea_on_surface))
+                        Icon(
+                            painterResource(icon), contentDescription = null,
+                            tint = colorResource(R.color.crea_primary), modifier = Modifier.size(20.dp),
+                        )
+                        Text(text, fontSize = 15.sp, color = colorResource(R.color.crea_on_surface), modifier = Modifier.padding(start = 12.dp))
                     }
                 }
             }

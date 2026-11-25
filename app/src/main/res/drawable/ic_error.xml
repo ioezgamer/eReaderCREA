@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- CREA icon set: 24dp, 2dp round strokes, one optical size, tinted where it is shown. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <path android:pathData="M3.25,12 a8.75,8.75 0 1,0 17.5,0 a8.75,8.75 0 1,0 -17.5,0" android:fillColor="#00000000" android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M12,7.75 V12.75" android:fillColor="#00000000" android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M10.85,16.25 a1.15,1.15 0 1,0 2.3,0 a1.15,1.15 0 1,0 -2.3,0" android:fillColor="#FFFFFFFF" />
+</vector>

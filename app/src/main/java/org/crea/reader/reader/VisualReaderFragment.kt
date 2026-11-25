@@ -35,6 +35,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets as ComposeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -52,7 +55,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
@@ -65,16 +67,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.LaunchedEffect
+import android.graphics.Bitmap
+import android.view.ViewTreeObserver
+import androidx.core.content.ContextCompat
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
@@ -102,13 +116,17 @@ import org.crea.reader.R
 import org.crea.reader.data.model.Highlight
 import org.crea.reader.databinding.FragmentReaderBinding
 import org.crea.reader.reader.tts.TtsControls
+import org.crea.reader.reader.tts.TtsControlsColors
 import org.crea.reader.reader.tts.TtsPreferencesBottomSheetDialogFragment
 import org.crea.reader.reader.tts.TtsViewModel
 import org.crea.reader.stats.PageTurnCounter
 import org.crea.reader.stats.ReadingSession
+import org.crea.reader.ui.glass.GlassSupport
+import org.crea.reader.ui.glass.PageSnapshot
 import org.crea.reader.ui.glass.liquidGlass
 import org.crea.reader.ui.glass.liquidGlassSurfaceColor
-import org.crea.reader.ui.glass.rememberViewBackdrop
+import org.crea.reader.ui.glass.rememberSnapshotBackdrop
+import org.crea.reader.utils.compose.AppTheme
 import org.crea.reader.utils.clearPadding
 import org.crea.reader.utils.extensions.confirmDialog
 import org.crea.reader.utils.extensions.throttleLatest
@@ -189,14 +207,26 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
         setupObservers()
 
         childFragmentManager.addOnBackStackChangedListener {
+            navigatorHidden = navigatorFragment.isHidden
             updateSystemUiVisibility()
+            // The search results (or the page again) are now under the glass top bar.
+            refreshPageSnapshot()
         }
         binding.fragmentReaderContainer.setOnApplyWindowInsetsListener { container, insets ->
             updateSystemUiPadding(container, insets)
             insets
         }
 
-        binding.overlay.setContent {
+        trackTopBar()
+        applyTopBarColors()
+
+        binding.overlay.setContent { AppTheme {
+            // Glass behind the top bar's icons (the action bar itself is transparent over the book).
+            // Inside a Box: the root's constraints are the full screen, which would stretch the capsule.
+            Box(Modifier.fillMaxSize()) {
+                topBarBounds?.let { TopBarGlass(it) }
+            }
+
             if (disableTouches) {
                 // Add an invisible box on top of the navigator to intercept touch gestures.
                 Box(
@@ -216,7 +246,7 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                     .systemBarsPadding(),
                 content = { Overlay() }
             )
-        }
+        } }
 
         val menuHost: MenuHost = requireActivity()
 
@@ -224,6 +254,14 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
             object : MenuProvider {
                 override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
                     menu.findItem(R.id.tts).isVisible = (model.tts != null)
+                }
+
+                override fun onPrepareMenu(menu: Menu) {
+                    // Action icons in light blue over dark paper, CREA blue over light paper.
+                    val icons = android.content.res.ColorStateList.valueOf(topBarColors().second)
+                    for (i in 0 until menu.size()) {
+                        androidx.core.view.MenuItemCompat.setIconTintList(menu.getItem(i), icons)
+                    }
                 }
 
                 override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
@@ -245,6 +283,139 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                     showFootnotePopup(event.text)
             }
         }
+    }
+
+    /** Real Liquid Glass for the reader's bars, unless the device can't or battery saver is on. */
+    private val glassEffects: Boolean by lazy { GlassSupport.effectsEnabled(requireContext()) }
+
+    /** Still picture of the page that the glass bars blur and refract (see [PageSnapshot]). */
+    private val pageSnapshot = mutableStateOf<Bitmap?>(null)
+    private var snapshotJob: Job? = null
+
+    /**
+     * Takes a new picture of the page once it has settled (after a page turn, an appearance change,
+     * or when the bars appear). Only the book is drawn into it, never the bars on top.
+     */
+    private fun refreshPageSnapshot(delayMs: Long = SNAPSHOT_DELAY_MS) {
+        if (!glassEffects) return
+        snapshotJob?.cancel()
+        snapshotJob = viewLifecycleOwner.lifecycleScope.launch {
+            delay(delayMs)
+            val picture = PageSnapshot.take(binding.fragmentReaderContainer) ?: return@launch
+            pageSnapshot.value = picture
+            val dark = PageSnapshot.isDark(picture)
+            if (dark != snapshotDark) {
+                snapshotDark = dark
+                onPageDarknessChanged()
+            }
+        }
+    }
+
+    /** Whether the page looked dark in the last picture; null until there is one. */
+    private var snapshotDark by mutableStateOf<Boolean?>(null)
+
+    /** The bars' text, icons and status bar follow the page: light content over dark paper. */
+    private fun onPageDarknessChanged() {
+        val activity = activity ?: return
+        applyTopBarColors()
+        activity.invalidateOptionsMenu() // re-tints the action icons in onPrepareMenu
+        @Suppress("DEPRECATION")
+        val barsShown = activity.window.decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_FULLSCREEN == 0
+        if (barsShown) activity.showSystemUi() // dark or light status-bar icons
+    }
+
+    /** Colour of the top bar's title and of its icons, for the page (or the app theme when hidden). */
+    private fun topBarColors(): Pair<Int, Int> {
+        val context = requireContext()
+        return if (isHidden) {
+            ContextCompat.getColor(context, R.color.crea_on_surface) to ContextCompat.getColor(context, R.color.crea_primary)
+        } else if (isPageDark()) {
+            ContextCompat.getColor(context, R.color.reader_glass_on_dark) to ContextCompat.getColor(context, R.color.reader_glass_accent_dark)
+        } else {
+            ContextCompat.getColor(context, R.color.reader_glass_on_light) to ContextCompat.getColor(context, R.color.reader_glass_accent_light)
+        }
+    }
+
+    private fun applyTopBarColors() {
+        val toolbar = activity?.findViewById<androidx.appcompat.widget.Toolbar>(androidx.appcompat.R.id.action_bar) ?: return
+        val (title, icons) = topBarColors()
+        toolbar.setTitleTextColor(title)
+        toolbar.navigationIcon?.mutate()?.setTint(icons)
+        toolbar.overflowIcon?.mutate()?.setTint(icons)
+    }
+
+
+    /** True while something covers the book inside the reader (search results): no page bar then. */
+    private var navigatorHidden by mutableStateOf(false)
+
+    /** Where the action bar's toolbar is in the window, or null while it is hidden. */
+    private var topBarBounds by mutableStateOf<IntRect?>(null)
+
+    /** Follows the toolbar (also while it slides in and out) so the glass stays right behind it. */
+    private fun trackTopBar() {
+        val activity = requireActivity()
+        val container = activity.findViewById<View>(androidx.appcompat.R.id.action_bar_container) ?: return
+        val toolbar = activity.findViewById<View>(androidx.appcompat.R.id.action_bar) ?: return
+        val where = IntArray(2)
+        val listener = ViewTreeObserver.OnPreDrawListener {
+            val bounds = if (container.isShown && toolbar.height > 0) {
+                toolbar.getLocationInWindow(where)
+                IntRect(where[0], where[1], where[0] + toolbar.width, where[1] + toolbar.height)
+                    .takeIf { it.bottom > 0 }
+            } else {
+                null
+            }
+            if (bounds != topBarBounds) topBarBounds = bounds
+            true
+        }
+        container.viewTreeObserver.addOnPreDrawListener(listener)
+        viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) {
+                if (container.viewTreeObserver.isAlive) container.viewTreeObserver.removeOnPreDrawListener(listener)
+            }
+        })
+    }
+
+    /** The glass capsule of the top bar: lined up with the toolbar, below the status bar. */
+    @Composable
+    private fun TopBarGlass(toolbar: IntRect) {
+        val density = LocalDensity.current
+        val side = with(density) { BAR_SIDE_MARGIN.roundToPx() }
+        val gap = with(density) { TOP_BAR_GAP.roundToPx() }
+        Box(
+            Modifier
+                .offset { IntOffset(toolbar.left + side, toolbar.top + gap) }
+                .size(
+                    with(density) { (toolbar.width - 2 * side).toDp() },
+                    with(density) { (toolbar.height - gap).toDp() },
+                )
+                .readerGlass(RoundedCornerShape(percent = 50))
+        )
+    }
+
+    /**
+     * Liquid Glass over the page picture: frosted, refracting at the edges, with a bright rim and a
+     * soft shadow. Without the effects, a nearly opaque capsule with a visible edge.
+     */
+    @Composable
+    private fun Modifier.readerGlass(shape: androidx.compose.ui.graphics.Shape): Modifier {
+        val dark = isPageDark()
+        val stroke = colorResource(if (dark) R.color.reader_glass_stroke_dark else R.color.reader_glass_stroke_light)
+        if (!glassEffects) {
+            return this
+                .clip(shape)
+                .background(colorResource(if (dark) R.color.reader_glass_fill_dark else R.color.reader_glass_fill_light))
+                .border(1.dp, stroke, shape)
+        }
+        val backdrop = rememberSnapshotBackdrop(pageSnapshot)
+        val tint = colorResource(if (dark) R.color.reader_glass_tint_dark else R.color.reader_glass_tint_light)
+            .copy(alpha = if (dark) GLASS_TINT_ALPHA_DARK else GLASS_TINT_ALPHA)
+        return this
+            .liquidGlass(
+                backdrop, shape, tint,
+                blur = GLASS_BLUR, lensHeight = 20.dp, lensAmount = 40.dp, shadow = true,
+            )
+            .border(0.5.dp, stroke, shape)
     }
 
     @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -270,30 +441,35 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
         val label = stringResource(R.string.page_indicator, shown, total)
         val barSize by (requireContext().applicationContext as Application).readerLook.barSize.collectAsState()
         val k = barSize.relative
-        val glassTop = colorResource(R.color.reader_bar_top)
-        val glassBottom = colorResource(R.color.reader_bar_bottom)
-        val onGlass = colorResource(R.color.crea_on_surface)
-        // Real Liquid Glass over the book where the device allows it; the translucent gradient otherwise.
-        // No real blur over the book: copying the page's WebView into the glass on every frame makes
-        // half of the page vanish in alternate frames (visible flicker while reading aloud).
-        val realGlass = false
-        val backdrop = if (realGlass) rememberViewBackdrop(listOf(binding.fragmentReaderContainer)) else null
-        val glassSurface = liquidGlassSurfaceColor(alpha = 0.6f)
-        val barShape = RoundedCornerShape(0.dp)
+        // Colours follow the page under the bar (dark paper → light content), not the app theme.
+        val dark = isPageDark()
+        val barFill = colorResource(if (dark) R.color.reader_glass_fill_dark else R.color.reader_glass_fill_light)
+        val barStroke = colorResource(if (dark) R.color.reader_glass_stroke_dark else R.color.reader_glass_stroke_light)
+        val onGlass = colorResource(if (dark) R.color.reader_glass_on_dark else R.color.reader_glass_on_light)
+        val accent = colorResource(if (dark) R.color.reader_glass_accent_dark else R.color.reader_glass_accent_light)
+        val track = colorResource(if (dark) R.color.reader_glass_track_dark else R.color.reader_glass_track_light)
+        val sliderColors = SliderDefaults.colors(
+            thumbColor = accent,
+            activeTrackColor = accent,
+            inactiveTrackColor = track,
+        )
+        // A floating glass capsule, matching the top bar.
+        val barShape = RoundedCornerShape(24.dp)
+
+        // A fresh picture of the page for the glass every time the bars appear.
+        LaunchedEffect(barsVisible) { if (barsVisible) refreshPageSnapshot(delayMs = 0) }
 
         if (barsVisible) {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .then(
-                        if (backdrop != null) Modifier.liquidGlass(backdrop, barShape, glassSurface)
-                        else Modifier.background(Brush.verticalGradient(listOf(glassTop, glassBottom)))
-                    )
-                    .padding(horizontal = (16 * k).dp, vertical = (2 * k).dp),
+                    .padding(start = BAR_SIDE_MARGIN, end = BAR_SIDE_MARGIN, bottom = 6.dp)
+                    .readerGlass(barShape)
+                    .padding(horizontal = (16 * k).dp, vertical = (4 * k).dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(label, color = onGlass, fontSize = (11 * k).sp)
+                Text(label, color = onGlass, fontSize = (11 * k).sp, fontWeight = FontWeight.SemiBold)
                 if (total > 1) {
                     Slider(
                         value = dragging ?: current.toFloat(),
@@ -307,15 +483,18 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                         },
                         valueRange = 1f..total.toFloat(),
                         interactionSource = sliderInteraction,
+                        colors = sliderColors,
                         thumb = {
                             SliderDefaults.Thumb(
                                 interactionSource = sliderInteraction,
+                                colors = sliderColors,
                                 thumbSize = DpSize((12 * k).dp, (12 * k).dp),
                             )
                         },
                         track = { state ->
                             SliderDefaults.Track(
                                 sliderState = state,
+                                colors = sliderColors,
                                 modifier = Modifier.height((3 * k).dp),
                                 thumbTrackGapSize = 0.dp,
                                 trackInsideCornerSize = 0.dp,
@@ -336,10 +515,8 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(8.dp)
-                    .then(
-                        if (backdrop != null) Modifier.liquidGlass(backdrop, RoundedCornerShape((10 * k).dp), glassSurface, blur = 6.dp, lensHeight = 6.dp, lensAmount = 8.dp)
-                        else Modifier.background(glassBottom, RoundedCornerShape((10 * k).dp))
-                    )
+                    .background(barFill, RoundedCornerShape((10 * k).dp))
+                    .border(1.dp, barStroke, RoundedCornerShape((10 * k).dp))
                     .padding(horizontal = (8 * k).dp, vertical = (2 * k).dp)
             )
         }
@@ -347,17 +524,29 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
 
     @Composable
     private fun BoxScope.Overlay() {
+        // Search results cover the book: the page bar and read-aloud controls would only hide them.
+        if (navigatorHidden) return
         PageIndicator()
         model.tts?.let { tts ->
+            val dark = isPageDark()
+            val barsVisible = ComposeWindowInsets.statusBars.getTop(LocalDensity.current) > 0
+            val barSize by (requireContext().applicationContext as Application).readerLook.barSize.collectAsState()
             TtsControls(
                 model = tts,
                 onPreferences = {
                     TtsPreferencesBottomSheetDialogFragment()
                         .show(childFragmentManager, "TtsSettings")
                 },
+                glass = Modifier.readerGlass(RoundedCornerShape(percent = 50)),
+                colors = TtsControlsColors(
+                    content = colorResource(if (dark) R.color.reader_glass_on_dark else R.color.reader_glass_on_light),
+                    accent = colorResource(if (dark) R.color.reader_glass_accent_dark else R.color.reader_glass_accent_light),
+                    onAccent = colorResource(if (dark) R.color.reader_glass_tint_dark else R.color.reader_glass_tint_light),
+                ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(8.dp)
+                    // Above the page bar while it is shown, so neither covers the other.
+                    .padding(bottom = if (barsVisible) (TTS_ABOVE_BAR * barSize.relative).dp + 14.dp else 14.dp)
             )
         }
     }
@@ -373,8 +562,13 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
                         .onEach {
                             model.saveProgression(it)
                             it.locations.position?.let(turns::onPosition)
+                            refreshPageSnapshot()
                         }
                         .launchIn(this)
+                    // A new paper colour, font or size changes what lies under the glass bars too.
+                    (navigator as? org.readium.r2.navigator.preferences.Configurable<*, *>)?.settings
+                        ?.onEach { refreshPageSnapshot(SNAPSHOT_SETTINGS_DELAY_MS) }
+                        ?.launchIn(this)
                     awaitCancellation()
                 } finally {
                     session.stop()
@@ -459,6 +653,20 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
     }
 
     /**
+     * Whether the page under the status bar is dark: the EPUB reading theme when there is one,
+     * otherwise the app's own light/dark mode.
+     */
+    fun isPageDark(): Boolean {
+        // What the page really looked like in the last picture (works for PDFs and images too).
+        snapshotDark?.let { return it }
+        val epub = navigator as? org.readium.r2.navigator.epub.EpubNavigatorFragment
+        val theme = epub?.settings?.value?.theme
+            ?: return (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+        return theme == org.readium.r2.navigator.preferences.Theme.DARK
+    }
+
+    /**
      * Soft colour behind the sentence being read: the text is drawn on top of it, so it has to
      * stay readable with dark text (light and sepia pages) and with light text (dark pages).
      */
@@ -519,6 +727,8 @@ abstract class VisualReaderFragment : BaseReaderFragment() {
     override fun onHiddenChanged(hidden: Boolean) {
         super.onHiddenChanged(hidden)
         setMenuVisibility(!hidden)
+        // The outline and DRM screens use the app's colours on a solid bar.
+        if (view != null) applyTopBarColors()
         requireActivity().invalidateOptionsMenu()
     }
 
@@ -884,3 +1094,24 @@ data class DecorationStylePageNumber(val label: String) : Decoration.Style
 
 /** Time for the first page to be laid out before "Escuchar" starts reading aloud. */
 private const val LISTEN_DELAY_MS = 1200L
+
+/** Wait for a page turn to finish (and the page to be drawn) before taking its picture for the glass. */
+private const val SNAPSHOT_DELAY_MS = 350L
+
+/** A new appearance re-lays out the book: give it a little longer. */
+private const val SNAPSHOT_SETTINGS_DELAY_MS = 600L
+
+/** Space between the glass bars and the screen sides; below the status bar for the top one. */
+private val BAR_SIDE_MARGIN = 10.dp
+private val TOP_BAR_GAP = 2.dp
+
+/**
+ * How much of the light (or navy) tint covers the frosted page in the glass bars, and how much the
+ * page is blurred: enough to keep the icons readable while the text behind still shows through.
+ */
+private const val GLASS_TINT_ALPHA = 0.32f
+private const val GLASS_TINT_ALPHA_DARK = 0.5f
+
+/** Height of the page bar (at medium bar size) that the read-aloud controls stay above. */
+private const val TTS_ABOVE_BAR = 62f
+private val GLASS_BLUR = 6.dp

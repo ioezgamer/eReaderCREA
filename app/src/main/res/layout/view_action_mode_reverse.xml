@@ -62,7 +62,7 @@
         <View
             android:layout_width="0.6dp"
             android:layout_height="match_parent"
-            android:background="#b9b9b9" />
+            android:background="@color/crea_navy_divider" />
 
         <ImageButton
             android:id="@+id/annotation"
@@ -76,7 +76,7 @@
         <View
             android:layout_width="0.6dp"
             android:layout_height="match_parent"
-            android:background="#b9b9b9" />
+            android:background="@color/crea_navy_divider" />
 
         <ImageButton
             android:id="@+id/del"

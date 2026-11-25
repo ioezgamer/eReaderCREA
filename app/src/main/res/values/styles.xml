@@ -27,13 +27,122 @@
         <item name="colorOnSurfaceVariant">@color/crea_on_surface_variant</item>
         <item name="colorOutline">@color/crea_outline</item>
         <item name="colorOutlineVariant">@color/crea_outline_variant</item>
-        <item name="android:fontFamily">@font/nunito</item>
+        <item name="colorSurfaceContainerLowest">@color/crea_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/crea_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/crea_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/crea_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/crea_surface_container_highest</item>
+        <item name="colorError">@color/crea_error</item>
+        <item name="colorOnError">@color/crea_on_error</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="fontFamily">@font/montserrat</item>
+        <!-- Material's type scale names its own font (Roboto): point every style at Montserrat -->
+        <item name="textAppearanceDisplayLarge">@style/TextAppearance.Crea.DisplayLarge</item>
+        <item name="textAppearanceDisplayMedium">@style/TextAppearance.Crea.DisplayMedium</item>
+        <item name="textAppearanceDisplaySmall">@style/TextAppearance.Crea.DisplaySmall</item>
+        <item name="textAppearanceHeadlineLarge">@style/TextAppearance.Crea.HeadlineLarge</item>
+        <item name="textAppearanceHeadlineMedium">@style/TextAppearance.Crea.HeadlineMedium</item>
+        <item name="textAppearanceHeadlineSmall">@style/TextAppearance.Crea.HeadlineSmall</item>
+        <item name="textAppearanceTitleLarge">@style/TextAppearance.Crea.TitleLarge</item>
+        <item name="textAppearanceTitleMedium">@style/TextAppearance.Crea.TitleMedium</item>
+        <item name="textAppearanceTitleSmall">@style/TextAppearance.Crea.TitleSmall</item>
+        <item name="textAppearanceBodyLarge">@style/TextAppearance.Crea.BodyLarge</item>
+        <item name="textAppearanceBodyMedium">@style/TextAppearance.Crea.BodyMedium</item>
+        <item name="textAppearanceBodySmall">@style/TextAppearance.Crea.BodySmall</item>
+        <item name="textAppearanceLabelLarge">@style/TextAppearance.Crea.LabelLarge</item>
+        <item name="textAppearanceLabelMedium">@style/TextAppearance.Crea.LabelMedium</item>
+        <item name="textAppearanceLabelSmall">@style/TextAppearance.Crea.LabelSmall</item>
+        <!-- Platform dialogs and widgets read this one: CREA blue, not the secondary turquoise -->
+        <item name="android:colorAccent">@color/crea_primary</item>
+        <!-- Back arrow of every screen: the chevron of the CREA icon set -->
+        <item name="homeAsUpIndicator">@drawable/ic_reader_back</item>
+        <item name="materialButtonStyle">@style/Widget.Crea.Button</item>
+        <item name="extendedFloatingActionButtonStyle">@style/Widget.Crea.ExtendedFab</item>
         <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
         <item name="android:navigationBarColor">@color/transparent</item>
         <item name="android:enforceNavigationBarContrast" tools:targetApi="29">false</item>
     </style>
 
 
+
+    <!-- Material 3 type scale in Montserrat: bold headings, semi-bold titles and labels, medium body -->
+    <style name="TextAppearance.Crea.DisplayLarge" parent="TextAppearance.Material3.DisplayLarge">
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="fontFamily">@font/montserrat_bold</item>
+    </style>
+    <style name="TextAppearance.Crea.DisplayMedium" parent="TextAppearance.Material3.DisplayMedium">
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="fontFamily">@font/montserrat_bold</item>
+    </style>
+    <style name="TextAppearance.Crea.DisplaySmall" parent="TextAppearance.Material3.DisplaySmall">
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="fontFamily">@font/montserrat_bold</item>
+    </style>
+    <style name="TextAppearance.Crea.HeadlineLarge" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="fontFamily">@font/montserrat_bold</item>
+    </style>
+    <style name="TextAppearance.Crea.HeadlineMedium" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="fontFamily">@font/montserrat_bold</item>
+    </style>
+    <style name="TextAppearance.Crea.HeadlineSmall" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="fontFamily">@font/montserrat_bold</item>
+    </style>
+    <style name="TextAppearance.Crea.TitleLarge" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:fontFamily">@font/montserrat_semibold</item>
+        <item name="fontFamily">@font/montserrat_semibold</item>
+    </style>
+    <style name="TextAppearance.Crea.TitleMedium" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:fontFamily">@font/montserrat_semibold</item>
+        <item name="fontFamily">@font/montserrat_semibold</item>
+    </style>
+    <style name="TextAppearance.Crea.TitleSmall" parent="TextAppearance.Material3.TitleSmall">
+        <item name="android:fontFamily">@font/montserrat_semibold</item>
+        <item name="fontFamily">@font/montserrat_semibold</item>
+    </style>
+    <style name="TextAppearance.Crea.BodyLarge" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="fontFamily">@font/montserrat</item>
+    </style>
+    <style name="TextAppearance.Crea.BodyMedium" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="fontFamily">@font/montserrat</item>
+    </style>
+    <style name="TextAppearance.Crea.BodySmall" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="fontFamily">@font/montserrat</item>
+    </style>
+    <style name="TextAppearance.Crea.LabelLarge" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:fontFamily">@font/montserrat_semibold</item>
+        <item name="fontFamily">@font/montserrat_semibold</item>
+    </style>
+    <style name="TextAppearance.Crea.LabelMedium" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:fontFamily">@font/montserrat_semibold</item>
+        <item name="fontFamily">@font/montserrat_semibold</item>
+    </style>
+    <style name="TextAppearance.Crea.LabelSmall" parent="TextAppearance.Material3.LabelSmall">
+        <item name="android:fontFamily">@font/montserrat_semibold</item>
+        <item name="fontFamily">@font/montserrat_semibold</item>
+    </style>
+
+    <!-- Main call-to-action buttons, like "DONATE" on creanicaragua.org: solid CREA blue, bold capitals.
+         Outlined, tonal and text buttons keep normal case so the main action stands out. -->
+    <style name="Widget.Crea.Button" parent="Widget.Material3.Button">
+        <item name="android:textAppearance">@style/TextAppearance.Crea.Button</item>
+    </style>
+
+    <style name="Widget.Crea.ExtendedFab" parent="Widget.Material3.ExtendedFloatingActionButton.Icon.Primary">
+        <item name="android:textAppearance">@style/TextAppearance.Crea.Button</item>
+    </style>
+
+    <style name="TextAppearance.Crea.Button" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="fontFamily">@font/montserrat_bold</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.05</item>
+    </style>
 
     <style name="Widget.Crea.Chip.Filter" parent="Widget.Material3.Chip.Filter">
         <item name="chipBackgroundColor">@color/chip_background</item>
@@ -57,6 +166,8 @@
     <style name="AppTheme.Glass" parent="AppTheme">
         <item name="android:windowBackground">@drawable/bg_mesh</item>
         <item name="actionBarStyle">@style/Widget.Crea.ActionBar</item>
+        <!-- Back chevron and action icons in CREA blue, as in the reader -->
+        <item name="actionBarTheme">@style/ThemeOverlay.Crea.ReaderBar</item>
         <item name="bottomSheetDialogTheme">@style/ThemeOverlay.Crea.BottomSheetDialog</item>
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.Crea.Dialog</item>
     </style>
@@ -71,18 +182,26 @@
     <!-- The reader keeps the book's own background; only its bars use the glass look -->
     <style name="AppTheme.Reader" parent="AppTheme">
         <item name="actionBarStyle">@style/Widget.Crea.ReaderActionBar</item>
+        <item name="actionBarTheme">@style/ThemeOverlay.Crea.ReaderBar</item>
         <item name="bottomSheetDialogTheme">@style/ThemeOverlay.Crea.BottomSheetDialog</item>
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.Crea.Dialog</item>
     </style>
 
-    <style name="Widget.Crea.ReaderActionBar" parent="Widget.Material3.ActionBar.Solid">
-        <item name="background">@drawable/bg_reader_bar</item>
-        <item name="backgroundStacked">@drawable/bg_reader_bar</item>
-        <item name="height">44dp</item>
-        <item name="elevation">0dp</item>
-        <item name="titleTextStyle">@style/TextAppearance.Crea.ActionBarTitle</item>
+    <!-- Back arrow and action icons of the reader bar in CREA blue, like the website's links -->
+    <style name="ThemeOverlay.Crea.ReaderBar" parent="ThemeOverlay.Material3.ActionBar">
+        <item name="colorControlNormal">?attr/colorPrimary</item>
     </style>
 
+    <style name="Widget.Crea.ReaderActionBar" parent="Widget.Material3.ActionBar.Solid">
+        <!-- Transparent: ReaderActivity/VisualReaderFragment draw the glass or capsule behind the icons -->
+        <item name="background">@color/transparent</item>
+        <item name="backgroundStacked">@color/transparent</item>
+        <item name="height">44dp</item>
+        <item name="elevation">0dp</item>
+        <item name="titleTextStyle">@style/TextAppearance.Crea.ReaderBarTitle</item>
+    </style>
+
+    <!-- Section headings, like the small caps labels of creanicaragua.org: blue, bold, spaced capitals -->
     <style name="Widget.Crea.SettingsSection" parent="">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
@@ -92,6 +211,8 @@
         <item name="android:textAppearance">?attr/textAppearanceTitleSmall</item>
         <item name="android:textColor">?attr/colorPrimary</item>
         <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.06</item>
         <item name="android:accessibilityHeading" tools:targetApi="p">true</item>
     </style>
 
@@ -102,7 +223,19 @@
         <item name="titleTextStyle">@style/TextAppearance.Crea.ActionBarTitle</item>
     </style>
 
+    <!-- Screen titles, like the headings of creanicaragua.org: extra-bold capitals in CREA blue -->
     <style name="TextAppearance.Crea.ActionBarTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:fontFamily">@font/montserrat_extrabold</item>
+        <!-- AppCompat reads this one first; without it the theme-wide Montserrat Medium wins -->
+        <item name="fontFamily">@font/montserrat_extrabold</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <!-- The reader's bar shows the book's own title: keep its case and the plain text color -->
+    <style name="TextAppearance.Crea.ReaderBarTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textSize">18sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textColor">?attr/colorOnSurface</item>
     </style>

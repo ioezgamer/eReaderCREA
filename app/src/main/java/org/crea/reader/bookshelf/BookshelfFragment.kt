@@ -159,7 +159,7 @@ class BookshelfFragment : Fragment() {
         renderSyncState(app.syncStateStore.snapshot(), app.syncEngine.progress.value)
 
         // Group tablets: "who is reading today?" (reading never waits for it).
-        binding.bookshelfHighlights.setContent {
+        binding.bookshelfHighlights.setContent { org.crea.reader.utils.compose.AppTheme {
             val (reading, recent) = highlights
             LibraryHighlights(
                 reading = reading,
@@ -170,9 +170,11 @@ class BookshelfFragment : Fragment() {
                 },
                 onBookDetails = { book -> BookDetailDialog.show(childFragmentManager, driveFileId = book.remoteFileId, bookId = book.id) },
             )
-        }
+        } }
         binding.bookshelfReaderCard.setContent {
-            org.crea.reader.readers.ReaderSessionCard(app.readers, onOpenProfile = { findNavController().navigate(R.id.community) })
+            org.crea.reader.utils.compose.AppTheme {
+                org.crea.reader.readers.ReaderSessionCard(app.readers, onOpenProfile = { findNavController().navigate(R.id.community) })
+            }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {

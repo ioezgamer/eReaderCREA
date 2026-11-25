@@ -117,7 +117,7 @@ class BookshelfAdapter(
             bindFormatBadge(context, binding.listFormat, book)
             binding.listFavorite.setImageResource(if (book.favorite) R.drawable.ic_favorite else R.drawable.ic_favorite_outline)
             binding.listFavorite.imageTintList = ColorStateList.valueOf(
-                if (book.favorite) ContextCompat.getColor(context, R.color.crea_secondary)
+                if (book.favorite) ContextCompat.getColor(context, R.color.crea_favorite)
                 else MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnSurfaceVariant)
             )
             binding.listFavorite.setOnClickListener { onFavoriteToggle?.invoke(book) }
