@@ -150,6 +150,13 @@
         <item name="checkedIconTint">?attr/colorOnPrimary</item>
         <item name="chipStrokeColor">@color/glass_stroke</item>
         <item name="chipCornerRadius">20dp</item>
+        <!-- Every filter has an icon of the CREA set; the solid blue background marks the chosen one,
+             so no check mark replaces the icon. -->
+        <item name="chipIconVisible">true</item>
+        <item name="chipIconTint">@color/chip_text</item>
+        <item name="chipIconSize">18dp</item>
+        <item name="iconStartPadding">6dp</item>
+        <item name="checkedIconVisible">false</item>
     </style>
 
     <style name="ShapeAppearance.Crea.Cover" parent="">

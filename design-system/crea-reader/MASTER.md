@@ -75,7 +75,14 @@ Librería Backdrop de Kyant (`ui/glass/`).
 
 - **Tarjetas**: cristal translúcido (`bg_glass_card`) con esquinas de 24 dp.
 - **Hojas inferiores y diálogos**: `glass_sheet` (casi opaco), esquinas de 32 dp.
-- **Filtros (chips)**: elegidos en azul sólido con texto blanco; el resto, cristal.
+- **Filtros (chips)**: cada uno con su ícono del juego (Todos = cuadrícula, Favoritos = corazón,
+  Leyendo = libro abierto, Sin leer = libro cerrado, Terminados = visto, Nuevos = destello, EPUB/PDF =
+  archivo, colecciones y categorías = carpeta…). Elegido: azul sólido con ícono y texto blancos, sin
+  marca de verificación; el resto, cristal.
+- **Pestañas**: ícono a la izquierda del texto (ficha del libro e índice del lector: contenido,
+  marcadores, resaltador para notas, hojas para páginas, bandera para puntos de referencia).
+- **Barra de navegación**: libros en un estante (Mi biblioteca), nube con flecha de descarga
+  (Catálogo), brújula (Explorar), persona (Perfil) y engranaje (Ajustes); rellenos cuando están elegidos.
 - **Volver**: chevron del juego de íconos en azul, en todas las pantallas.
 - **Panel «Aa» del lector**: opaco, para que el texto del libro no se vea a través.
 

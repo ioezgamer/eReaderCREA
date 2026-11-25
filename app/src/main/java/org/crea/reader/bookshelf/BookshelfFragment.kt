@@ -520,6 +520,7 @@ class BookshelfFragment : Fragment() {
         collectionChips = chips
         val add = layoutInflater.inflate(R.layout.item_filter_chip, group, false) as Chip
         add.text = getString(R.string.collection_new_chip)
+        add.setChipIconResource(R.drawable.add)
         add.isCheckable = false
         add.setOnClickListener { askCollectionName(R.string.collection_new_title, "") { bookshelfViewModel.createCollection(it) } }
         group.addView(add)

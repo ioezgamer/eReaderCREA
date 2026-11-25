@@ -419,17 +419,24 @@ class BookDetailDialog : DialogFragment() {
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(colorResource(R.color.crea_surface_variant)).padding(4.dp),
             ) {
-                listOf(R.string.book_detail_toc, R.string.book_detail_bookmarks, R.string.book_detail_notes).forEachIndexed { index, label ->
+                listOf(
+                    R.string.book_detail_toc to R.drawable.ic_reader_contents,
+                    R.string.book_detail_bookmarks to R.drawable.ic_reader_bookmark,
+                    R.string.book_detail_notes to R.drawable.ic_highlight,
+                ).forEachIndexed { index, (label, icon) ->
                     val selected = index == tab
-                    Box(
-                        contentAlignment = Alignment.Center,
+                    val content = colorResource(if (selected) R.color.crea_on_primary else R.color.crea_on_surface_variant)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
                             .background(if (selected) colorResource(R.color.crea_primary) else androidx.compose.ui.graphics.Color.Transparent)
                             .clickable { tab = index }.padding(vertical = 9.dp),
                     ) {
+                        Icon(painterResource(icon), contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
                         Text(
-                            stringResource(label), fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                            color = colorResource(if (selected) R.color.crea_on_primary else R.color.crea_on_surface_variant),
+                            stringResource(label), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = content,
+                            modifier = Modifier.padding(start = 6.dp),
                         )
                     }
                 }

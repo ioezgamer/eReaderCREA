@@ -6,8 +6,8 @@
     android:viewportWidth="24"
     android:viewportHeight="24"
     android:tint="?attr/colorControlNormal">
-    <path android:pathData="M8.1,8 a3.9,3.9 0 1,0 7.8,0 a3.9,3.9 0 1,0 -7.8,0" android:fillColor="#FFFFFFFF" android:strokeColor="#FFFFFFFF"
+    <path android:pathData="M8.25,7.75 a3.75,3.75 0 1,0 7.5,0 a3.75,3.75 0 1,0 -7.5,0" android:fillColor="#FFFFFFFF" android:strokeColor="#FFFFFFFF"
         android:strokeWidth="2" android:strokeLineJoin="round" />
-    <path android:pathData="M4.75,20 a7.25,6.25 0 0,1 14.5,0 Z" android:fillColor="#FFFFFFFF" android:strokeColor="#FFFFFFFF"
+    <path android:pathData="M4.75,20.25 C4.75,16.6 8,14.25 12,14.25 C16,14.25 19.25,16.6 19.25,20.25 Z" android:fillColor="#FFFFFFFF" android:strokeColor="#FFFFFFFF"
         android:strokeWidth="2" android:strokeLineJoin="round" />
 </vector>

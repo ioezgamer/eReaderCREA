@@ -97,7 +97,7 @@
     <string name="selection_no_space">No hay espacio suficiente: necesitas %1$s y hay %2$s libres.</string>
 
     <!-- Colecciones -->
-    <string name="collection_new_chip">+ Nueva colección</string>
+    <string name="collection_new_chip">Nueva colección</string>
     <string name="collection_new_title">Nueva colección</string>
     <string name="collection_name_hint">Nombre (por ejemplo, Para clase)</string>
     <string name="collection_rename">Cambiar nombre</string>
