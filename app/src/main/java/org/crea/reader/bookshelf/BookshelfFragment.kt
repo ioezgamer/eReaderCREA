@@ -358,6 +358,9 @@ class BookshelfFragment : Fragment() {
         // Until the library has been read once, show neither the list nor the empty message.
         binding.bookshelfBookList.isVisible = booksLoaded && !listEmpty
         binding.bookshelfEmptyState.isVisible = booksLoaded && listEmpty
+        // An empty library already offers «Agregar libros» under its message; the floating button
+        // would repeat it and, on short screens, cover the catalog button.
+        binding.bookshelfAddBookFab.isVisible = !(booksLoaded && listEmpty && allBooks.isEmpty())
         if (!booksLoaded || !listEmpty) return
         if (allBooks.isEmpty()) {
             binding.bookshelfEmptyTitle.setText(R.string.library_empty_title)
