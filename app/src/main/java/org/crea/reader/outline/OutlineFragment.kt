@@ -81,9 +81,8 @@ class OutlineFragment : Fragment() {
 
         binding.outlinePager.adapter = OutlineFragmentStateAdapter(this, publication, outlines)
         TabLayoutMediator(binding.outlineTabLayout, binding.outlinePager) { tab, idx ->
-            tab.setText(
-                outlines[idx].label
-            )
+            tab.setText(outlines[idx].label)
+            tab.setIcon(outlines[idx].icon)
         }.attach()
     }
 }
@@ -131,11 +130,11 @@ private class OutlineFragmentStateAdapter(
         NavigationFragment.newInstance(publication.landmarks, R.string.outline_empty_landmarks)
 }
 
-private enum class Outline(val label: Int) {
-    Contents(R.string.contents_tab_label),
-    Bookmarks(R.string.bookmarks_tab_label),
-    Highlights(R.string.highlights_tab_label),
-    PageList(R.string.pagelist_tab_label),
-    Landmarks(R.string.landmarks_tab_label),
+private enum class Outline(val label: Int, val icon: Int) {
+    Contents(R.string.contents_tab_label, R.drawable.ic_reader_contents),
+    Bookmarks(R.string.bookmarks_tab_label, R.drawable.ic_reader_bookmark),
+    Highlights(R.string.highlights_tab_label, R.drawable.ic_highlight),
+    PageList(R.string.pagelist_tab_label, R.drawable.ic_pages),
+    Landmarks(R.string.landmarks_tab_label, R.drawable.ic_landmark),
 }
 

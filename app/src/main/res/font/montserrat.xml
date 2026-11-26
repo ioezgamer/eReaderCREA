@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Montserrat, the body font of creanicaragua.org (SIL Open Font License, see THIRD_PARTY_MONTSERRAT_LICENSE).
+  Medium (500) is the regular weight, as on the website; plain text asking for 400 gets it too.
+-->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font
+        android:font="@font/montserrat_medium"
+        android:fontStyle="normal"
+        android:fontWeight="500" />
+    <font
+        android:font="@font/montserrat_semibold"
+        android:fontStyle="normal"
+        android:fontWeight="600" />
+    <font
+        android:font="@font/montserrat_bold"
+        android:fontStyle="normal"
+        android:fontWeight="700" />
+    <font
+        android:font="@font/montserrat_extrabold"
+        android:fontStyle="normal"
+        android:fontWeight="800" />
+</font-family>

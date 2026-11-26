@@ -1,45 +1,87 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Palette taken from the CREA Reader logo: blue, pink, orange, green and the navy of "Reader". -->
+<!--
+  Palette taken from creanicaragua.org: CREA blue (#2371BD), lime (#C0D32E), turquoise (#7EBEC5)
+  and the navy of the site footer (#0A192C). Lime and turquoise are too light for text on white,
+  so the "text" roles use deeper shades and the bright tones live in the containers.
+-->
 <resources>
-    <color name="launcher_background">#F4F7FF</color>
+    <color name="launcher_background">#FFFFFF</color>
 
-    <color name="crea_primary">#1558D6</color>
+    <color name="crea_primary">#2371BD</color>
     <color name="crea_on_primary">#FFFFFF</color>
-    <color name="crea_primary_container">#DCE8FF</color>
-    <color name="crea_on_primary_container">#0A2A66</color>
+    <color name="crea_primary_container">#D6E6F7</color>
+    <color name="crea_on_primary_container">#0A192C</color>
 
-    <color name="crea_secondary">#D6246E</color>
+    <color name="crea_secondary">#2E6E76</color>
     <color name="crea_on_secondary">#FFFFFF</color>
-    <color name="crea_secondary_container">#FFD9E6</color>
-    <color name="crea_on_secondary_container">#5C0A2E</color>
+    <color name="crea_secondary_container">#CDEBEE</color>
+    <color name="crea_on_secondary_container">#0A2E33</color>
 
-    <color name="crea_tertiary">#B85F00</color>
+    <color name="crea_tertiary">#5E7700</color>
     <color name="crea_on_tertiary">#FFFFFF</color>
-    <color name="crea_tertiary_container">#FFE3BF</color>
-    <color name="crea_on_tertiary_container">#4A2800</color>
+    <color name="crea_tertiary_container">#C0D32E</color>
+    <color name="crea_on_tertiary_container">#0A192C</color>
 
-    <color name="crea_surface">#F8FAFF</color>
-    <color name="crea_surface_variant">#E6ECF8</color>
-    <color name="crea_on_surface">#0E1B3D</color>
-    <color name="crea_on_surface_variant">#44506B</color>
-    <color name="crea_outline">#76809A</color>
-    <color name="crea_outline_variant">#C8D0E2</color>
+    <color name="crea_surface">#F7F9FC</color>
+    <color name="crea_surface_variant">#E3E9F0</color>
+    <color name="crea_on_surface">#0A192C</color>
+    <color name="crea_on_surface_variant">#45505C</color>
+    <color name="crea_outline">#74808C</color>
+    <color name="crea_outline_variant">#C5CDD6</color>
+    <color name="crea_surface_container_lowest">#FFFFFF</color>
+    <color name="crea_surface_container_low">#F1F4F8</color>
+    <color name="crea_surface_container">#EBEFF4</color>
+    <color name="crea_surface_container_high">#E5EAF0</color>
+    <color name="crea_surface_container_highest">#DFE5EC</color>
 
-    <color name="crea_green">#2E9E22</color>
-    <color name="crea_badge_epub">#1558D6</color>
+    <color name="crea_error">#BA1A1A</color>
+    <color name="crea_on_error">#FFFFFF</color>
+
+    <!-- Progress and "finished": CREA lime, deep enough to read as text on white -->
+    <color name="crea_green">#5E7700</color>
+    <!-- Something to act on (update available, reading streak): the orange of the CREA logo -->
+    <color name="crea_attention">#A35400</color>
+    <!-- Favorite heart: the warm pink of the CREA logo -->
+    <color name="crea_favorite">#D6246E</color>
+    <!-- CREA navy in both themes: dark overlays on covers and the reader's text-selection bar -->
+    <color name="crea_navy">#0A192C</color>
+    <color name="crea_navy_scrim">#B30A192C</color>
+    <color name="crea_navy_divider">#40FFFFFF</color>
+    <color name="crea_badge_epub">#2371BD</color>
     <color name="crea_badge_pdf">#E0283A</color>
 
     <!-- Liquid-glass surfaces: translucent layers over the mesh background -->
     <color name="glass_fill_top">#CCFFFFFF</color>
     <color name="glass_fill">#99FFFFFF</color>
     <color name="glass_stroke">#E6FFFFFF</color>
-    <color name="glass_sheet">#F5F8FAFF</color>
+    <color name="glass_sheet">#F5F7F9FC</color>
     <color name="glass_nav_top">#D9FFFFFF</color>
     <color name="glass_nav">#B3FFFFFF</color>
-    <color name="hero_start">#1558D6</color>
-    <color name="hero_end">#17A2EC</color>
+    <!-- Tint laid over the Compose liquid glass (alpha is applied in code) -->
+    <color name="glass_tint">#FFFFFF</color>
+    <!-- "Seguir leyendo" band: the lime block of creanicaragua.org with navy text -->
+    <color name="hero_start">#C0D32E</color>
+    <color name="hero_end">#D3E35F</color>
+    <color name="hero_on">#0A192C</color>
     <color name="transparent">#00000000</color>
-    <!-- Reader top bar where there is no real blur (before Android 12): nearly opaque so text behind it stays out of the way -->
-    <color name="reader_bar_top">#F2FFFFFF</color>
-    <color name="reader_bar_bottom">#E6FFFFFF</color>
+    <!-- Reader bars (floating capsules over the page): nearly opaque so the text behind stays out of
+         the way, slightly tinted and with a navy edge so they stand apart from a white page -->
+    <color name="reader_bar_fill">#FAF7F9FC</color>
+    <color name="reader_bar_stroke">#290A192C</color>
+
+    <!-- Reader glass bars: they follow the page under them (light/sepia or dark paper), not the app
+         theme, so the same colours apply in both themes (no night variant). -->
+    <color name="reader_glass_tint_light">#FFFFFF</color>
+    <color name="reader_glass_tint_dark">#0A192C</color>
+    <color name="reader_glass_on_light">#0A192C</color>
+    <color name="reader_glass_on_dark">#EEF2F8</color>
+    <color name="reader_glass_accent_light">#2371BD</color>
+    <color name="reader_glass_accent_dark">#A6CBF2</color>
+    <color name="reader_glass_track_light">#260A192C</color>
+    <color name="reader_glass_track_dark">#40FFFFFF</color>
+    <color name="reader_glass_stroke_light">#290A192C</color>
+    <color name="reader_glass_stroke_dark">#4DFFFFFF</color>
+    <!-- Without the glass effects (battery saver, Android 11 and older) -->
+    <color name="reader_glass_fill_light">#FAF7F9FC</color>
+    <color name="reader_glass_fill_dark">#FA132339</color>
 </resources>

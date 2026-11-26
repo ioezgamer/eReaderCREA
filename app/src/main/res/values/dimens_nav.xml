@@ -5,4 +5,7 @@
     <dimen name="fab_bottom_margin">20dp</dimen>
     <dimen name="list_bottom_padding">24dp</dimen>
     <dimen name="scroll_bottom_padding">20dp</dimen>
+    <!-- Reader top bar capsule: space to the screen sides, and below the status bar -->
+    <dimen name="reader_bar_capsule_side">10dp</dimen>
+    <dimen name="reader_bar_capsule_gap">2dp</dimen>
 </resources>

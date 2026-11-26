@@ -59,7 +59,7 @@ class CatalogFeedListAdapter(private val onLongClick: (Catalog) -> Unit) :
             // Logo colors: blue for textos.info, orange for Gutenberg, pink for the user's own.
             val accent = when (entry?.source) {
                 DefaultCatalogs.Source.TEXTOS -> androidx.appcompat.R.attr.colorPrimary
-                DefaultCatalogs.Source.GUTENBERG -> com.google.android.material.R.attr.colorTertiary
+                DefaultCatalogs.Source.GUTENBERG -> com.google.android.material.R.attr.colorSecondary
                 null -> com.google.android.material.R.attr.colorSecondary
             }
             ViewCompat.setBackgroundTintList(

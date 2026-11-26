@@ -200,83 +200,95 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:checked="true"
-                        android:text="@string/filter_all" />
+                        android:text="@string/filter_all"
+                        app:chipIcon="@drawable/ic_view_options" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/filter_favorites"
                         style="@style/Widget.Crea.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/filter_favorites" />
+                        android:text="@string/filter_favorites"
+                        app:chipIcon="@drawable/ic_favorite_outline" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/filter_reading"
                         style="@style/Widget.Crea.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/filter_reading" />
+                        android:text="@string/filter_reading"
+                        app:chipIcon="@drawable/ic_menu_book" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/filter_unread"
                         style="@style/Widget.Crea.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/filter_unread" />
+                        android:text="@string/filter_unread"
+                        app:chipIcon="@drawable/ic_book_closed" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/filter_finished"
                         style="@style/Widget.Crea.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/filter_finished" />
+                        android:text="@string/filter_finished"
+                        app:chipIcon="@drawable/ic_check_circle" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/filter_recent"
                         style="@style/Widget.Crea.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/filter_recent" />
+                        android:text="@string/filter_recent"
+                        app:chipIcon="@drawable/ic_reader_ai" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/filter_epub"
                         style="@style/Widget.Crea.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/format_epub" />
+                        android:text="@string/format_epub"
+                        app:chipIcon="@drawable/ic_file" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/filter_pdf"
                         style="@style/Widget.Crea.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/format_pdf" />
+                        android:text="@string/format_pdf"
+                        app:chipIcon="@drawable/ic_file" />
                     <com.google.android.material.chip.Chip
                         android:id="@+id/filter_bookmarks"
                         style="@style/Widget.Crea.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/filter_bookmarks" />
+                        android:text="@string/filter_bookmarks"
+                        app:chipIcon="@drawable/ic_reader_bookmark" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/filter_notes"
                         style="@style/Widget.Crea.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/filter_notes" />
+                        android:text="@string/filter_notes"
+                        app:chipIcon="@drawable/ic_highlight" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/filter_drive"
                         style="@style/Widget.Crea.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/filter_drive" />
+                        android:text="@string/filter_drive"
+                        app:chipIcon="@drawable/ic_nav_online_outline" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/filter_here"
                         style="@style/Widget.Crea.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/filter_here" />
+                        android:text="@string/filter_here"
+                        app:chipIcon="@drawable/ic_device" />
 
                 </com.google.android.material.chip.ChipGroup>
             </HorizontalScrollView>

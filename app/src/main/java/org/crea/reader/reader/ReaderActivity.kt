@@ -6,12 +6,15 @@
 
 package org.crea.reader.reader
 
+import android.graphics.drawable.LayerDrawable
 import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
+import android.view.View
 import android.view.WindowManager
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentResultListener
 import androidx.fragment.app.commit
@@ -31,6 +34,7 @@ import org.crea.reader.drm.DrmManagementFragment
 import org.crea.reader.outline.OutlineContract
 import org.crea.reader.outline.OutlineFragment
 import org.crea.reader.sync.SyncScheduler
+import org.crea.reader.utils.StatusBarBackdrop
 import org.crea.reader.utils.launchWebBrowser
 
 /*
@@ -38,7 +42,18 @@ import org.crea.reader.utils.launchWebBrowser
  *
  * This class can be used as it is or be inherited from.
  */
-open class ReaderActivity : AppCompatActivity() {
+open class ReaderActivity : AppCompatActivity(), StatusBarBackdrop {
+
+    /** The book page lies under the status bar, unless the outline or DRM screen covers it. */
+    override val backdropIsDark: Boolean
+        get() {
+            val reader = if (::readerFragment.isInitialized) readerFragment as? VisualReaderFragment else null
+            val pageDark = reader?.takeUnless { it.isHidden }?.let { runCatching { it.isPageDark() }.getOrNull() }
+            return pageDark ?: run {
+                (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                    android.content.res.Configuration.UI_MODE_NIGHT_YES
+            }
+        }
 
     private val model: ReaderViewModel by viewModels()
 
@@ -73,6 +88,7 @@ open class ReaderActivity : AppCompatActivity() {
         model.activityChannel.receive(this) { handleReaderFragmentEvent(it) }
 
         reconfigureActionBar()
+        placeBarCapsule()
 
         supportFragmentManager.setFragmentResultListener(
             OutlineContract.REQUEST_KEY,
@@ -153,6 +169,43 @@ open class ReaderActivity : AppCompatActivity() {
         reconfigureActionBar()
     }
 
+    /** Toolbar position the solid capsule was placed for (-1: no capsule, the bar is transparent). */
+    private var capsuleTop = -1
+
+    private fun placeBarCapsule() {
+        val container = findViewById<View>(androidx.appcompat.R.id.action_bar_container) ?: return
+        container.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateBarBackground() }
+        container.post { updateBarBackground() }
+    }
+
+    /**
+     * Over the book the top bar is transparent: the reader draws Liquid Glass behind its icons
+     * (VisualReaderFragment). Over the outline and DRM screens there is no glass, so the bar gets a
+     * solid floating capsule around the toolbar. The bar's container also spans the status bar (its
+     * height varies per device), so the capsule follows the toolbar's position.
+     */
+    private fun updateBarBackground() {
+        val container = findViewById<View>(androidx.appcompat.R.id.action_bar_container) ?: return
+        val toolbar = findViewById<View>(androidx.appcompat.R.id.action_bar) ?: return
+        val readerShown = ::readerFragment.isInitialized &&
+            readerFragment is VisualReaderFragment && !readerFragment.isHidden
+        if (readerShown) {
+            if (capsuleTop != -1 || container.background != null) {
+                container.background = null
+                capsuleTop = -1
+            }
+            return
+        }
+        if (toolbar.top == capsuleTop) return
+        capsuleTop = toolbar.top
+        val side = resources.getDimensionPixelSize(R.dimen.reader_bar_capsule_side)
+        val gap = resources.getDimensionPixelSize(R.dimen.reader_bar_capsule_gap)
+        val capsule = ContextCompat.getDrawable(this, R.drawable.bg_reader_bar) ?: return
+        container.background = LayerDrawable(arrayOf(capsule)).apply {
+            setLayerInset(0, side, toolbar.top + gap, side, 0)
+        }
+    }
+
     private fun reconfigureActionBar() {
         val currentFragment = supportFragmentManager.fragments.lastOrNull()
 
@@ -164,6 +217,7 @@ open class ReaderActivity : AppCompatActivity() {
 
         // The back arrow is always available: it closes the outline/DRM screens or the book itself.
         supportActionBar!!.setDisplayHomeAsUpEnabled(true)
+        updateBarBackground()
     }
 
     private fun handleReaderFragmentEvent(command: ReaderViewModel.ActivityCommand) {

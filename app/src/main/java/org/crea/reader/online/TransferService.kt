@@ -89,7 +89,7 @@ class TransferService : Service() {
             PendingIntent.FLAG_IMMUTABLE
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_download)
+            .setSmallIcon(R.drawable.ic_stat_download)
             .setContentTitle(resources.getQuantityString(R.plurals.transfer_notification_title, count.coerceAtLeast(1), count))
             .setContentText(getString(R.string.transfer_notification_progress, percent))
             .setProgress(100, percent, count == 0)

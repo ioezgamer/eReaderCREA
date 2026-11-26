@@ -76,6 +76,7 @@ class GeneratedCover(private val title: String, private val author: String?) : D
     override fun getOpacity(): Int = PixelFormat.OPAQUE
 
     private companion object {
-        val PALETTE = intArrayOf(0xFF1558D6.toInt(), 0xFFD6246E.toInt(), 0xFFB85F00.toInt(), 0xFF2E9E22.toInt(), 0xFF0E1B3D.toInt(), 0xFF6A3FC1.toInt())
+        // CREA blue, deep turquoise, lime-olive, navy, logo pink and logo orange: all dark enough for white text.
+        val PALETTE = intArrayOf(0xFF2371BD.toInt(), 0xFF1E7F8C.toInt(), 0xFF5E7700.toInt(), 0xFF0A192C.toInt(), 0xFFC21F63.toInt(), 0xFFB85F00.toInt())
     }
 }

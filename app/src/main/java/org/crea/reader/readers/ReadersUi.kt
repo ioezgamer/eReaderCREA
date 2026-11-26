@@ -148,16 +148,16 @@ private fun ReaderChip(profile: ReaderProfile, onClick: () -> Unit) {
 
 @Composable
 private fun NewReaderChip(onClick: () -> Unit) {
-    ActionChip("＋", stringResource(R.string.readers_new), colorResource(R.color.crea_primary_container), onClick)
+    ActionChip(R.drawable.add, stringResource(R.string.readers_new), colorResource(R.color.crea_primary_container), onClick)
 }
 
 @Composable
 private fun SearchChip(onClick: () -> Unit) {
-    ActionChip("🔎", stringResource(R.string.readers_search), colorResource(R.color.crea_surface_variant), onClick)
+    ActionChip(R.drawable.ic_baseline_search_24, stringResource(R.string.readers_search), colorResource(R.color.crea_surface_variant), onClick)
 }
 
 @Composable
-private fun ActionChip(symbol: String, label: String, background: Color, onClick: () -> Unit) {
+private fun ActionChip(@androidx.annotation.DrawableRes icon: Int, label: String, background: Color, onClick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -167,7 +167,10 @@ private fun ActionChip(symbol: String, label: String, background: Color, onClick
             .padding(vertical = 4.dp),
     ) {
         Box(Modifier.size(52.dp).clip(CircleShape).background(background), contentAlignment = Alignment.Center) {
-            Text(symbol, fontSize = 22.sp, color = colorResource(R.color.crea_on_primary_container))
+            androidx.compose.material3.Icon(
+                androidx.compose.ui.res.painterResource(icon), contentDescription = null,
+                tint = colorResource(R.color.crea_on_primary_container), modifier = Modifier.size(24.dp),
+            )
         }
         Text(
             label,

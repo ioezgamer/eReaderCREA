@@ -17,7 +17,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:tabMode="scrollable"
-        app:tabGravity="start"/>
+        app:tabGravity="start"
+        app:tabInlineLabel="true"
+        app:tabIconTint="@color/tab_icon"/>
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/outline_pager"
