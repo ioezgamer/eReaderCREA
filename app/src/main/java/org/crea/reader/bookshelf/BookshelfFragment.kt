@@ -347,10 +347,32 @@ class BookshelfFragment : Fragment() {
     /** Centres the empty message between the header (whatever cards it shows) and the bottom bar. */
     private fun fitEmptyState() {
         val empty = binding.bookshelfEmptyState
-        val free = (binding.root.height - binding.bookshelfAppbar.bottom - empty.paddingBottom).coerceAtLeast(0)
-        if (binding.bookshelfEmptyContent.minimumHeight != free) {
-            binding.bookshelfEmptyContent.minimumHeight = free
-            binding.bookshelfEmptyContent.requestLayout()
+        val content = binding.bookshelfEmptyContent
+        // The full header height, not where it is now: measuring against a collapsing header made the
+        // message grow as the header left, so it never came back.
+        val free = (binding.root.height - binding.bookshelfAppbar.height - empty.paddingBottom).coerceAtLeast(0)
+        if (content.minimumHeight != free) {
+            content.minimumHeight = free
+            content.requestLayout()
+        }
+        if (!empty.isVisible || empty.width == 0) return
+        // With nothing to scroll, a swipe must not push the header (search, filters) off the screen.
+        // Only when the message is taller than the space (small screens, landscape) may it scroll.
+        val natural = content.run {
+            val min = minimumHeight
+            minimumHeight = 0
+            measure(
+                View.MeasureSpec.makeMeasureSpec(empty.width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            )
+            minimumHeight = min
+            measuredHeight
+        }
+        val scrollable = natural > free
+        if (empty.isNestedScrollingEnabled != scrollable) empty.isNestedScrollingEnabled = scrollable
+        // The list may have left the header collapsed before a filter emptied it.
+        if (!scrollable && binding.bookshelfAppbar.bottom < binding.bookshelfAppbar.height) {
+            binding.bookshelfAppbar.setExpanded(true, false)
         }
     }
 
@@ -358,6 +380,9 @@ class BookshelfFragment : Fragment() {
         // Until the library has been read once, show neither the list nor the empty message.
         binding.bookshelfBookList.isVisible = booksLoaded && !listEmpty
         binding.bookshelfEmptyState.isVisible = booksLoaded && listEmpty
+        // An empty library already offers «Agregar libros» under its message; the floating button
+        // would repeat it and, on short screens, cover the catalog button.
+        binding.bookshelfAddBookFab.isVisible = !(booksLoaded && listEmpty && allBooks.isEmpty())
         if (!booksLoaded || !listEmpty) return
         if (allBooks.isEmpty()) {
             binding.bookshelfEmptyTitle.setText(R.string.library_empty_title)
