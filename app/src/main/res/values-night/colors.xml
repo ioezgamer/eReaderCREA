@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Dark palette: the creanicaragua.org footer navy (#0A192C) as the base, brand tones lifted for contrast. -->
 <resources>
-    <color name="launcher_background">#FFFFFF</color>
 
     <color name="crea_primary">#A6CBF2</color>
     <color name="crea_on_primary">#00315C</color>

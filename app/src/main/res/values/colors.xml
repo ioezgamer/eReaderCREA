@@ -5,7 +5,6 @@
   so the "text" roles use deeper shades and the bright tones live in the containers.
 -->
 <resources>
-    <color name="launcher_background">#FFFFFF</color>
 
     <color name="crea_primary">#2371BD</color>
     <color name="crea_on_primary">#FFFFFF</color>
